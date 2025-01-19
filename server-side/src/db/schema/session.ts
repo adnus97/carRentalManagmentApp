@@ -13,6 +13,7 @@ export const session = pgTable('session', {
   id: varchar({ length: 255 }).primaryKey(),
   userId: varchar({ length: 255 }).references(() => users.id),
   token: varchar({ length: 255 }).notNull(),
+  userAgent: varchar({ length: 255 }),
   expiresAt: timestamp(),
   ipAddress: varchar({ length: 255 }),
   createdAt: timestamp(),

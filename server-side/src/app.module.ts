@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { BetterAuthModule } from './utils/better-auth/better-auth.module';
+import { DatabaseModule } from './db';
 
 @Module({
-  imports: [AuthModule],
+  imports: [DatabaseModule, BetterAuthModule, AuthModule],
   controllers: [AppController],
   providers: [AppService],
 })

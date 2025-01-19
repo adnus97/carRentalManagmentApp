@@ -147,8 +147,9 @@ function getRequest({
   request: Request;
 }) {
   return new Request(base + request.url, {
+    duplex: 'half',
     method: request.method,
     body: get_raw_body(request, bodySizeLimit),
     headers: request.headers as Record<string, string>,
-  });
+  } as unknown as RequestInit);
 }

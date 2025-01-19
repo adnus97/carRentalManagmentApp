@@ -8,7 +8,7 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 
-export const users = pgTable('users', {
+export const users = pgTable('user', {
   id: varchar({ length: 255 }).primaryKey(),
   name: varchar({ length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull().unique(),

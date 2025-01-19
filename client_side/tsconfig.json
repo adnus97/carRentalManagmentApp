@@ -3,5 +3,18 @@
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
-  ]
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "strict": true, // Ensures strict type checking
+    "moduleResolution": "node",
+    "jsx": "react-jsx", // For React 17+
+    "target": "ESNext",
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "skipLibCheck": true
+  }
 }
