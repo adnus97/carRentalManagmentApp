@@ -33,7 +33,7 @@ export function SignupForm({
           //show loading
         },
         onSuccess: (ctx) => {
-          //redirect to the dashboard
+          localStorage.setItem('token', ctx.data.token); //store the token in the local storage
           console.log(ctx.data);
         },
         onError: (ctx) => {

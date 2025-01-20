@@ -1,4 +1,4 @@
-import App from '@/App';
+import { LoginForm } from '@/components/Auth/Login-form';
 import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/login')({
@@ -6,5 +6,5 @@ export const Route = createFileRoute('/login')({
 });
 
 function RouteComponent() {
-  return <App />;
+  return <LoginForm />;
 }
