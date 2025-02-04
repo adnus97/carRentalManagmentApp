@@ -1,23 +1,53 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import { RouterProvider, createRouter } from '@tanstack/react-router';
+import { UserProvider, useUser } from './contexts/user-context';
+import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import App from './App';
+import { ThemeProvider } from './components/theme-provider';
 
-const router = createRouter({ routeTree });
-const queryClient = new QueryClient();
+import { Toaster } from './components/ui/toaster';
+import { ModeToggle } from './components/mode-toggle';
 
-// Register the router instance for type safety
+const router = createRouter({
+  routeTree,
+  context: { auth: undefined! },
+});
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router;
   }
 }
+const queryClient = new QueryClient();
+
+function InnerApp() {
+  const auth = useUser();
+  return <RouterProvider router={router} context={{ auth }} />;
+}
+
+function App() {
+  return (
+    <UserProvider>
+      <InnerApp />
+    </UserProvider>
+  );
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <QueryClientProvider client={queryClient}>
+          <div className="sticky p-4 justify-self-end z-[100] w-fit">
+            <ModeToggle />
+          </div>
+          <div className="w-full h-full flex justify-center items-center">
+            <App />
+            <Toaster />
+          </div>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </>
   </StrictMode>,
 );

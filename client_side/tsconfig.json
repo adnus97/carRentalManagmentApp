@@ -15,6 +15,8 @@
     "target": "ESNext",
     "esModuleInterop": true,
     "module": "ESNext",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"],
+    "maxNodeModuleJsDepth": 3
   }
 }

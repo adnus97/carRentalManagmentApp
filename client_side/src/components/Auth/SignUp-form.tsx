@@ -9,39 +9,84 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { authClient } from '@/lib/auth-client'; //import the auth client
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader } from '@/components/loader';
+import { useUser } from '@/contexts/user-context';
 import { useState } from 'react';
+import { toast } from '@/hooks/use-toast';
+
+const schema = z
+  .object({
+    name: z.string().min(2),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters long') // Minimum length
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter') // At least one uppercase letter
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter') // At least one lowercase letter
+      .regex(/[0-9]/, 'Password must contain at least one number') // At least one digit
+      .regex(
+        /[@$!%*?&]/,
+        'Password must contain at least one special character',
+      ), // At least one special character
+    email: z
+      .string()
+      .email('Invalid email address') // Custom error message for email
+      .nonempty('Email is required'), // Ensure the email is not empty
+    passwordVerification: z.string(),
+  })
+  .refine((data) => data.password === data.passwordVerification, {
+    path: ['passwordVerification'],
+    message: 'Passwords do not match',
+  });
+
+type FormFields = z.infer<typeof schema>;
 
 export function SignupForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const navigate = useNavigate();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<FormFields>({
+    resolver: zodResolver(schema),
+  });
+  const { user, setUser } = useUser();
 
-  const signUp = async () => {
-    const { data, error } = await authClient.signUp.email(
+  const onSubmit = async (data: FormFields) => {
+    const { data: responseData, error } = await authClient.signUp.email(
       {
-        email,
-        password,
-        name,
+        email: data.email,
+        password: data.password,
+        name: data.name,
       },
       {
-        onRequest: (ctx) => {
-          //show loading
+        onRequest: (ctx: any) => {},
+
+        onSuccess: (ctx: any) => {
+          setUser({ ...user, ...ctx.data.user });
+          localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
+          navigate({ to: '/dashboard' });
+          reset();
         },
-        onSuccess: (ctx) => {
-          localStorage.setItem('token', ctx.data.token); //store the token in the local storage
-          console.log(ctx.data);
-        },
-        onError: (ctx) => {
-          alert(ctx.error.message);
-          console;
+        onError: (ctx: any) => {
+          if (ctx.error.code === 'USER_ALREADY_EXISTS') {
+            toast({
+              title: 'Uh oh! Something went wrong.',
+              description: 'Email already exists',
+            });
+          }
         },
       },
     );
+    console.log(responseData);
   };
 
   return (
@@ -54,12 +99,7 @@ export function SignupForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              signUp();
-            }}
-          >
+          <form onSubmit={handleSubmit(onSubmit)}>
             <div className="grid gap-6">
               <div className="flex flex-col gap-4">
                 <Button variant="outline" className="w-full">
@@ -85,10 +125,18 @@ export function SignupForm({
                   <Input
                     id="name"
                     type="name"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    className={
+                      errors.name
+                        ? 'border-red-600  focus:outline-none focus:ring-0 fovus:ring-offset-0'
+                        : ''
+                    }
+                    {...register('name', { required: 'Name required' })}
                   />
+                  {errors.name && (
+                    <span className="text-red-600 text-sm">
+                      {errors.name.message}
+                    </span>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email" className="text-justify">
@@ -97,11 +145,17 @@ export function SignupForm({
                   <Input
                     id="email"
                     type="email"
+                    className={
+                      errors.email ? 'border-red-600 outline-none' : ''
+                    }
                     placeholder="m@example.com"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    {...register('email')}
                   />
+                  {errors.email && (
+                    <span className="text-red-600 text-sm">
+                      {errors.email.message}
+                    </span>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   <div className="flex items-center">
@@ -110,10 +164,16 @@ export function SignupForm({
                   <Input
                     id="password"
                     type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    {...register('password')}
+                    className={
+                      errors.password ? 'border-red-600 outline-none ' : ''
+                    }
                   />
+                  {errors.password && (
+                    <span className="text-red-600 text-sm">
+                      {errors.password.message}
+                    </span>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   <div className="flex items-center">
@@ -121,19 +181,43 @@ export function SignupForm({
                       Password Verification
                     </Label>
                   </div>
-                  <Input id="passwordVerification" type="password" required />
+                  <Input
+                    id="passwordVerification"
+                    type="password"
+                    {...register('passwordVerification')}
+                    className={
+                      errors.passwordVerification
+                        ? 'border-red-600 outline-none '
+                        : ''
+                    }
+                  />
+                  {errors.passwordVerification && (
+                    <span className="text-red-600 text-sm">
+                      {errors.passwordVerification.message}
+                    </span>
+                  )}
                 </div>
-                <Button type="submit" className="w-full">
-                  Sign up
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader />
+                      <span>Loading...</span>
+                    </>
+                  ) : (
+                    'Sign Up'
+                  )}
                 </Button>
               </div>
+
               <div className="text-center text-sm">
                 Already have an account?{' '}
-                <a href="#" className="underline underline-offset-4">
-                  <Link to="/login" className="[&.active]:font-bold">
-                    Login
-                  </Link>
-                </a>
+                <Link to="/login" className="underline underline-offset-4">
+                  Login
+                </Link>
               </div>
             </div>
           </form>

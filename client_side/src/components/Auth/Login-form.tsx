@@ -3,22 +3,77 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate, useRouter } from '@tanstack/react-router';
+import { set, useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader } from '../loader';
+import { authClient } from '@/lib/auth-client';
+import { useUser } from '@/contexts/user-context';
+import { useEffect, useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+
+const schema = z.object({
+  email: z
+    .string()
+    .email('Invalid email address') // Custom error message for email
+    .nonempty('Email is required'), // Ensure the email is not empty
+  password: z.string(),
+});
+type formFields = z.infer<typeof schema>;
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<'div'>) {
+  const navigate = useNavigate({ from: '/login' });
+  const { toast } = useToast();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+    reset,
+  } = useForm<formFields>({ resolver: zodResolver(schema) });
+  const router = useRouter();
+  const { user, setUser } = useUser();
+
+  const onsubmit = async (formData: formFields) => {
+    const { data, error } = await authClient.signIn.email(
+      {
+        email: formData.email,
+        password: formData.password,
+      },
+      {
+        onRequest: (ctx: any) => {},
+        onSuccess: (ctx: any) => {
+          setUser({ ...user, ...ctx.data.user });
+          localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
+          console.log(JSON.stringify(ctx.data.user));
+          navigate({ to: '/dashboard' });
+          reset();
+          //  router.invalidate();
+        },
+        onError: (ctx: any) => {
+          toast({
+            title: 'Uh oh! Something went wrong.',
+            description: ctx.error.message,
+          });
+        },
+      },
+    );
+  };
+
   return (
     <div className={cn('flex flex-col gap-6 max-w-max', className)} {...props}>
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden ">
         <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8">
+          <form className="p-6 md:p-8" onSubmit={handleSubmit(onsubmit)}>
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold">Welcome back</h1>
                 <p className="text-balance text-muted-foreground">
-                  Login to your Acme Inc account
+                  Login to your account
                 </p>
               </div>
               <div className="grid gap-2">
@@ -29,24 +84,46 @@ export function LoginForm({
                   id="email"
                   type="email"
                   placeholder="m@example.com"
-                  required
+                  {...register('email')}
                 />
+                {errors.email && (
+                  <span className="text-red-600 text-xs">
+                    {errors.email.message}
+                  </span>
+                )}
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
-                  <a
-                    href="#"
-                    className="ml-auto text-sm underline-offset-2 hover:underline"
-                  >
-                    Forgot your password?
-                  </a>
                 </div>
-                <Input id="password" type="password" required />
+                <Input
+                  id="password"
+                  type="password"
+                  {...register('password')}
+                />
+                {errors.password && (
+                  <span className="text-red-600 text-xs ">
+                    {errors.password.message}
+                  </span>
+                )}
+                <a
+                  href="#"
+                  className="ml-auto text-xs underline-offset-2 hover:underline"
+                >
+                  Forgot your password?
+                </a>
               </div>
               <Button type="submit" className="w-full">
-                Login
+                {isSubmitting ? (
+                  <>
+                    <Loader />
+                    <span>Logging in...</span>
+                  </>
+                ) : (
+                  'Login'
+                )}
               </Button>
+
               <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
                 <span className="relative z-10 bg-background px-2 text-muted-foreground">
                   Or continue with
@@ -60,14 +137,14 @@ export function LoginForm({
                       fill="currentColor"
                     />
                   </svg>
-                  Login with Google
+                  Google
                 </Button>
               </div>
               <div className="text-center text-sm">
                 Don&apos;t have an account?{' '}
-                <a href="#" className="underline underline-offset-4">
-                  <Link to="/signup"> Sign up</Link>
-                </a>
+                <Link to="/signup" className="underline underline-offset-4">
+                  Sign up
+                </Link>
               </div>
             </div>
           </form>
@@ -87,3 +164,4 @@ export function LoginForm({
     </div>
   );
 }
+// function setUser removed to avoid duplicate identifier error
