@@ -1,3 +1,4 @@
+import { GridExample } from '@/components/cars-grid';
 import { useUser } from '@/contexts/user-context';
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 
@@ -6,5 +7,9 @@ export const Route = createFileRoute('/_layout/dashboard')({
 });
 
 function RouteComponent() {
-  return <div>Hello "/_layout/dashboard"!</div>;
+  return (
+    <div className="h-3/6">
+      <GridExample />
+    </div>
+  );
 }

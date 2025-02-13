@@ -18,7 +18,7 @@ const schema = z.object({
     .string()
     .email('Invalid email address') // Custom error message for email
     .nonempty('Email is required'), // Ensure the email is not empty
-  password: z.string(),
+  password: z.string().nonempty('Password is required'),
 });
 type formFields = z.infer<typeof schema>;
 
@@ -66,8 +66,8 @@ export function LoginForm({
 
   return (
     <div className={cn('flex flex-col gap-6 max-w-max', className)} {...props}>
-      <Card className="overflow-hidden ">
-        <CardContent className="grid p-0 md:grid-cols-2">
+      <Card className="overflow-hidden bg-gray-2">
+        <CardContent className="grid p-0 md:grid-cols-2 ">
           <form className="p-6 md:p-8" onSubmit={handleSubmit(onsubmit)}>
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
@@ -113,7 +113,7 @@ export function LoginForm({
                   Forgot your password?
                 </a>
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" color="teal">
                 {isSubmitting ? (
                   <>
                     <Loader />
@@ -125,7 +125,7 @@ export function LoginForm({
               </Button>
 
               <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
-                <span className="relative z-10 bg-background px-2 text-muted-foreground">
+                <span className="relative z-10 bg-gray-2 px-2 text-muted-foreground">
                   Or continue with
                 </span>
               </div>

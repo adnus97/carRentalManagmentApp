@@ -10,7 +10,7 @@ import { Reflector } from '@nestjs/core';
 import { Session, User } from 'better-auth';
 import { getRequestResponseFromContext } from 'src/utils/better-auth/better-auth';
 import { parseCookies } from 'better-auth';
-import { BetterAuthService } from 'src/utils/better-auth/better-auth';
+import { BetterAuthService } from '../utils/better-auth/better-auth.service';
 import { fromNodeHeaders } from 'better-auth/node';
 
 export interface CustomUser extends User {
@@ -59,9 +59,9 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
     if (!sessionToken) return false;
 
-    const session = (await this.betterAuthService.api.getSession({
+    const session = this.betterAuthService.auth.api.getSession({
       headers: fromNodeHeaders(req.headers),
-    })) as any;
+    }) as any;
 
     if (!session) {
       return false;
