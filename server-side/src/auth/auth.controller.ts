@@ -10,10 +10,6 @@ export class AuthController {
     @Inject(BetterAuthService) private betterAuthSerivce: BetterAuthService,
   ) {}
 
-  @Get('/test')
-  async test() {
-    return 'test';
-  }
   @All('*')
   async handleAuth(
     @Req() req: Request,

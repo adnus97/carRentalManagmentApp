@@ -10,7 +10,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader } from '../loader';
 import { authClient } from '@/lib/auth-client';
 import { useUser } from '@/contexts/user-context';
-import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 const schema = z.object({
@@ -39,7 +38,7 @@ export function LoginForm({
   const { user, setUser } = useUser();
 
   const onsubmit = async (formData: formFields) => {
-    const { data, error } = await authClient.signIn.email(
+    await authClient.signIn.email(
       {
         email: formData.email,
         password: formData.password,

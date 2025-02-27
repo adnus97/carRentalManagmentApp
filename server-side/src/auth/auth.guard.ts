@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  Inject,
   Injectable,
   SetMetadata,
   UseGuards,
@@ -8,10 +9,14 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Session, User } from 'better-auth';
-import { getRequestResponseFromContext } from 'src/utils/better-auth/better-auth';
 import { parseCookies } from 'better-auth';
-import { BetterAuthService } from '../utils/better-auth/better-auth.service';
+import {
+  BetterAuthService,
+  getRequestResponseFromContext,
+} from '../utils/better-auth';
 import { fromNodeHeaders } from 'better-auth/node';
+import { DatabaseService, schema } from '../db';
+import { eq } from 'drizzle-orm';
 
 export interface CustomUser extends User {
   session_id: string;
@@ -40,8 +45,11 @@ export const CurrentUser = createParamDecorator(
 export class AuthGuard implements CanActivate {
   constructor(
     // readonly luciaService: LuciaService,
-    readonly betterAuthService: BetterAuthService,
+    // readonly betterAuthService: BetterAuthService,
     readonly reflector: Reflector,
+    @Inject(DatabaseService) private readonly database: DatabaseService,
+    // @Inject(BetterAuthService)
+    // private readonly betterAuthService: BetterAuthService,
   ) {}
 
   async canActivate(context: ExecutionContext) {
@@ -59,14 +67,18 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
     if (!sessionToken) return false;
 
-    const session = this.betterAuthService.auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    }) as any;
+    const response = await this.database.db
+      .select()
+      .from(schema.session)
+      .leftJoin(schema.users, eq(schema.users.id, schema.session.userId))
+      .where(eq(schema.session.token, sessionToken));
+    // console.log('betterAuthService', this.betterAuthService);
+    // const session = await this.betterAuthService.auth.api.getSession;
 
-    if (!session) {
+    if (!response.length) {
       return false;
     }
-
+    const session = response[0];
     req.locals = {};
 
     req.locals.user = session.user as unknown as User;

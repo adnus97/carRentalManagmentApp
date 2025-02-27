@@ -73,7 +73,7 @@ export function SignupForm({
         onSuccess: (ctx: any) => {
           setUser({ ...user, ...ctx.data.user });
           localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
-          navigate({ to: '/dashboard' });
+          navigate({ to: '/organization' });
           reset();
         },
         onError: (ctx: any) => {

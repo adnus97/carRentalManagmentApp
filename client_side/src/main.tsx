@@ -6,7 +6,7 @@ import { UserProvider, useUser } from './contexts/user-context';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from './components/theme-provider';
+import { ThemeProvider } from './components/theme/theme-provider';
 
 import { Toaster } from './components/ui/toaster';
 import { ModeToggle } from './components/mode-toggle';

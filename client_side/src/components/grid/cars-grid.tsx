@@ -7,6 +7,7 @@ import {
   TextFilterModule,
 } from 'ag-grid-community';
 import { useState } from 'react';
+import { Button } from '../ui/button';
 
 ModuleRegistry.registerModules([
   TextFilterModule,
@@ -17,17 +18,30 @@ ModuleRegistry.registerModules([
 export const GridExample = () => {
   // Row Data: The data to be displayed.
   const [rowData, setRowData] = useState([
-    { make: 'Tesla', model: 'Model Y', price: 64950, electric: true },
-    { make: 'Ford', model: 'F-Series', price: 33850, electric: false },
-    { make: 'Toyota', model: 'Corolla', price: 29600, electric: false },
+    { Company: 'Tesla', model: 'Model Y', price: 64950, electric: true },
+    { Company: 'Ford', model: 'F-Series', price: 33850, electric: false },
+    { Company: 'Toyota', model: 'Corolla', price: 29600, electric: false },
   ]);
 
   // Column Definitions: Defines the columns to be displayed.
   const [colDefs, setColDefs] = useState<ColDef[]>([
-    { field: 'make', width: 300 },
+    { field: 'Company', width: 300 },
     { field: 'model', width: 300 },
     { field: 'price', width: 300 },
     { field: 'electric', width: 300 },
+    {
+      headerName: 'Actions',
+      field: 'actions',
+      width: 200,
+      cellRenderer: (params: any) => (
+        <Button
+          variant={'ghost'}
+          onClick={() => alert(`Button clicked for ${params.data.Company}`)}
+        >
+          Rent
+        </Button>
+      ),
+    },
   ]);
 
   return (
