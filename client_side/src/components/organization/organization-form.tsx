@@ -18,39 +18,55 @@ import { toast } from '@/hooks/use-toast';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../../api/api';
-import { FileUploader } from '../file-uploader';
+import { createOrganization } from '../../api/organization';
+import { IKContext } from 'imagekitio-react';
+import { UploadComponent } from '../image-uploader';
 
 const schema = z.object({
   orgName: z.string().nonempty("Organization's name is required").min(2),
 });
 
 type FormFields = z.infer<typeof schema>;
+// Define the ImageKit response type
+interface ImageUploadResponse {
+  fileId: string;
+  filePath: string;
+  fileType: string;
+  height: number;
+  name: string;
+  size: number;
+  thumbnailUrl: string;
+  url: string;
+  width: number;
+}
 
 export function OrgForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
-  const [name, setName] = useState('');
-  const [image, setImage] = useState<File | null>(null);
+  const [uploadedImage, setUploadedImage] =
+    useState<ImageUploadResponse | null>(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-
-  const createOrganization = async (formData: FormData) => {
-    const response = await api.post('/organization', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  };
+  const [isUploading, setIsUploading] = useState(false);
 
   const mutation = useMutation({
     mutationFn: createOrganization,
     onSuccess: () => {
-      //queryClient.invalidateQueries(['organizations']);
-      alert('Organization created successfully!');
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      toast({
+        title: 'Success',
+        description: 'Organization created successfully!',
+      });
+      navigate({ to: '/dashboard' });
     },
     onError: (error) => {
       console.error('Error:', error);
-      alert('Failed to create organization.');
+      toast({
+        title: 'Error',
+        description: 'Failed to create organization.',
+        variant: 'destructive',
+      });
     },
   });
   const {
@@ -62,22 +78,28 @@ export function OrgForm({
     resolver: zodResolver(schema),
   });
 
+  const handleImageUpload = (imageData: ImageUploadResponse) => {
+    setUploadedImage(imageData);
+    toast({
+      title: 'Image uploaded',
+      description: 'Logo uploaded successfully!',
+    });
+  };
   const onSubmit = (data: FormFields) => {
     if (!data.orgName) {
       alert('Organization name is required');
       return;
     }
-
-    const formData = new FormData();
-    formData.append('name', data.orgName);
-    if (image) {
-      formData.append('file', image);
-    }
-
-    mutation.mutate(formData);
-    navigate({ to: '/dashboard' });
+    mutation.mutate({
+      name: data.orgName,
+      image: uploadedImage?.url,
+    });
   };
 
+  const handleUploadProgress = (uploading: boolean) => {
+    console.log('Parent Component - Uploading Status:', uploading);
+    setIsUploading(uploading);
+  };
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
@@ -108,9 +130,12 @@ export function OrgForm({
                 <div className="flex items-center">
                   <Label htmlFor="orgImg">Organization Logo</Label>
                 </div>
-                <FileUploader onFileSelect={(file) => setImage(file)} />
+                <UploadComponent
+                  onUploadSuccess={handleImageUpload}
+                  onUploadProgress={handleUploadProgress}
+                />
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" disabled={isUploading}>
                 {isSubmitting ? (
                   <>
                     <Loader />

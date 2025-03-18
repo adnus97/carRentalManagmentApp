@@ -1,5 +1,5 @@
 import { Loader } from '@/components/loader';
-import { useRouter } from '@tanstack/react-router';
+
 import {
   createContext,
   useContext,
@@ -48,7 +48,6 @@ const AUTH_KEY = 'authUser';
 
 // 6. Create the provider
 const useAuthProvider = (): UserContextType => {
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const is_authenticated = !!user;
 
@@ -69,7 +68,6 @@ const useAuthProvider = (): UserContextType => {
 };
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-  const router = useRouter();
   const auth = useAuthProvider();
   const [mounted, setMounted] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);

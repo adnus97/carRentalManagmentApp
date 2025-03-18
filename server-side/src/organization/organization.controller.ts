@@ -18,50 +18,52 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { File as MulterFile } from 'multer';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard, CurrentUser, CustomUser, Auth } from 'src/auth/auth.guard';
 
+@Auth()
 @Controller('organization')
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
-  @UseGuards(AuthGuard) // Ensure only authenticated users can create organizations
+
   @Get()
-  async findAll() {
-    return await this.organizationService.findAll();
+  findAll() {
+    return this.organizationService.findAll();
   }
+
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return await this.organizationService.findOne(id);
+  findOne(@Param('id') id: string) {
+    return this.organizationService.findOne(id);
   }
+
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
-  async createOrganization(
-    @Req() req: Request, // Get the request object
+  createOrganization(
     @Body(ValidationPipe) createOrganizationDto: CreateOrganizationDto,
-    @UploadedFile() file?: MulterFile,
+    @CurrentUser() user: CustomUser,
+    @Req() req, // Get the request object
   ) {
-    const userId = req['userId'];
-    return await this.organizationService.createOrganization(
+    const userId = user.id;
+    const image = req.body.image;
+    console.log('userId', userId);
+    return this.organizationService.createOrganization(
       createOrganizationDto,
-      file,
       userId,
+      image,
     );
   }
   @Patch(':id')
-  @UseInterceptors(FileInterceptor('file'))
-  async updateOrganization(
+  updateOrganization(
     @Param('id') id: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
-    @UploadedFile() file?: MulterFile,
   ) {
-    return await this.organizationService.updateOrganization(
+    return this.organizationService.updateOrganization(
       id,
       updateOrganizationDto,
-      file,
     );
   }
-
   @Delete(':id')
-  async deleteOrganization(@Param('id') id: string) {
-    return await this.organizationService.deleteOrganization(id);
+  deleteOrganization(@Param('id') id: string) {
+    return this.organizationService.deleteOrganization(id);
   }
+
+  // Expose the upload configuration
 }

@@ -27,6 +27,7 @@ export interface CustomUser extends User {
 export const CurrentUser = createParamDecorator(
   (_: unknown, context: ExecutionContext) => {
     const { req } = getRequestResponseFromContext(context);
+    if (!req.locals) return null;
     const user = req.locals.user;
     const session = req.locals.session;
     return user
@@ -57,6 +58,7 @@ export class AuthGuard implements CanActivate {
 
     const parseCookie = parseCookies(req.headers.cookie ?? '');
     const sessionToken = parseCookie.get('better-auth.session_token');
+    const splitSessionToekn = sessionToken?.split('.')[0];
 
     // api is public
     const isPublic = this.reflector.get<boolean>(
@@ -71,7 +73,7 @@ export class AuthGuard implements CanActivate {
       .select()
       .from(schema.session)
       .leftJoin(schema.users, eq(schema.users.id, schema.session.userId))
-      .where(eq(schema.session.token, sessionToken));
+      .where(eq(schema.session.token, splitSessionToekn));
     // console.log('betterAuthService', this.betterAuthService);
     // const session = await this.betterAuthService.auth.api.getSession;
 
@@ -79,7 +81,7 @@ export class AuthGuard implements CanActivate {
       return false;
     }
     const session = response[0];
-    req.locals = {};
+    if (!req.locals) req.locals = {};
 
     req.locals.user = session.user as unknown as User;
     req.locals.session = session.session as unknown as Session;

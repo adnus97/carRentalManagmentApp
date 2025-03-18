@@ -5,10 +5,18 @@ import { AuthModule } from './auth/auth.module';
 import { BetterAuthModule } from './utils/better-auth/better-auth.module';
 import { DatabaseModule } from './db';
 import { OrganizationModule } from './organization/organization.module';
-import { UploadModule } from './upload/upload.module';
+
+import { ImagekitModule } from './utils/imagekit/imagekit.module';
 
 @Module({
-  imports: [DatabaseModule, BetterAuthModule, AuthModule, OrganizationModule, UploadModule],
+  imports: [
+    DatabaseModule,
+    BetterAuthModule,
+    AuthModule,
+    OrganizationModule,
+
+    ImagekitModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

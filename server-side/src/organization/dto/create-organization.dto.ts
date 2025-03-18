@@ -15,18 +15,6 @@ export class CreateOrganizationDto {
   @IsNotEmpty()
   name: string;
 
-  @IsString()
-  @IsNotEmpty()
-  userId: string; // The user who owns the organization
-
   @IsUrl()
   image?: string;
-
-  @Type(() => Date)
-  @IsDate()
-  createdAt: Date;
-
-  @Type(() => Date)
-  @IsDate()
-  updatedAt: Date;
 }

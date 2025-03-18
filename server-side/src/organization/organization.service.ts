@@ -4,15 +4,13 @@ import { eq } from 'drizzle-orm';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { createId } from '@paralleldrive/cuid2';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
-import { UploadService } from 'src/upload/upload.service';
+
 import { File as MulterFile } from 'multer';
+import { CurrentUser } from 'src/auth/auth.guard';
 
 @Injectable()
 export class OrganizationService {
-  constructor(
-    private readonly dbService: DatabaseService,
-    private readonly uploadService: UploadService,
-  ) {}
+  constructor(private readonly dbService: DatabaseService) {}
 
   async findAll() {
     return this.dbService.db.select().from(organization);
@@ -28,20 +26,13 @@ export class OrganizationService {
   async createOrganization(
     createOrganizationDto: CreateOrganizationDto,
     userId: string,
-    file?: MulterFile,
+    image: string,
   ) {
     const id = createId();
-    let imageUrl = null;
-
-    if (file) {
-      const uploadResponse = await this.uploadService.uploadFile(file);
-      imageUrl = uploadResponse.url;
-    }
-
     return this.dbService.db.insert(organization).values({
       id,
       userId: userId,
-      image: imageUrl,
+      image: image,
       ...createOrganizationDto,
     });
   }
@@ -49,17 +40,10 @@ export class OrganizationService {
   async updateOrganization(
     id: string,
     updateOrganizationDto: UpdateOrganizationDto,
-    file?: MulterFile,
   ) {
-    let imageUrl = updateOrganizationDto.image;
-
-    if (file) {
-      const uploadResponse = await this.uploadService.uploadFile(file);
-      imageUrl = uploadResponse.url;
-    }
     return this.dbService.db
       .update(organization)
-      .set({ updatedAt: new Date(), image: imageUrl, ...updateOrganizationDto })
+      .set({ ...updateOrganizationDto })
       .where(eq(organization.id, id));
   }
 
