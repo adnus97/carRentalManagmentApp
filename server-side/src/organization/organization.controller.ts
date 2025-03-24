@@ -54,10 +54,13 @@ export class OrganizationController {
   updateOrganization(
     @Param('id') id: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
+    @Req() req, // Get the request object
   ) {
+    const image = req.body.image;
     return this.organizationService.updateOrganization(
       id,
       updateOrganizationDto,
+      image,
     );
   }
   @Delete(':id')

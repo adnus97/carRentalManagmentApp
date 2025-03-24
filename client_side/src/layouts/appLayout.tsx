@@ -1,4 +1,5 @@
 import { AppSidebar } from '@/components/app-sidebar';
+import { DialogDemo } from '@/components/cars/car-form';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -7,7 +8,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { Button } from '@/components/ui/button';
+
 import { Separator } from '@/components/ui/separator';
 import {
   SidebarInset,
@@ -15,6 +16,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Outlet } from '@tanstack/react-router';
+
 export function AppLayout() {
   return (
     <SidebarProvider>
@@ -23,8 +25,8 @@ export function AppLayout() {
         <header className="flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <div className="flex w-full justify-between h-full items-center">
-            <Breadcrumb>
+          <div className="w-full">
+            <Breadcrumb className="flex w-full justify-between h-full items-center">
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
                   <BreadcrumbLink href="#">
@@ -36,8 +38,8 @@ export function AppLayout() {
                   <BreadcrumbPage>Data Fetching</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
+              <DialogDemo />
             </Breadcrumb>
-            <Button className="mr-14">Add a Car</Button>
           </div>
         </header>
         <Outlet />

@@ -41,7 +41,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <QueryClientProvider client={queryClient}>
           <div className="w-full h-full flex justify-center items-center">
-            <div className="absolute p-3 top-0 right-0 z-[100] w-fit h-fit">
+            <div className="absolute p-3 top-0 right-0 z-[40] w-fit h-fit">
               <ModeToggle />
             </div>
             <App />

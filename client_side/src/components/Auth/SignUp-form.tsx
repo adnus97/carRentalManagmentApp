@@ -73,7 +73,10 @@ export function SignupForm({
         onSuccess: (ctx: any) => {
           setUser({ ...user, ...ctx.data.user });
           localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
-          navigate({ to: '/organization' });
+
+          setTimeout(() => {
+            navigate({ to: '/organization' });
+          }, 100); // Give React time to process state
           reset();
         },
         onError: (ctx: any) => {
@@ -91,7 +94,7 @@ export function SignupForm({
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card>
+      <Card className="bg-gray-2">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Sign Up</CardTitle>
           <CardDescription>
@@ -120,7 +123,7 @@ export function SignupForm({
               <div className="grid gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="name" className="text-justify">
-                    Name
+                    Name <span className="text-red-700">*</span>
                   </Label>
                   <Input
                     id="name"
@@ -140,7 +143,7 @@ export function SignupForm({
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email" className="text-justify">
-                    Email
+                    Email <span className="text-red-700">*</span>
                   </Label>
                   <Input
                     id="email"
@@ -159,7 +162,9 @@ export function SignupForm({
                 </div>
                 <div className="grid gap-2">
                   <div className="flex items-center">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">
+                      Password <span className="text-red-700">*</span>
+                    </Label>
                   </div>
                   <Input
                     id="password"
@@ -178,7 +183,8 @@ export function SignupForm({
                 <div className="grid gap-2">
                   <div className="flex items-center">
                     <Label htmlFor="passwordVerification">
-                      Password Verification
+                      Password Verification{' '}
+                      <span className="text-red-700">*</span>
                     </Label>
                   </div>
                   <Input

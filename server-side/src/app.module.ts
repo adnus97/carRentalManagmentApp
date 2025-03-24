@@ -7,6 +7,7 @@ import { DatabaseModule } from './db';
 import { OrganizationModule } from './organization/organization.module';
 
 import { ImagekitModule } from './utils/imagekit/imagekit.module';
+import { CarsModule } from './cars/cars.module';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { ImagekitModule } from './utils/imagekit/imagekit.module';
     BetterAuthModule,
     AuthModule,
     OrganizationModule,
-
+    CarsModule,
     ImagekitModule,
   ],
   controllers: [AppController],

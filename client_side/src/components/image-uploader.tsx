@@ -40,12 +40,7 @@ export function UploadComponent({
   const onSuccess = (res: any) => {
     console.log('✅ Upload Success:', res);
     if (onUploadSuccess) onUploadSuccess(res);
-
-    // 🔴 Instead of setting isUploading = false immediately, delay it
-    setTimeout(() => {
-      console.log('⏳ Delayed: Setting isUploading to false');
-      if (onUploadProgress) onUploadProgress(false);
-    }, 500); // ✅ Small delay (500ms) to avoid flickering
+    if (onUploadProgress) onUploadProgress(false);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,17 +48,7 @@ export function UploadComponent({
       setFileName(event.target.files[0].name); // Get the selected file's name
     }
   };
-  // ✅ Track upload progress
-  // const handleUploadProgress = (
-  //   evt: ProgressEvent<XMLHttpRequestEventTarget>,
-  // ) => {
-  //   const progress = (evt.loaded / evt.total) * 100;
-  //   const isUploadingNow = progress > 0 && progress < 100;
-  //   if (isUploading !== isUploadingNow) {
-  //     setIsUploading(isUploadingNow);
-  //     if (onUploadProgress) onUploadProgress(isUploadingNow);
-  //   }
-  // };
+
   const handleUploadProgress = (event: ProgressEvent) => {
     if (event.lengthComputable) {
       const progressPercent = (event.loaded / event.total) * 100;
@@ -89,7 +74,7 @@ export function UploadComponent({
           authenticator={authenticator}
         >
           <IKUpload
-            className="bg-transparent border-2 border-dotted border-gray-300  rounded p-2 cursor-pointer"
+            className="bg-transparent border-2 border-dotted border-gray-300  rounded p-2 cursor-pointer w-full"
             onChange={handleFileChange}
             fileName={fileName}
             onSuccess={onSuccess}

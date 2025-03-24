@@ -49,7 +49,10 @@ export function LoginForm({
           setUser({ ...user, ...ctx.data.user });
           localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
           console.log(JSON.stringify(ctx.data.user));
-          navigate({ to: '/dashboard' });
+          setTimeout(() => {
+            navigate({ to: '/dashboard' });
+          }, 100); // Give React time to process state
+
           reset();
           //  router.invalidate();
         },
@@ -77,7 +80,7 @@ export function LoginForm({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email" className="text-justify">
-                  Email
+                  Email <span className="text-red-700">*</span>
                 </Label>
                 <Input
                   id="email"
@@ -93,7 +96,9 @@ export function LoginForm({
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">
+                    Password <span className="text-red-700">*</span>
+                  </Label>
                 </div>
                 <Input
                   id="password"
@@ -112,7 +117,7 @@ export function LoginForm({
                   Forgot your password?
                 </a>
               </div>
-              <Button type="submit" className="w-full" color="teal">
+              <Button type="submit" className="w-full">
                 {isSubmitting ? (
                   <>
                     <Loader />

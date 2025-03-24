@@ -17,9 +17,7 @@ import { Loader } from '@/components/loader';
 import { toast } from '@/hooks/use-toast';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { api } from '../../api/api';
 import { createOrganization } from '../../api/organization';
-import { IKContext } from 'imagekitio-react';
 import { UploadComponent } from '../image-uploader';
 
 const schema = z.object({
@@ -100,9 +98,10 @@ export function OrgForm({
     console.log('Parent Component - Uploading Status:', uploading);
     setIsUploading(uploading);
   };
+  console.log('uploadImagedata', uploadedImage);
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card>
+      <Card className="bg-gray-2">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Organization</CardTitle>
           <CardDescription>Create your organization</CardDescription>
@@ -112,7 +111,7 @@ export function OrgForm({
             <div className="grid gap-6">
               <div className="flex flex-col gap-4">
                 <Label htmlFor="orgName" className="text-justify">
-                  Organization Name
+                  Organization Name <span className="text-red-700">*</span>
                 </Label>
                 <Input
                   id="orgName"
@@ -128,14 +127,20 @@ export function OrgForm({
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="orgImg">Organization Logo</Label>
+                  <Label htmlFor="orgImg">
+                    Organization Logo <span className="text-red-700">*</span>
+                  </Label>
                 </div>
                 <UploadComponent
                   onUploadSuccess={handleImageUpload}
                   onUploadProgress={handleUploadProgress}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isUploading}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!uploadedImage?.url}
+              >
                 {isSubmitting ? (
                   <>
                     <Loader />

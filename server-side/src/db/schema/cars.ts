@@ -15,6 +15,7 @@ export const cars = pgTable('cars', {
   make: text('make').notNull(),
   model: text('model').notNull(),
   year: integer('year').notNull(),
+  purchasePrice: integer('purchase_price').notNull(),
   pricePerDay: integer('price_per_day').notNull(),
   isAvailable: boolean('is_available').default(true),
   orgId: varchar('org_id', { length: 255 })

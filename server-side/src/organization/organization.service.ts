@@ -5,19 +5,16 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { createId } from '@paralleldrive/cuid2';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 
-import { File as MulterFile } from 'multer';
-import { CurrentUser } from 'src/auth/auth.guard';
-
 @Injectable()
 export class OrganizationService {
   constructor(private readonly dbService: DatabaseService) {}
 
   async findAll() {
-    return this.dbService.db.select().from(organization);
+    return await this.dbService.db.select().from(organization);
   }
 
   async findOne(id: string) {
-    return this.dbService.db
+    return await this.dbService.db
       .select()
       .from(organization)
       .where(eq(organization.id, id));
@@ -29,7 +26,7 @@ export class OrganizationService {
     image: string,
   ) {
     const id = createId();
-    return this.dbService.db.insert(organization).values({
+    return await this.dbService.db.insert(organization).values({
       id,
       userId: userId,
       image: image,
@@ -40,10 +37,11 @@ export class OrganizationService {
   async updateOrganization(
     id: string,
     updateOrganizationDto: UpdateOrganizationDto,
+    image: string,
   ) {
     return this.dbService.db
       .update(organization)
-      .set({ ...updateOrganizationDto })
+      .set({ image, ...updateOrganizationDto })
       .where(eq(organization.id, id));
   }
 
