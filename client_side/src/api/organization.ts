@@ -1,5 +1,10 @@
 import { api } from './api';
 
+export const getOrganizationsByUserId = async () => {
+  const response = await api.get('/organization/user');
+  return response.data;
+};
+
 export const createOrganization = async (data: {
   name: string;
   image?: string;

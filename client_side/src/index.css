@@ -55,7 +55,7 @@ h1 {
 @layer base {
   :root {
     --ag-wrapper-border-radius: var(--ag-inherited-wrapper-border-radius, 0px);
-    --ag-background-color: transparent;
+    --ag-background-color: var(--gray-2);
     --ag-chrome-background-color: var(--gray-3);
     --ag-foreground-color: var(--gray-12);
     --ag-border-color: var(--gray-5);
@@ -139,7 +139,7 @@ h1 {
   :is(.dark, .dark-theme),
   :is(.dark, .dark-theme) :where(.ui-theme:not(.light, .light-theme)) {
     --ag-wrapper-border-radius: var(--ag-inherited-wrapper-border-radius, 0px);
-    --ag-background-color: transparent;
+    --ag-background-color: var(--gray-1);
     --ag-chrome-background-color: var(--gray-2);
     --ag-foreground-color: var(--gray-12);
     --ag-border-color: var(--gray-4);

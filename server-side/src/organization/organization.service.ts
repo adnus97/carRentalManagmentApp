@@ -13,6 +13,12 @@ export class OrganizationService {
     return await this.dbService.db.select().from(organization);
   }
 
+  async findOrganizationByUserId(userId: string) {
+    return await this.dbService.db
+      .select()
+      .from(organization)
+      .where(eq(organization.userId, userId));
+  }
   async findOne(id: string) {
     return await this.dbService.db
       .select()

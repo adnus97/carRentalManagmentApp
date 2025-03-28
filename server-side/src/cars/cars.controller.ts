@@ -21,7 +21,11 @@ export class CarsController {
   findAll() {
     return this.carsService.findAll();
   }
-
+  @Get('/org')
+  findCarsByOrgId(@CurrentUser() user: CustomUser) {
+    const userId = user.id;
+    return this.carsService.findCarsByOrgId(userId);
+  }
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.carsService.findOne(id);

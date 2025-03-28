@@ -14,3 +14,8 @@ export const createCar = async (data: {
   });
   return response.data;
 };
+
+export const getCars = async () => {
+  const response = await api.get('/cars/org');
+  return response.data;
+};

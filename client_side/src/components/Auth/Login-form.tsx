@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Link, useNavigate, useRouter } from '@tanstack/react-router';
-import { set, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader } from '../loader';
@@ -31,10 +31,10 @@ export function LoginForm({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    watch,
+
     reset,
   } = useForm<formFields>({ resolver: zodResolver(schema) });
-  const router = useRouter();
+
   const { user, setUser } = useUser();
 
   const onsubmit = async (formData: formFields) => {

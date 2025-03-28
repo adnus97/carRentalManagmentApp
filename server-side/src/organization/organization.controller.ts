@@ -29,6 +29,11 @@ export class OrganizationController {
   findAll() {
     return this.organizationService.findAll();
   }
+  @Get('/user')
+  findOrganizationByUserId(@CurrentUser() user: CustomUser) {
+    const userId = user.id;
+    return this.organizationService.findOrganizationByUserId(userId);
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {

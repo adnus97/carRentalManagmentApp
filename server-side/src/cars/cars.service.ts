@@ -13,6 +13,7 @@ export class CarsService {
   async findOne(id: string) {
     return await this.dbService.db.select().from(cars).where(eq(cars.id, id));
   }
+
   async createCar(createCarDto: CreateCarDto, userId: string) {
     const id = createId();
     const currentUserOrgId = await this.dbService.db
@@ -30,5 +31,15 @@ export class CarsService {
     return await this.dbService.db
       .insert(cars)
       .values({ id, orgId, ...createCarDto });
+  }
+
+  async findCarsByOrgId(userId: string) {
+    const result = await this.dbService.db
+      .select()
+      .from(cars)
+      .leftJoin(organization, eq(cars.orgId, organization.id))
+      .where(eq(organization.userId, userId));
+
+    return result.map((row) => row.cars);
   }
 }

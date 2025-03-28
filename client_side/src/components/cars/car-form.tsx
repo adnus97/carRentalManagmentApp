@@ -100,7 +100,10 @@ export function DialogDemo({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="default" className="pr-6 mr-14">
+        <Button
+          variant="default"
+          className="fixed bottom-5 right-5 text-white flex items-center gap-2 px-4 py-2 rounded-lg"
+        >
           <Plus size={40} />
           Add car
         </Button>
