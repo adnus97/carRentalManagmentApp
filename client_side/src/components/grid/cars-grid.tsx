@@ -14,6 +14,7 @@ import { getCars } from '@/api/cars';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Hammer, ShoppingCart, Trash } from '@phosphor-icons/react';
 import { Separator } from '@radix-ui/react-separator';
+import { ConfirmationDialog } from '../confirmation-dialog';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -153,7 +154,7 @@ export const GridExample = () => {
         {selectedRows.length > 0 && (
           <Button
             variant="secondary"
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
             onClick={handleDelete}
           >
             <Trash size={20} /> Delete ({selectedRows.length})
