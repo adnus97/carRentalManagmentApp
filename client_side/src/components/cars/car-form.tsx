@@ -19,7 +19,8 @@ import { Separator } from '../ui/separator';
 import { useState } from 'react';
 import { createCar } from '@/api/cars';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '../ui/toast';
+//import { toast } from '@/hooks/use-toast';
 
 const d = new Date();
 let year = d.getFullYear();
@@ -48,18 +49,40 @@ export function DialogDemo({
   const mutation = useMutation({
     mutationFn: createCar,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['car'] });
+      queryClient.invalidateQueries({ queryKey: ['cars'] });
+
       toast({
-        title: 'Success',
-        description: 'Car created successfully!',
+        type: 'success',
+        title: 'Success!',
+        description: 'Your action was completed successfully.',
+        button: {
+          label: 'Undo',
+          onClick: () => {
+            console.log('Undo clicked');
+            // Add your undo logic here
+          },
+        },
       });
     },
     onError: (error) => {
       console.error('Error:', error);
       toast({
+        type: 'error',
         title: 'Error',
-        description: 'Failed to create car.',
-        variant: 'destructive',
+        description: 'An error occurred while creating the car.',
+        button: {
+          label: 'Retry',
+          onClick: () => {
+            // Retry logic here
+            mutation.mutate({
+              make: watch('make'),
+              model: watch('model'),
+              year: watch('year'),
+              purchasePrice: watch('purchasePrice'),
+              pricePerDay: watch('pricePerDay'),
+            });
+          },
+        },
       });
     },
   });

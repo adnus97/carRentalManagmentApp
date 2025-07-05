@@ -1,127 +1,137 @@
-import * as React from "react"
-import * as ToastPrimitives from "@radix-ui/react-toast"
-import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
+'use client';
 
-import { cn } from "@/lib/utils"
+import React from 'react';
+import { toast as sonnerToast } from 'sonner';
+import { CheckCircle, XCircle, Warning, Info } from '@phosphor-icons/react';
+import { Button } from './button';
 
-const ToastProvider = ToastPrimitives.Provider
+interface ToastData {
+  title: string;
+  description: string;
+  type?: 'success' | 'error' | 'info' | 'warning';
+  icon?: React.ReactNode | null;
+  button?: {
+    label: string;
+    onClick: () => void;
+  };
+}
 
-const ToastViewport = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Viewport>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Viewport
-    ref={ref}
-    className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
-      className
-    )}
-    {...props}
-  />
-))
-ToastViewport.displayName = ToastPrimitives.Viewport.displayName
+export function toast({
+  title,
+  description,
+  type = 'info',
+  icon,
+  button,
+}: ToastData) {
+  const getTitleColor = () => {
+    switch (type) {
+      case 'success':
+        return 'text-green-600 dark:text-green-400';
+      case 'error':
+        return 'text-red-600 dark:text-red-400';
+      case 'warning':
+        return 'text-yellow-600 dark:text-yellow-400';
+      default:
+        return 'text-gray-900 dark:text-white';
+    }
+  };
 
-const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-2 overflow-hidden rounded-md border p-4 pr-6 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
-  {
-    variants: {
-      variant: {
-        default: "border bg-background text-foreground",
-        destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
+  const getDefaultIcon = () => {
+    if (icon === null) return null;
+    if (icon) return icon;
 
-const Toast = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Root>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-    VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
-  return (
-    <ToastPrimitives.Root
-      ref={ref}
-      className={cn(toastVariants({ variant }), className)}
-      {...props}
-    />
-  )
-})
-Toast.displayName = ToastPrimitives.Root.displayName
+    const iconSize = 20;
+    switch (type) {
+      case 'success':
+        return (
+          <CheckCircle
+            size={iconSize}
+            className="text-green-500"
+            weight="fill"
+          />
+        );
+      case 'error':
+        return (
+          <XCircle size={iconSize} className="text-red-500" weight="fill" />
+        );
+      case 'warning':
+        return (
+          <Warning size={iconSize} className="text-yellow-500" weight="fill" />
+        );
+      default:
+        return <Info size={iconSize} className="text-blue-500" weight="fill" />;
+    }
+  };
 
-const ToastAction = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Action>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Action
-    ref={ref}
-    className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-secondary focus:outline-none focus:ring-1 focus:ring-ring disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
-      className
-    )}
-    {...props}
-  />
-))
-ToastAction.displayName = ToastPrimitives.Action.displayName
+  const displayIcon = getDefaultIcon();
 
-const ToastClose = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Close>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Close
-    ref={ref}
-    className={cn(
-      "absolute right-1 top-1 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
-      className
-    )}
-    toast-close=""
-    {...props}
-  >
-    <X className="h-4 w-4" />
-  </ToastPrimitives.Close>
-))
-ToastClose.displayName = ToastPrimitives.Close.displayName
+  return sonnerToast.custom((id) => {
+    return (
+      <div className="flex rounded-lg bg-white shadow-lg ring-1 ring-black/5 w-full md:max-w-[364px] items-center p-4 dark:bg-gray-2 dark:ring-white/10">
+        <div className="flex flex-1 items-center">
+          {displayIcon && (
+            <div className="mr-3 flex-shrink-0">{displayIcon}</div>
+          )}
+          <div className="w-full">
+            <p className={`text-sm font-medium ${getTitleColor()}`}>{title}</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">
+              {description}
+            </p>
+          </div>
+        </div>
+        {button && (
+          <div className="ml-5 shrink-0">
+            <Button
+              variant={'outline'}
+              onClick={() => {
+                button.onClick();
+                sonnerToast.dismiss(id);
+              }}
+            >
+              {button.label}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  });
+}
 
-const ToastTitle = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Title>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Title
-    ref={ref}
-    className={cn("text-sm font-semibold [&+div]:text-xs", className)}
-    {...props}
-  />
-))
-ToastTitle.displayName = ToastPrimitives.Title.displayName
+// Helper functions
+export function successToast(
+  message: string,
+  actionLabel?: string,
+  onAction?: () => void,
+) {
+  return toast({
+    title: 'Success!',
+    description: message,
+    type: 'success',
+    button:
+      actionLabel && onAction
+        ? {
+            label: actionLabel,
+            onClick: onAction,
+          }
+        : undefined,
+  });
+}
 
-const ToastDescription = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitives.Description>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
->(({ className, ...props }, ref) => (
-  <ToastPrimitives.Description
-    ref={ref}
-    className={cn("text-sm opacity-90", className)}
-    {...props}
-  />
-))
-ToastDescription.displayName = ToastPrimitives.Description.displayName
-
-type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
-
-type ToastActionElement = React.ReactElement<typeof ToastAction>
-
-export {
-  type ToastProps,
-  type ToastActionElement,
-  ToastProvider,
-  ToastViewport,
-  Toast,
-  ToastTitle,
-  ToastDescription,
-  ToastClose,
-  ToastAction,
+export function errorToast(
+  message: string,
+  actionLabel?: string,
+  onAction?: () => void,
+) {
+  return toast({
+    title: 'Error',
+    description: message,
+    type: 'error',
+    button:
+      actionLabel && onAction
+        ? {
+            label: actionLabel,
+            onClick: onAction,
+          }
+        : undefined,
+  });
 }

@@ -8,7 +8,8 @@ import { routeTree } from './routeTree.gen';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './components/theme/theme-provider';
 
-import { Toaster } from './components/ui/toaster';
+//import { Toaster } from './components/ui/toaster';
+import { Toaster } from 'sonner';
 import { ModeToggle } from './components/mode-toggle';
 
 const router = createRouter({

@@ -11,6 +11,7 @@ import { Loader } from '../loader';
 import { authClient } from '@/lib/auth-client';
 import { useUser } from '@/contexts/user-context';
 import { useToast } from '@/hooks/use-toast';
+import { toast } from '../ui/toast';
 
 const schema = z.object({
   email: z
@@ -26,7 +27,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<'div'>) {
   const navigate = useNavigate({ from: '/login' });
-  const { toast } = useToast();
+  //const { toast } = useToast();
   const {
     register,
     handleSubmit,
@@ -58,7 +59,8 @@ export function LoginForm({
         },
         onError: (ctx: any) => {
           toast({
-            title: 'Uh oh! Something went wrong.',
+            type: 'error',
+            title: 'Error',
             description: ctx.error.message,
           });
         },

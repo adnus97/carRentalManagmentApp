@@ -26,7 +26,7 @@ ModuleRegistry.registerModules([
 export const GridExample = () => {
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
-  //const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ['cars'],
     queryFn: getCars,
@@ -39,25 +39,11 @@ export const GridExample = () => {
       mode: 'multiRow',
     };
   }, []);
-  const [rowData, setRowData] = useState([]);
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (data) {
-      setRowData(data);
-    }
-  }, [data]);
-
-  // const mutation = useMutation({
-  //   mutationFn: deleteCars,
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries(['cars']);
-  //   },
-  // });
 
   const handleDelete = () => {
     console.log('Deleting selected rows:', selectedRows);
-    // mutation.mutate(selectedRows.map((row) => row.id));
+
     setSelectedRows([]); // Clear selection after deletion
   };
 
@@ -168,7 +154,7 @@ export const GridExample = () => {
         <div style={gridStyle}>
           <AgGridReact
             rowHeight={50}
-            rowData={rowData}
+            rowData={data || []}
             columnDefs={colDefs}
             rowSelection={rowSelection}
             pagination={true}
