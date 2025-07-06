@@ -27,4 +27,5 @@ export const rents = pgTable('rents', {
   totalPrice: integer('total_price').notNull(),
   lateFee: integer('late_fee').default(0),
   status: text('status').default('active'), // "active", "completed", "canceled"
+  damageReport: text('damage_report').default(''),
 });

@@ -36,4 +36,24 @@ export class CreateCarDto {
   @IsNotEmpty()
   @Min(1)
   pricePerDay: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  mileage: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  monthlyLeasePrice: number;
+
+  @IsDate()
+  @IsNotEmpty()
+  lastOilChangeAt: Date;
+
+  @IsDate()
+  @IsNotEmpty()
+  insuranceExpiryDate: Date;
+
+  @IsString()
+  @IsNotEmpty()
+  status: string; // e.g., 'active', 'sold', 'leased'
 }
