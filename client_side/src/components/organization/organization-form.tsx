@@ -14,11 +14,11 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader } from '@/components/loader';
-import { toast } from '@/hooks/use-toast';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { createOrganization } from '../../api/organization';
 import { UploadComponent } from '../image-uploader';
+import { toast } from '../ui/toast';
 
 const schema = z.object({
   orgName: z.string().nonempty("Organization's name is required").min(2),
@@ -54,6 +54,7 @@ export function OrgForm({
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
       toast({
         title: 'Success',
+        type: 'success',
         description: 'Organization created successfully!',
       });
       navigate({ to: '/dashboard' });
@@ -62,8 +63,8 @@ export function OrgForm({
       console.error('Error:', error);
       toast({
         title: 'Error',
+        type: 'error',
         description: 'Failed to create organization.',
-        variant: 'destructive',
       });
     },
   });
@@ -80,7 +81,8 @@ export function OrgForm({
     setUploadedImage(imageData);
     toast({
       title: 'Image uploaded',
-      description: 'Logo uploaded successfully!',
+      type: 'info',
+      description: 'Logo uploaded successfully !',
     });
   };
   const onSubmit = (data: FormFields) => {

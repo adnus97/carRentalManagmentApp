@@ -17,7 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader } from '@/components/loader';
 import { useUser } from '@/contexts/user-context';
 import { useState } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '../ui/toast';
 
 const schema = z
   .object({
@@ -82,8 +82,9 @@ export function SignupForm({
         onError: (ctx: any) => {
           if (ctx.error.code === 'USER_ALREADY_EXISTS') {
             toast({
-              title: 'Uh oh! Something went wrong.',
-              description: 'Email already exists',
+              type: 'error',
+              title: 'Error',
+              description: ctx.error.message,
             });
           }
         },

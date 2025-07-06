@@ -103,9 +103,9 @@ export const GridExample = () => {
       headerName: 'Actions',
       field: 'actions',
       width: 300,
-      cellStyle: { textAlign: 'center', justifyContent: 'center' },
+
       cellRenderer: (params: any) => (
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2  items-center h-full">
           <Button
             variant="ghost"
             className="flex items-center gap-2 hover:bg-gray-4"

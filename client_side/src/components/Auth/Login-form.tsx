@@ -10,7 +10,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader } from '../loader';
 import { authClient } from '@/lib/auth-client';
 import { useUser } from '@/contexts/user-context';
-import { useToast } from '@/hooks/use-toast';
 import { toast } from '../ui/toast';
 
 const schema = z.object({
@@ -27,7 +26,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<'div'>) {
   const navigate = useNavigate({ from: '/login' });
-  //const { toast } = useToast();
+
   const {
     register,
     handleSubmit,
