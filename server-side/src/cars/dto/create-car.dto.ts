@@ -46,10 +46,12 @@ export class CreateCarDto {
   monthlyLeasePrice: number;
 
   @IsDate()
+  @Type(() => Date) // Ensure correct date transformation
   @IsNotEmpty()
   lastOilChangeAt: Date;
 
   @IsDate()
+  @Type(() => Date) // Ensure correct date transformation
   @IsNotEmpty()
   insuranceExpiryDate: Date;
 

@@ -6,6 +6,11 @@ export const createCar = async (data: {
   year: number;
   purchasePrice: number;
   pricePerDay: number;
+  mileage: number;
+  monthlyLeasePrice: number;
+  lastOilChangeAt: Date;
+  insuranceExpiryDate: Date;
+  status: 'active' | 'sold' | 'leased' | 'maintenance' | 'deleted';
 }) => {
   const response = await api.post('/cars', data, {
     headers: {

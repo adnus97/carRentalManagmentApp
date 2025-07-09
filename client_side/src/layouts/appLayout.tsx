@@ -15,9 +15,53 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Outlet } from '@tanstack/react-router';
+import { Outlet, useLocation } from '@tanstack/react-router';
+import { navigationConfig } from '@/config/navigation';
+
+// Define your navigation data (you can import this from your sidebar or create a shared constant)
+const navData = navigationConfig;
 
 export function AppLayout() {
+  const location = useLocation();
+
+  // Find the current page title based on the pathname
+  const getCurrentPageTitle = () => {
+    const currentNav = navData.navMain.find(
+      (nav) => nav.url === location.pathname,
+    );
+    return currentNav?.title || 'Dashboard';
+  };
+
+  // Get breadcrumb items based on current path
+  const getBreadcrumbItems = () => {
+    const currentTitle = getCurrentPageTitle();
+
+    // For dashboard/home, show just the current page
+    if (location.pathname === '/dashboard' || location.pathname === '/') {
+      return [
+        {
+          title: currentTitle,
+          isCurrentPage: true,
+        },
+      ];
+    }
+
+    // For other pages, show Dashboard -> Current Page
+    return [
+      {
+        title: 'Dashboard',
+        href: '/dashboard',
+        isCurrentPage: false,
+      },
+      {
+        title: currentTitle,
+        isCurrentPage: true,
+      },
+    ];
+  };
+
+  const breadcrumbItems = getBreadcrumbItems();
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -28,15 +72,22 @@ export function AppLayout() {
           <div className="w-full">
             <Breadcrumb className="flex w-full justify-between h-full items-center">
               <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">
-                    Building Your Application
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-                </BreadcrumbItem>
+                {breadcrumbItems.map((item, index) => (
+                  <div key={item.title} className="flex items-center">
+                    {index > 0 && (
+                      <BreadcrumbSeparator className="hidden md:block" />
+                    )}
+                    <BreadcrumbItem className="hidden md:block">
+                      {item.isCurrentPage ? (
+                        <BreadcrumbPage>{item.title}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink href={item.href}>
+                          {item.title}
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                  </div>
+                ))}
               </BreadcrumbList>
               <DialogDemo />
             </Breadcrumb>

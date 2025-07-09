@@ -34,6 +34,8 @@ import { getOrganizationsByUserId } from '@/api/organization';
 import { UserDefaultImg } from './user-defaultImg';
 import { authClient } from '@/lib/auth-client';
 import { ConfirmationDialog } from './confirmation-dialog';
+import { navigationConfig } from '@/config/navigation';
+
 import React from 'react';
 
 interface Organization {
@@ -45,35 +47,7 @@ interface Organization {
   id: string;
 }
 
-const navData = {
-  navMain: [
-    {
-      title: `Cars`,
-      url: '/dashboard',
-      icon: <CarProfile size={40} />,
-    },
-    {
-      title: 'Clients',
-      url: '/clients',
-      icon: <UserList size={40} />,
-    },
-    {
-      title: 'Reports',
-      url: '/reports',
-      icon: <ChartDonut size={40} />,
-    },
-    {
-      title: 'Organization',
-      url: '/Organization',
-      icon: <BuildingOffice size={40} />,
-    },
-    {
-      title: 'Settings',
-      url: '/settings',
-      icon: <Gear size={40} />,
-    },
-  ],
-};
+const navData = navigationConfig;
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useUser();

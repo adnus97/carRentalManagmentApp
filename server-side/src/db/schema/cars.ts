@@ -23,7 +23,6 @@ export const cars = pgTable('cars', {
     .references(() => organization.id, { onDelete: 'cascade' }), // Deleting org deletes cars
   mileage: integer('mileage').notNull().default(0),
   monthlyLeasePrice: integer('monthly_lease_price').notNull(),
-  lastOilChangeAt: timestamp('last_oil_change_at').notNull(),
   insuranceExpiryDate: timestamp('insurance_expiry_date').notNull(),
   status: text('status').default('active'), // e.g., active, sold, leased
   createdAt: timestamp(),

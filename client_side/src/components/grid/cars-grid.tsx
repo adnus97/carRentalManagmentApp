@@ -51,6 +51,15 @@ export const GridExample = () => {
     return params.value ? `${params.value.toLocaleString()} DHS` : '';
   };
 
+  const formatDateToDDMMYYYY = (params: any) => {
+    if (!params.value) return '';
+    const date = new Date(params.value);
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
   const colDefs: ColDef[] = [
     {
       field: 'make',
@@ -73,19 +82,27 @@ export const GridExample = () => {
       filter: 'agSetColumnFilter',
       sortable: true,
     },
+
+    {
+      field: 'purchasePrice',
+      headerName: 'Purchase Price',
+      width: 150,
+      cellStyle: { textAlign: 'right' },
+      valueFormatter: currencyFormatter,
+    },
+    {
+      field: 'monthlyLeasePrice',
+      headerName: 'Monthly Lease Price',
+      width: 150,
+      cellStyle: { textAlign: 'right' },
+      valueFormatter: currencyFormatter,
+    },
     {
       field: 'pricePerDay',
       headerName: 'Price/Day',
       width: 120,
       filter: 'agNumberColumnFilter',
       sortable: true,
-      cellStyle: { textAlign: 'right' },
-      valueFormatter: currencyFormatter,
-    },
-    {
-      field: 'purchasePrice',
-      headerName: 'Purchase Price',
-      width: 150,
       cellStyle: { textAlign: 'right' },
       valueFormatter: currencyFormatter,
     },
@@ -99,6 +116,26 @@ export const GridExample = () => {
       },
       cellStyle: { textAlign: 'right' },
     },
+
+    {
+      headerName: 'Insurance Expiry',
+      field: 'insuranceExpiryDate',
+      width: 150,
+      filter: 'agSetColumnFilter',
+      sortable: true,
+      cellStyle: { textAlign: 'right' },
+      valueFormatter: formatDateToDDMMYYYY,
+    },
+    {
+      headerName: 'Last Oil Change',
+      field: 'lastOilChangeAt',
+      width: 150,
+      filter: 'agSetColumnFilter',
+      sortable: true,
+      cellStyle: { textAlign: 'right' },
+      valueFormatter: formatDateToDDMMYYYY,
+    },
+
     {
       headerName: 'Actions',
       field: 'actions',

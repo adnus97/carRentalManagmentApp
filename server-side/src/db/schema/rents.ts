@@ -22,9 +22,11 @@ export const rents = pgTable('rents', {
     .notNull()
     .references(() => customers.id, { onDelete: 'cascade' }),
   startDate: timestamp('start_date').notNull(),
-  endDate: timestamp('end_date').notNull(),
+  endDate: timestamp('end_date'),
   returnedAt: timestamp('returned_at'),
   totalPrice: integer('total_price').notNull(),
+  deposit: integer('deposit').default(0).notNull(), // Deposit amount
+  garantee: integer('guarantee').default(0).notNull(), // Guarantee amount
   lateFee: integer('late_fee').default(0),
   status: text('status').default('active'), // "active", "completed", "canceled"
   damageReport: text('damage_report').default(''),

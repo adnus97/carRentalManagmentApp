@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus } from '@phosphor-icons/react';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader } from 'lucide-react';
 import { Separator } from '../ui/separator';
@@ -20,6 +20,16 @@ import { useState } from 'react';
 import { createCar } from '@/api/cars';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../ui/toast';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
+import { Calendar } from '../ui/calendar';
+import { CalendarDemo } from '../calendar-demo';
+import { DatePickerDemo } from '../date-picker';
 //import { toast } from '@/hooks/use-toast';
 
 const d = new Date();
@@ -37,6 +47,16 @@ const schema = z.object({
   pricePerDay: z
     .number({ invalid_type_error: 'Rent price must be a number' })
     .min(1, 'Rent price must be greater than 0'),
+  mileage: z.number().min(0, 'Mileage must be a positive number'),
+  monthlyLeasePrice: z
+    .number()
+    .min(0, 'Monthly lease price must be a positive number'),
+  lastOilChangeAt: z.date().refine((date) => date <= new Date(), {
+    message: 'Last oil change date cannot be in the future',
+  }),
+  insuranceExpiryDate: z.date().refine((date) => date > new Date(), {
+    message: 'Insurance expiry date must be in the future',
+  }),
 });
 type formFields = z.infer<typeof schema>;
 
@@ -50,7 +70,8 @@ export function DialogDemo({
     mutationFn: createCar,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cars'] });
-
+      setIsOpen(false);
+      reset();
       toast({
         type: 'success',
         title: 'Success!',
@@ -80,6 +101,11 @@ export function DialogDemo({
               year: watch('year'),
               purchasePrice: watch('purchasePrice'),
               pricePerDay: watch('pricePerDay'),
+              mileage: watch('mileage'),
+              monthlyLeasePrice: watch('monthlyLeasePrice'),
+              lastOilChangeAt: watch('lastOilChangeAt'),
+              insuranceExpiryDate: watch('insuranceExpiryDate'),
+              status: 'active', // Default status
             });
           },
         },
@@ -88,6 +114,7 @@ export function DialogDemo({
   });
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
     watch,
@@ -100,6 +127,10 @@ export function DialogDemo({
       year: undefined,
       purchasePrice: undefined,
       pricePerDay: undefined,
+      mileage: undefined,
+      monthlyLeasePrice: undefined,
+      lastOilChangeAt: undefined,
+      insuranceExpiryDate: undefined,
     },
   });
 
@@ -111,15 +142,24 @@ export function DialogDemo({
       year: data.year,
       purchasePrice: data.purchasePrice,
       pricePerDay: data.pricePerDay,
+      mileage: data.mileage,
+      monthlyLeasePrice: data.monthlyLeasePrice,
+      lastOilChangeAt: data.lastOilChangeAt,
+      insuranceExpiryDate: data.insuranceExpiryDate,
+      status: 'active', // Default status
     });
     console.log('Form Submitted:', data);
   };
 
   return (
     <Dialog
-      onOpenChange={() => {
-        setIsOpen(!isOpen);
-        reset();
+      open={isOpen}
+      onOpenChange={(open) => {
+        console.log('Dialog open changed to:', open); // Debug log
+        setIsOpen(open);
+        if (!open) {
+          reset();
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -132,122 +172,174 @@ export function DialogDemo({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] pt-14">
+        <DialogTitle className="pb-3">Add a new Car </DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogHeader className="mt-4">
-            <DialogTitle>Add a new car</DialogTitle>
-            <DialogDescription>
-              Add a new car here. Click save when you're done.
-            </DialogDescription>
-          </DialogHeader>
-          <Separator className="mt-2 mb-2" />
-          <div className="grid gap-5 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="make" className="text-right">
+          <div className="flex flex-col space-y-4">
+            {/* Make */}
+            <div className="flex flex-col">
+              <Label htmlFor="make" className="mb-1">
                 Make
               </Label>
-              <div className="col-span-3">
-                <Input
-                  id="make"
-                  placeholder='e.g. "Toyota"'
-                  {...register('make')}
-                />
-                {errors.make && (
-                  <span className="text-red-500 text-sm mt-1 block">
-                    {errors.make.message}
-                  </span>
-                )}
-              </div>
+              <Input
+                id="make"
+                className="w-full"
+                placeholder="e.g. Toyota"
+                {...register('make')}
+              />
+              {errors.make && (
+                <span className="text-red-500 text-xs mt-1">
+                  {errors.make.message}
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="model" className="text-right">
+            {/* Model */}
+            <div className="flex flex-col">
+              <Label htmlFor="model" className="mb-1">
                 Model
               </Label>
-              <div className="col-span-3">
-                <Input
-                  id="model"
-                  placeholder='e.g. "Corolla"'
-                  {...register('model')}
-                />
-                {errors.model && (
-                  <span className="text-red-500 text-sm mt-1 block">
-                    {errors.model.message}
-                  </span>
-                )}
-              </div>
+              <Input
+                id="model"
+                className="w-full"
+                placeholder="e.g. Corolla"
+                {...register('model')}
+              />
+              {errors.model && (
+                <span className="text-red-500 text-xs mt-1">
+                  {errors.model.message}
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="year" className="text-right">
+            {/* Year */}
+            <div className="flex flex-col">
+              <Label htmlFor="year" className="mb-1">
                 Year
               </Label>
-              <div className="col-span-3">
-                <Input
-                  id="year"
-                  type="number"
-                  placeholder='e.g. "2020"'
-                  {...register('year', { valueAsNumber: true })}
-                />
-                {errors.year && (
-                  <span className="text-red-500 text-sm mt-1 block">
-                    {errors.year.message}
-                  </span>
-                )}
-              </div>
+              <Input
+                id="year"
+                type="number"
+                className="w-full"
+                placeholder="e.g. 2020"
+                {...register('year', { valueAsNumber: true })}
+              />
+              {errors.year && (
+                <span className="text-red-500 text-xs mt-1">
+                  {errors.year.message}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <Label htmlFor="pricePerDay" className="mb-1">
+                Price/Day (DHS)
+              </Label>
+              <Input
+                id="pricePerDay"
+                type="number"
+                placeholder="e.g. 150"
+                {...register('pricePerDay', { valueAsNumber: true })}
+              />
+              {errors.pricePerDay && (
+                <span className="text-red-500 text-sm mt-1">
+                  {errors.pricePerDay.message}
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="purchasePrice" className="text-right">
-                Price (DHS)
-              </Label>
-              <div className="col-span-3">
+            {/* Purchase & Monthly Lease Prices */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <Label htmlFor="purchasePrice" className="mb-1">
+                  Purchase Price (DHS)
+                </Label>
                 <Input
                   id="purchasePrice"
                   type="number"
-                  placeholder='e.g. "280000"'
+                  className="w-full"
+                  placeholder="e.g. 280000"
                   {...register('purchasePrice', { valueAsNumber: true })}
                 />
                 {errors.purchasePrice && (
-                  <span className="text-red-500 text-sm mt-1 block">
+                  <span className="text-red-500 text-xs mt-1">
                     {errors.purchasePrice.message}
                   </span>
                 )}
               </div>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="rentPrice" className="text-right">
-                Daily rent fee (DHS)
-              </Label>
-              <div className="col-span-3">
+              <div className="flex flex-col">
+                <Label htmlFor="monthlyLeasePrice" className="mb-1">
+                  Monthly Lease (DHS)
+                </Label>
                 <Input
-                  id="rentPrice"
+                  id="monthlyLeasePrice"
                   type="number"
-                  placeholder='e.g. "400"'
-                  {...register('pricePerDay', { valueAsNumber: true })}
+                  className="w-full"
+                  placeholder="e.g. 4000"
+                  {...register('monthlyLeasePrice', { valueAsNumber: true })}
                 />
-                {errors.pricePerDay && (
-                  <span className="text-red-500 text-sm mt-1 block">
-                    {errors.pricePerDay.message}
+                {errors.monthlyLeasePrice && (
+                  <span className="text-red-500 text-xs mt-1">
+                    {errors.monthlyLeasePrice.message}
                   </span>
                 )}
               </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit">
-              {' '}
-              {isSubmitting ? (
-                <>
-                  <Loader />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                'Save'
+
+            {/* Last Oil Change & Insurance Expiry Dates */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <Label htmlFor="insuranceExpiryDate" className="mb-1">
+                  Insurance Expiry
+                </Label>
+                <DatePickerDemo />
+                {/* <Input
+                  id="insuranceExpiryDate"
+                  type="date"
+                  className="w-full"
+                  {...register('insuranceExpiryDate', {
+                    setValueAs: (value) =>
+                      value ? new Date(value) : undefined,
+                  })}
+                /> */}
+                {errors.insuranceExpiryDate && (
+                  <span className="text-red-500 text-xs mt-1">
+                    {errors.insuranceExpiryDate.message}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Mileage */}
+            <div className="flex flex-col">
+              <Label htmlFor="mileage" className="mb-1">
+                Mileage
+              </Label>
+              <Input
+                id="mileage"
+                type="number"
+                className="w-full"
+                placeholder="e.g. 120000"
+                {...register('mileage', { valueAsNumber: true })}
+              />
+              {errors.mileage && (
+                <span className="text-red-500 text-xs mt-1">
+                  {errors.mileage.message}
+                </span>
               )}
-            </Button>
-          </DialogFooter>
+            </div>
+
+            {/* Save button */}
+            <div className="text-right">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                onClick={() => console.log('Save button clicked')} // Debug log
+              >
+                {isSubmitting ? <Loader className="animate-spin mr-2" /> : null}
+                Save
+              </Button>
+            </div>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
