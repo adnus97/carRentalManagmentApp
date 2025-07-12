@@ -8,6 +8,7 @@ import { OrganizationModule } from './organization/organization.module';
 
 import { ImagekitModule } from './utils/imagekit/imagekit.module';
 import { CarsModule } from './cars/cars.module';
+import { CustomerModule } from './customer/customer.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CarsModule } from './cars/cars.module';
     OrganizationModule,
     CarsModule,
     ImagekitModule,
+    CustomerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
