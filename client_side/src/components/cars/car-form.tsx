@@ -51,9 +51,6 @@ const schema = z.object({
   monthlyLeasePrice: z
     .number()
     .min(0, 'Monthly lease price must be a positive number'),
-  lastOilChangeAt: z.date().refine((date) => date <= new Date(), {
-    message: 'Last oil change date cannot be in the future',
-  }),
   insuranceExpiryDate: z.date().refine((date) => date > new Date(), {
     message: 'Insurance expiry date must be in the future',
   }),
@@ -103,7 +100,6 @@ export function DialogDemo({
               pricePerDay: watch('pricePerDay'),
               mileage: watch('mileage'),
               monthlyLeasePrice: watch('monthlyLeasePrice'),
-              lastOilChangeAt: watch('lastOilChangeAt'),
               insuranceExpiryDate: watch('insuranceExpiryDate'),
               status: 'active', // Default status
             });
@@ -129,7 +125,6 @@ export function DialogDemo({
       pricePerDay: undefined,
       mileage: undefined,
       monthlyLeasePrice: undefined,
-      lastOilChangeAt: undefined,
       insuranceExpiryDate: undefined,
     },
   });
@@ -144,7 +139,6 @@ export function DialogDemo({
       pricePerDay: data.pricePerDay,
       mileage: data.mileage,
       monthlyLeasePrice: data.monthlyLeasePrice,
-      lastOilChangeAt: data.lastOilChangeAt,
       insuranceExpiryDate: data.insuranceExpiryDate,
       status: 'active', // Default status
     });
@@ -286,27 +280,28 @@ export function DialogDemo({
             </div>
 
             {/* Last Oil Change & Insurance Expiry Dates */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col">
-                <Label htmlFor="insuranceExpiryDate" className="mb-1">
-                  Insurance Expiry
-                </Label>
-                <DatePickerDemo />
-                {/* <Input
-                  id="insuranceExpiryDate"
-                  type="date"
-                  className="w-full"
-                  {...register('insuranceExpiryDate', {
-                    setValueAs: (value) =>
-                      value ? new Date(value) : undefined,
-                  })}
-                /> */}
-                {errors.insuranceExpiryDate && (
-                  <span className="text-red-500 text-xs mt-1">
-                    {errors.insuranceExpiryDate.message}
-                  </span>
+            <div className="flex flex-col">
+              <label htmlFor="insuranceExpiryDate" className="mb-1 font-medium">
+                Insurance Expiry
+              </label>
+
+              <Controller
+                control={control}
+                name="insuranceExpiryDate"
+                rules={{ required: 'Required' }}
+                render={({ field }) => (
+                  <DatePickerDemo
+                    value={field.value} // Date | undefined
+                    onChange={field.onChange} // (d: Date) => void
+                  />
                 )}
-              </div>
+              />
+
+              {errors.insuranceExpiryDate && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.insuranceExpiryDate.message}
+                </p>
+              )}
             </div>
 
             {/* Mileage */}

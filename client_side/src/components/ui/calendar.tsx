@@ -79,16 +79,16 @@ function Calendar({
           'relative has-focus:border-ring border border-input shadow-xs ' +
             'has-focus:ring-ring/50 has-focus:ring-[3px] rounded-md ' +
             'bg-background text-foreground ' +
-            'hover:!bg-accent-6 hover:!text-black ' +
-            'dark:hover:!bg-accent-2 dark:hover:!text-black ' +
+            // 'hover:!bg-accent-6 hover:!text-black ' +
+            // 'dark:hover:!bg-accent-2 dark:hover:!text-black ' +
             'transition-colors z-40',
           defaultClassNames.dropdown_root,
         ),
         dropdown: cn(
           'absolute inset-0 opacity-0 cursor-pointer z-50 ' +
-            'bg-background text-foreground ' +
-            'hover:bg-accent-6 hover:text-white ' +
-            'dark:hover:bg-accent-2 dark:hover:text-white',
+            'bg-background text-foreground ',
+          // 'hover:bg-accent-6 hover:text-white ' +
+          // 'dark:hover:bg-accent-2 dark:hover:text-white',
           defaultClassNames.dropdown,
         ),
         caption_label: cn(

@@ -8,7 +8,6 @@ export const createCar = async (data: {
   pricePerDay: number;
   mileage: number;
   monthlyLeasePrice: number;
-  lastOilChangeAt: Date;
   insuranceExpiryDate: Date;
   status: 'active' | 'sold' | 'leased' | 'maintenance' | 'deleted';
 }) => {
@@ -22,5 +21,20 @@ export const createCar = async (data: {
 
 export const getCars = async () => {
   const response = await api.get('/cars/org');
+  return response.data;
+};
+
+export const deleteCar = async (id: string) => {
+  const response = await api.put(
+    `/cars/${id}`,
+    {
+      status: 'deleted',
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    },
+  );
   return response.data;
 };

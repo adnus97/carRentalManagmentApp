@@ -6,6 +6,7 @@ import {
   Param,
   Controller,
   Req,
+  Put,
 } from '@nestjs/common';
 
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
@@ -39,5 +40,13 @@ export class CarsController {
     const userId = user.id;
     console.log('User ID:', userId);
     return this.carsService.createCar(createCarDto, userId);
+  }
+
+  @Put(':id')
+  updateCar(
+    @Param('id') id: string,
+    @Body(ValidationPipe) updateData: Partial<CreateCarDto>,
+  ) {
+    return this.carsService.updateCar(id, updateData);
   }
 }

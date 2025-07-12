@@ -10,11 +10,12 @@ import {
 } from 'ag-grid-community';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../ui/button';
-import { getCars } from '@/api/cars';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { deleteCar, getCars } from '@/api/cars';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Hammer, ShoppingCart, Trash } from '@phosphor-icons/react';
 import { Separator } from '@radix-ui/react-separator';
 import { ConfirmationDialog } from '../confirmation-dialog';
+import { toast } from '@/components/ui/toast';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -32,6 +33,33 @@ export const GridExample = () => {
     queryFn: getCars,
   });
 
+  const mutation = useMutation({
+    mutationFn: deleteCar,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cars'] });
+
+      toast({
+        type: 'success',
+        title: 'Success!',
+        description: 'Car has been deleted successfully.',
+        button: {
+          label: 'Undo',
+          onClick: () => {
+            console.log('Undo clicked');
+            // Add your undo logic here
+          },
+        },
+      });
+    },
+    onError: (error) => {
+      console.error('Error:', error);
+      toast({
+        type: 'error',
+        title: 'Error',
+        description: 'An error occurred while deleting the car.',
+      });
+    },
+  });
   const rowSelection = useMemo<
     RowSelectionOptions | 'single' | 'multiple'
   >(() => {
@@ -43,7 +71,9 @@ export const GridExample = () => {
 
   const handleDelete = () => {
     console.log('Deleting selected rows:', selectedRows);
-
+    selectedRows.forEach((row) => {
+      mutation.mutate(row.id);
+    });
     setSelectedRows([]); // Clear selection after deletion
   };
 
@@ -126,16 +156,6 @@ export const GridExample = () => {
       cellStyle: { textAlign: 'right' },
       valueFormatter: formatDateToDDMMYYYY,
     },
-    {
-      headerName: 'Last Oil Change',
-      field: 'lastOilChangeAt',
-      width: 150,
-      filter: 'agSetColumnFilter',
-      sortable: true,
-      cellStyle: { textAlign: 'right' },
-      valueFormatter: formatDateToDDMMYYYY,
-    },
-
     {
       headerName: 'Actions',
       field: 'actions',

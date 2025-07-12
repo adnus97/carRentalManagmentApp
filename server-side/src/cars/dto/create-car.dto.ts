@@ -48,11 +48,6 @@ export class CreateCarDto {
   @IsDate()
   @Type(() => Date) // Ensure correct date transformation
   @IsNotEmpty()
-  lastOilChangeAt: Date;
-
-  @IsDate()
-  @Type(() => Date) // Ensure correct date transformation
-  @IsNotEmpty()
   insuranceExpiryDate: Date;
 
   @IsString()
