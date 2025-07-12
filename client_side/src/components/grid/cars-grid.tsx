@@ -16,6 +16,7 @@ import { Hammer, ShoppingCart, Trash } from '@phosphor-icons/react';
 import { Separator } from '@radix-ui/react-separator';
 import { ConfirmationDialog } from '../confirmation-dialog';
 import { toast } from '@/components/ui/toast';
+import React from 'react';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -25,6 +26,7 @@ ModuleRegistry.registerModules([
 ]);
 
 export const GridExample = () => {
+  const [showSignOutDialog, setShowSignOutDialog] = React.useState(false);
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
   const queryClient = useQueryClient();
@@ -191,20 +193,18 @@ export const GridExample = () => {
       <h2 className="text-xl text-var(--gray-12) mb-4 font-bold">
         Your Cars Dashboard
       </h2>
-
       <div className="flex justify-between mb-4">
         <p className="text-var(--gray-9)">Manage your available cars below:</p>
         {selectedRows.length > 0 && (
           <Button
             variant="secondary"
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-            onClick={handleDelete}
+            onClick={() => setShowSignOutDialog(true)}
           >
             <Trash size={20} /> Delete ({selectedRows.length})
           </Button>
         )}
       </div>
-
       {isLoading ? (
         <p className="text-white text-center">Loading cars...</p>
       ) : (
@@ -223,6 +223,17 @@ export const GridExample = () => {
           />
         </div>
       )}
+      <ConfirmationDialog
+        open={showSignOutDialog}
+        onOpenChange={setShowSignOutDialog}
+        onConfirm={handleDelete}
+        title="Sign Out"
+        description="Are you sure you want to sign out of your account?"
+        confirmText="Sign Out"
+        cancelText="Cancel"
+        loadingText="Signing out..."
+        variant="destructive"
+      />
     </div>
   );
 };
