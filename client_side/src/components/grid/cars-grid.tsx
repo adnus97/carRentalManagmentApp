@@ -17,6 +17,7 @@ import { Separator } from '@radix-ui/react-separator';
 import { ConfirmationDialog } from '../confirmation-dialog';
 import { toast } from '@/components/ui/toast';
 import React from 'react';
+import { RentFormDialog } from '../cars/rent-form';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -27,6 +28,13 @@ ModuleRegistry.registerModules([
 
 export const GridExample = () => {
   const [showSignOutDialog, setShowSignOutDialog] = React.useState(false);
+
+  const [rentDialogOpen, setRentDialogOpen] = useState(false);
+  const [selectedCarForRent, setSelectedCarForRent] = useState<null | {
+    id: string;
+    model: string;
+  }>(null);
+
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
   const queryClient = useQueryClient();
@@ -168,7 +176,13 @@ export const GridExample = () => {
           <Button
             variant="ghost"
             className="flex items-center gap-2 hover:bg-gray-4"
-            onClick={() => alert(`Renting car: ${params.data.model}`)}
+            onClick={() => {
+              setSelectedCarForRent({
+                id: params.data.id,
+                model: params.data.model,
+              });
+              setRentDialogOpen(true);
+            }}
           >
             <ShoppingCart size={40} />
             Rent
@@ -227,13 +241,25 @@ export const GridExample = () => {
         open={showSignOutDialog}
         onOpenChange={setShowSignOutDialog}
         onConfirm={handleDelete}
-        title="Sign Out"
-        description="Are you sure you want to sign out of your account?"
-        confirmText="Sign Out"
+        title="Confirmation"
+        description="Are you sure you want to delete the car?"
+        confirmText="Delete"
         cancelText="Cancel"
-        loadingText="Signing out..."
+        loadingText="Deleting..."
         variant="destructive"
       />
+      {/* Rent Form Dialog */}
+      {selectedCarForRent && (
+        <RentFormDialog
+          open={rentDialogOpen}
+          onOpenChange={(open) => {
+            setRentDialogOpen(open);
+            if (!open) setSelectedCarForRent(null);
+          }}
+          defaultCarId={selectedCarForRent.id}
+          defaultCarModel={selectedCarForRent.model}
+        />
+      )}
     </div>
   );
 };

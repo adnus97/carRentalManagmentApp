@@ -1,9 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
+import { C } from 'drizzle-kit/index-Z-1TKnbX';
 
-@Controller('customer')
+@Auth()
+@Controller('customers')
 export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
@@ -12,9 +23,10 @@ export class CustomerController {
     return this.customerService.create(createCustomerDto);
   }
 
-  @Get()
-  findAll() {
-    return this.customerService.findAll();
+  @Get('/org')
+  findAllCustomersByOrg(@CurrentUser() user: CustomUser) {
+    const userId = user.id;
+    return this.customerService.findAllCustomersByOrg(userId);
   }
 
   @Get(':id')
@@ -23,7 +35,10 @@ export class CustomerController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCustomerDto: UpdateCustomerDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateCustomerDto: UpdateCustomerDto,
+  ) {
     return this.customerService.update(+id, updateCustomerDto);
   }
 

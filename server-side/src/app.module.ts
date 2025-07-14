@@ -9,6 +9,7 @@ import { OrganizationModule } from './organization/organization.module';
 import { ImagekitModule } from './utils/imagekit/imagekit.module';
 import { CarsModule } from './cars/cars.module';
 import { CustomerModule } from './customer/customer.module';
+import { RentsModule } from './rents/rents.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CustomerModule } from './customer/customer.module';
     CarsModule,
     ImagekitModule,
     CustomerModule,
+    RentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

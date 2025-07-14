@@ -10,6 +10,7 @@ import { Calendar } from './ui/calendar';
 interface DatePickerDemoProps {
   value?: Date;
   onChange: (date: Date) => void;
+  disabled?: boolean;
 }
 
 function formatDate(d?: Date): string {
@@ -21,7 +22,11 @@ function formatDate(d?: Date): string {
   });
 }
 
-export function DatePickerDemo({ value, onChange }: DatePickerDemoProps) {
+export function DatePickerDemo({
+  value,
+  onChange,
+  disabled,
+}: DatePickerDemoProps) {
   const today = new Date();
   const [open, setOpen] = React.useState(false);
   const [month, setMonth] = React.useState<Date>(value ?? today);

@@ -22,12 +22,16 @@ export const rents = pgTable('rents', {
     .notNull()
     .references(() => customers.id, { onDelete: 'cascade' }),
   startDate: timestamp('start_date').notNull(),
-  endDate: timestamp('end_date'),
+  expectedEndDate: timestamp('expected_end_date'),
+  isOpenContract: boolean('is_open_contract').default(false).notNull(),
   returnedAt: timestamp('returned_at'),
-  totalPrice: integer('total_price').notNull(),
+  totalPrice: integer('total_price'),
+  customPrice: integer('custom_price'),
   deposit: integer('deposit').default(0).notNull(), // Deposit amount
   garantee: integer('guarantee').default(0).notNull(), // Guarantee amount
   lateFee: integer('late_fee').default(0),
-  status: text('status').default('active'), // "active", "completed", "canceled"
+  status: text('status', {
+    enum: ['active', 'completed', 'canceled'],
+  }).default('active'),
   damageReport: text('damage_report').default(''),
 });

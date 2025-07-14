@@ -2,9 +2,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '../ui/dialog';
@@ -20,15 +17,7 @@ import { useState } from 'react';
 import { createCar } from '@/api/cars';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../ui/toast';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
-import { Calendar } from '../ui/calendar';
-import { CalendarDemo } from '../calendar-demo';
+
 import { DatePickerDemo } from '../date-picker';
 //import { toast } from '@/hooks/use-toast';
 
@@ -167,7 +156,8 @@ export function DialogDemo({
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[425px] pt-14">
-        <DialogTitle className="pb-3">Add a new Car </DialogTitle>
+        <DialogTitle className="pb-1">Add a new Car </DialogTitle>
+        <Separator className="mb-4" />
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="flex flex-col space-y-4">
             {/* Make */}
