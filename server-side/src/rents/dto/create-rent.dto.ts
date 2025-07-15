@@ -10,6 +10,7 @@ import {
   IsNumber,
   Max,
   IsBoolean,
+  IsOptional,
 } from 'class-validator';
 export class CreateRentDto {
   @IsString()
@@ -25,13 +26,14 @@ export class CreateRentDto {
   @IsNotEmpty()
   startDate: Date;
 
+  @IsOptional()
   @IsDate()
   @Type(() => Date)
   expectedEndDate?: Date;
 
   @IsBoolean()
   isOpenContract: boolean;
-
+  @IsOptional()
   @IsDate()
   @Type(() => Date)
   returnedAt?: Date;
