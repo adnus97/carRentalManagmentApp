@@ -58,4 +58,7 @@ export class CreateRentDto {
 
   @IsString()
   damageReport?: string;
+
+  @IsBoolean()
+  isDeleted: boolean = false; // Default to false
 }

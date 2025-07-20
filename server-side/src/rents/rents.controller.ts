@@ -7,12 +7,17 @@ import {
   Param,
   Delete,
   ValidationPipe,
+  Put,
 } from '@nestjs/common';
 import { RentsService } from './rents.service';
 import { CreateRentDto } from './dto/create-rent.dto';
 import { UpdateRentDto } from './dto/update-rent.dto';
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
 
+function ensureDate(val: any) {
+  if (val && typeof val === 'string') return new Date(val);
+  return val;
+}
 @Auth()
 @Controller('rents')
 export class RentsController {
@@ -29,21 +34,29 @@ export class RentsController {
 
   @Get()
   findAll() {
-    return this.rentsService.findAll();
+    return this.rentsService.findAll({});
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.rentsService.findOne(+id);
+    return this.rentsService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateRentDto: UpdateRentDto) {
-    return this.rentsService.update(+id, updateRentDto);
+    return this.rentsService.update(id, updateRentDto);
+  }
+
+  @Put(':id')
+  updateRent(
+    @Param('id') id: string,
+    @Body(ValidationPipe) updateData: Partial<CreateRentDto>,
+  ) {
+    return this.rentsService.update(id, updateData);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.rentsService.remove(+id);
+    return this.rentsService.remove(id, {});
   }
 }

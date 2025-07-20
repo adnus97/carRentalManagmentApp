@@ -18,6 +18,7 @@ import { Route as AboutImport } from './routes/about'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as AuthIndexImport } from './routes/_auth/index'
+import { Route as LayoutRentsImport } from './routes/_layout.rents'
 import { Route as LayoutDashboardImport } from './routes/_layout.dashboard'
 
 // Create/Update Routes
@@ -60,6 +61,12 @@ const AuthIndexRoute = AuthIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthRoute,
+} as any)
+
+const LayoutRentsRoute = LayoutRentsImport.update({
+  id: '/rents',
+  path: '/rents',
+  getParentRoute: () => LayoutRoute,
 } as any)
 
 const LayoutDashboardRoute = LayoutDashboardImport.update({
@@ -121,6 +128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutDashboardImport
       parentRoute: typeof LayoutImport
     }
+    '/_layout/rents': {
+      id: '/_layout/rents'
+      path: '/rents'
+      fullPath: '/rents'
+      preLoaderRoute: typeof LayoutRentsImport
+      parentRoute: typeof LayoutImport
+    }
     '/_auth/': {
       id: '/_auth/'
       path: '/'
@@ -145,10 +159,12 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface LayoutRouteChildren {
   LayoutDashboardRoute: typeof LayoutDashboardRoute
+  LayoutRentsRoute: typeof LayoutRentsRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutDashboardRoute: LayoutDashboardRoute,
+  LayoutRentsRoute: LayoutRentsRoute,
 }
 
 const LayoutRouteWithChildren =
@@ -161,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/organization': typeof OrganizationRoute
   '/signup': typeof SignupRoute
   '/dashboard': typeof LayoutDashboardRoute
+  '/rents': typeof LayoutRentsRoute
   '/': typeof AuthIndexRoute
 }
 
@@ -171,6 +188,7 @@ export interface FileRoutesByTo {
   '/organization': typeof OrganizationRoute
   '/signup': typeof SignupRoute
   '/dashboard': typeof LayoutDashboardRoute
+  '/rents': typeof LayoutRentsRoute
   '/': typeof AuthIndexRoute
 }
 
@@ -183,6 +201,7 @@ export interface FileRoutesById {
   '/organization': typeof OrganizationRoute
   '/signup': typeof SignupRoute
   '/_layout/dashboard': typeof LayoutDashboardRoute
+  '/_layout/rents': typeof LayoutRentsRoute
   '/_auth/': typeof AuthIndexRoute
 }
 
@@ -195,6 +214,7 @@ export interface FileRouteTypes {
     | '/organization'
     | '/signup'
     | '/dashboard'
+    | '/rents'
     | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -204,6 +224,7 @@ export interface FileRouteTypes {
     | '/organization'
     | '/signup'
     | '/dashboard'
+    | '/rents'
     | '/'
   id:
     | '__root__'
@@ -214,6 +235,7 @@ export interface FileRouteTypes {
     | '/organization'
     | '/signup'
     | '/_layout/dashboard'
+    | '/_layout/rents'
     | '/_auth/'
   fileRoutesById: FileRoutesById
 }
@@ -263,7 +285,8 @@ export const routeTree = rootRoute
     "/_layout": {
       "filePath": "_layout.tsx",
       "children": [
-        "/_layout/dashboard"
+        "/_layout/dashboard",
+        "/_layout/rents"
       ]
     },
     "/about": {
@@ -280,6 +303,10 @@ export const routeTree = rootRoute
     },
     "/_layout/dashboard": {
       "filePath": "_layout.dashboard.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/rents": {
+      "filePath": "_layout.rents.tsx",
       "parent": "/_layout"
     },
     "/_auth/": {

@@ -19,6 +19,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../ui/toast';
 
 import { DatePickerDemo } from '../date-picker';
+import { DialogDescription } from '@radix-ui/react-dialog';
 //import { toast } from '@/hooks/use-toast';
 
 const d = new Date();
@@ -155,9 +156,12 @@ export function DialogDemo({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[425px] pt-14">
+      <DialogContent className="sm:max-w-[425px] pt-8">
         <DialogTitle className="pb-1">Add a new Car </DialogTitle>
-        <Separator className="mb-4" />
+        <DialogDescription className="text-sm text-muted-foreground">
+          Fill out the form below to add a new car to the system.{' '}
+        </DialogDescription>
+        <Separator className="mb-2" />
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="flex flex-col space-y-4">
             {/* Make */}

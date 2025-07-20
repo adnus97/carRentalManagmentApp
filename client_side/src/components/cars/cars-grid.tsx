@@ -17,7 +17,7 @@ import { Separator } from '@radix-ui/react-separator';
 import { ConfirmationDialog } from '../confirmation-dialog';
 import { toast } from '@/components/ui/toast';
 import React from 'react';
-import { RentFormDialog } from '../cars/rent-form';
+import { RentFormDialog } from '../rent/rent-form';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -26,11 +26,12 @@ ModuleRegistry.registerModules([
   ClientSideRowModelModule,
 ]);
 
-export const GridExample = () => {
+export const CarsGrid = () => {
   const [showSignOutDialog, setShowSignOutDialog] = React.useState(false);
 
   const [rentDialogOpen, setRentDialogOpen] = useState(false);
   const [selectedCarForRent, setSelectedCarForRent] = useState<null | {
+    pricePerDay: number;
     id: string;
     model: string;
   }>(null);
@@ -180,6 +181,7 @@ export const GridExample = () => {
               setSelectedCarForRent({
                 id: params.data.id,
                 model: params.data.model,
+                pricePerDay: params.data.pricePerDay,
               });
               setRentDialogOpen(true);
             }}
@@ -251,6 +253,7 @@ export const GridExample = () => {
       {/* Rent Form Dialog */}
       {selectedCarForRent && (
         <RentFormDialog
+          pricePerDay={selectedCarForRent.pricePerDay}
           open={rentDialogOpen}
           onOpenChange={(open) => {
             setRentDialogOpen(open);

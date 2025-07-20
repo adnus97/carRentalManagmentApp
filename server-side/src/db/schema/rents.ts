@@ -9,6 +9,7 @@ import {
 import { organization } from './organization';
 import { cars } from './cars';
 import { customers } from './customers';
+import { is } from 'drizzle-orm';
 
 export const rents = pgTable('rents', {
   id: varchar('id', { length: 255 }).primaryKey().notNull(),
@@ -28,10 +29,11 @@ export const rents = pgTable('rents', {
   totalPrice: integer('total_price'),
   customPrice: integer('custom_price'),
   deposit: integer('deposit').default(0).notNull(), // Deposit amount
-  garantee: integer('guarantee').default(0).notNull(), // Guarantee amount
+  guarantee: integer('guarantee').default(0).notNull(), // Guarantee amount
   lateFee: integer('late_fee').default(0),
   status: text('status', {
     enum: ['active', 'completed', 'canceled'],
   }).default('active'),
   damageReport: text('damage_report').default(''),
+  isDeleted: boolean('is_deleted').default(false).notNull(),
 });

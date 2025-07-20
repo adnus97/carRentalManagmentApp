@@ -25,7 +25,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { getCustomers } from '@/api/customers';
-import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '../ui/separator';
 
 const rentSchema = z.object({
   carId: z.string().nonempty('Car is required'),
@@ -37,7 +37,7 @@ const rentSchema = z.object({
   totalPrice: z.number().int().min(0).optional().nullable(),
   customPrice: z.number().int().min(0).optional().nullable(),
   deposit: z.number().int().min(0).default(0),
-  garantee: z.number().int().min(0).default(0),
+  guarantee: z.number().int().min(0).default(0),
   lateFee: z.number().int().min(0).default(0),
   status: z.enum(['active', 'completed', 'canceled']).default('active'),
   damageReport: z.string().optional().default(''),
@@ -50,6 +50,7 @@ type RentFormDialogProps = {
   onOpenChange: (open: boolean) => void;
   defaultCarId: string;
   defaultCarModel?: string;
+  pricePerDay: number;
 };
 
 export function RentFormDialog({
@@ -57,6 +58,7 @@ export function RentFormDialog({
   onOpenChange,
   defaultCarId,
   defaultCarModel,
+  pricePerDay,
 }: RentFormDialogProps) {
   const queryClient = useQueryClient();
 
@@ -105,7 +107,7 @@ export function RentFormDialog({
       totalPrice: 0,
       customPrice: 0,
       deposit: 0,
-      garantee: 0,
+      guarantee: 0,
       lateFee: 0,
       status: 'active',
       damageReport: '',
@@ -120,6 +122,42 @@ export function RentFormDialog({
   }, [defaultCarId, setValue]);
 
   const isOpenContract = watch('isOpenContract');
+  const startDate = watch('startDate');
+  const expectedEndDate = watch('expectedEndDate');
+  const returnedAt = watch('returnedAt');
+
+  // Set totalPrice and expectedEndDate to 0/null if isOpenContract is checked
+  useEffect(() => {
+    if (isOpenContract) {
+      setValue('totalPrice', 0);
+      setValue('expectedEndDate', null);
+    }
+  }, [isOpenContract, setValue]);
+
+  // Auto-calculate totalPrice if both dates are set and isOpenContract is false
+  useEffect(() => {
+    if (
+      !isOpenContract &&
+      startDate &&
+      expectedEndDate &&
+      !isNaN(startDate.getTime()) &&
+      !isNaN(expectedEndDate.getTime())
+    ) {
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const days = Math.max(
+        1,
+        Math.ceil((expectedEndDate.getTime() - startDate.getTime()) / msPerDay),
+      );
+      setValue('totalPrice', days * pricePerDay);
+    }
+  }, [startDate, expectedEndDate, pricePerDay, isOpenContract, setValue]);
+
+  // Auto-set returnedAt to expectedEndDate if contract is not open and expectedEndDate is set
+  useEffect(() => {
+    if (!isOpenContract && expectedEndDate && !returnedAt) {
+      setValue('returnedAt', expectedEndDate);
+    }
+  }, [isOpenContract, expectedEndDate, returnedAt, setValue]);
 
   const onSubmit = (data: RentFormFields) => {
     mutation.mutate({
@@ -132,7 +170,7 @@ export function RentFormDialog({
       totalPrice: data.totalPrice ?? 0,
       customPrice: data.customPrice ?? 0,
       deposit: data.deposit ?? 0,
-      guarantee: data.garantee ?? 0,
+      guarantee: data.guarantee ?? 0,
       lateFee: data.lateFee ?? 0,
       isOpenContract: data.isOpenContract,
       status: data.status,
@@ -148,8 +186,7 @@ export function RentFormDialog({
           Fill out the form below to create a new rent contract for the selected
           vehicle.
         </DialogDescription>
-
-        {/* VERTICAL FORM LAYOUT */}
+        <Separator className="my-2" />
         <form
           onSubmit={handleSubmit(onSubmit)}
           className="flex flex-col gap-6 w-full"
@@ -277,7 +314,7 @@ export function RentFormDialog({
                 {...register('totalPrice', { valueAsNumber: true })}
                 placeholder="Total price"
                 className="mt-1 w-full"
-                disabled={isOpenContract} // <-- disables when open contract is checked
+                disabled={true}
               />
               {errors.totalPrice && (
                 <p className="text-red-500 text-sm mt-1">
@@ -316,17 +353,17 @@ export function RentFormDialog({
               )}
             </div>
             <div className="flex-1">
-              <Label htmlFor="garantee">Guarantee</Label>
+              <Label htmlFor="guarantee">Guarantee</Label>
               <Input
-                id="garantee"
+                id="guarantee"
                 type="number"
-                {...register('garantee', { valueAsNumber: true })}
+                {...register('guarantee', { valueAsNumber: true })}
                 placeholder="Guarantee amount"
                 className="mt-1 w-full"
               />
-              {errors.garantee && (
+              {errors.guarantee && (
                 <p className="text-red-500 text-sm mt-1">
-                  {errors.garantee.message}
+                  {errors.guarantee.message}
                 </p>
               )}
             </div>

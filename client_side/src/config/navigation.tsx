@@ -4,6 +4,7 @@ import {
   ChartDonut,
   Gear,
   BuildingOffice,
+  Key,
 } from '@phosphor-icons/react';
 
 export const navigationConfig = {
@@ -17,6 +18,11 @@ export const navigationConfig = {
       title: 'Clients',
       url: '/clients',
       icon: <UserList size={40} />,
+    },
+    {
+      title: 'Rents',
+      url: '/rents',
+      icon: <Key size={96} />,
     },
     {
       title: 'Reports',

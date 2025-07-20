@@ -3,8 +3,13 @@ import { CreateRentDto } from './dto/create-rent.dto';
 import { UpdateRentDto } from './dto/update-rent.dto';
 import { createId } from '@paralleldrive/cuid2';
 import { DatabaseService, organization } from 'src/db';
-import { eq } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 import { rents } from 'src/db/schema/rents';
+
+function ensureDate(val: any) {
+  if (val && typeof val === 'string') return new Date(val);
+  return val;
+}
 
 @Injectable()
 export class RentsService {
@@ -29,19 +34,54 @@ export class RentsService {
       .values({ id, orgId, ...createRentDto });
   }
 
-  findAll() {
-    return `This action returns all rents`;
+  async findAll({ page = 1, pageSize = 20 }) {
+    const offset = (page - 1) * pageSize;
+
+    // Fetch paginated rents
+    const rentsList = await this.dbService.db
+      .select()
+      .from(rents)
+      .where(eq(rents.isDeleted, false))
+      .limit(pageSize)
+      .offset(offset);
+
+    // Fetch total count for pagination UI
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(rents);
+
+    return {
+      data: rentsList,
+      total: Number(count),
+      page,
+      pageSize,
+    };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} rent`;
+  async findOne(id: string) {
+    return await this.dbService.db
+      .select()
+      .from(rents)
+      .where(and(eq(rents.id, id), eq(rents.isDeleted, false)));
   }
 
-  update(id: number, updateRentDto: UpdateRentDto) {
-    return `This action updates a #${id} rent`;
+  async update(id: string, updateRentDto: UpdateRentDto) {
+    const updateRentDtoFixed = {
+      ...updateRentDto,
+      startDate: ensureDate(updateRentDto.startDate),
+      expectedEndDate: ensureDate(updateRentDto.expectedEndDate),
+      returnedAt: ensureDate(updateRentDto.returnedAt),
+    };
+    return await this.dbService.db
+      .update(rents)
+      .set(updateRentDtoFixed)
+      .where(eq(rents.id, id));
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} rent`;
+  async remove(id: string, updateData: Partial<CreateRentDto>) {
+    return await this.dbService.db
+      .update(rents)
+      .set(updateData)
+      .where(eq(rents.id, id));
   }
 }
