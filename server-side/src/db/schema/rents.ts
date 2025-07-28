@@ -19,18 +19,19 @@ export const rents = pgTable('rents', {
   orgId: varchar('org_id', { length: 255 })
     .notNull()
     .references(() => organization.id, { onDelete: 'cascade' }),
-  customerId: varchar('customer_id', { length: 255 }) // Foreign key to customer
+  customerId: varchar('customer_id', { length: 255 })
     .notNull()
     .references(() => customers.id, { onDelete: 'cascade' }),
   startDate: timestamp('start_date').notNull(),
   expectedEndDate: timestamp('expected_end_date'),
   isOpenContract: boolean('is_open_contract').default(false).notNull(),
   returnedAt: timestamp('returned_at'),
-  totalPrice: integer('total_price'),
-  customPrice: integer('custom_price'),
+  totalPrice: integer('total_price'), // The total price for the rent
   deposit: integer('deposit').default(0).notNull(), // Deposit amount
   guarantee: integer('guarantee').default(0).notNull(), // Guarantee amount
   lateFee: integer('late_fee').default(0),
+  totalPaid: integer('total_paid').default(0).notNull(),
+  isFullyPaid: boolean('is_fully_paid').default(false).notNull(),
   status: text('status', {
     enum: ['active', 'completed', 'canceled'],
   }).default('active'),

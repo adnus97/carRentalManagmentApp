@@ -42,10 +42,13 @@ export class CreateRentDto {
   totalPrice?: number;
 
   @IsNumber()
-  customPrice?: number;
+  deposit: number;
 
   @IsNumber()
-  deposit: number;
+  totalPaid: number;
+
+  @IsBoolean()
+  isFullyPaid: boolean;
 
   @IsNumber()
   guarantee: number;

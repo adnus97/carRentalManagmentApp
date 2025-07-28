@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -11,7 +13,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '../ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { DatePickerDemo } from '../date-picker';
 import { toast } from '../ui/toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -27,22 +28,33 @@ import {
 import { getCustomers } from '@/api/customers';
 import { Separator } from '../ui/separator';
 
-const rentSchema = z.object({
-  carId: z.string().nonempty('Car is required'),
-  customerId: z.string().nonempty('Customer is required'),
-  startDate: z.date({ required_error: 'Start date is required' }),
-  expectedEndDate: z.coerce.date().nullable().optional(),
-  returnedAt: z.coerce.date().nullable().optional(),
-  isOpenContract: z.boolean(),
-  totalPrice: z.number().int().min(0).optional().nullable(),
-  customPrice: z.number().int().min(0).optional().nullable(),
-  deposit: z.number().int().min(0).default(0),
-  guarantee: z.number().int().min(0).default(0),
-  lateFee: z.number().int().min(0).default(0),
-  status: z.enum(['active', 'completed', 'canceled']).default('active'),
-  damageReport: z.string().optional().default(''),
-});
-
+const rentSchema = z
+  .object({
+    carId: z.string().nonempty('Car is required'),
+    customerId: z.string().nonempty('Customer is required'),
+    startDate: z.date({ required_error: 'Start date is required' }),
+    expectedEndDate: z.coerce.date().nullable().optional(),
+    returnedAt: z.coerce.date().nullable().optional(),
+    isOpenContract: z.boolean(),
+    totalPrice: z.number().int().min(0).optional().nullable(),
+    deposit: z.number().int().min(0).default(0),
+    guarantee: z.number().int().min(0).default(0),
+    totalPaid: z.number().int().min(0).default(0),
+    isFullyPaid: z.boolean().default(false),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.expectedEndDate &&
+      data.startDate &&
+      data.expectedEndDate <= data.startDate
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'End date must be after start date',
+        path: ['expectedEndDate'],
+      });
+    }
+  });
 type RentFormFields = z.infer<typeof rentSchema>;
 
 type RentFormDialogProps = {
@@ -105,13 +117,11 @@ export function RentFormDialog({
       expectedEndDate: null,
       isOpenContract: false,
       totalPrice: 0,
-      customPrice: 0,
       deposit: 0,
       guarantee: 0,
-      lateFee: 0,
-      status: 'active',
-      damageReport: '',
       returnedAt: null,
+      totalPaid: 0,
+      isFullyPaid: false,
     },
   });
 
@@ -124,7 +134,9 @@ export function RentFormDialog({
   const isOpenContract = watch('isOpenContract');
   const startDate = watch('startDate');
   const expectedEndDate = watch('expectedEndDate');
-  const returnedAt = watch('returnedAt');
+  const deposit = watch('deposit');
+  const totalPaid = watch('totalPaid');
+  const isFullyPaid = watch('isFullyPaid');
 
   // Set totalPrice and expectedEndDate to 0/null if isOpenContract is checked
   useEffect(() => {
@@ -134,14 +146,15 @@ export function RentFormDialog({
     }
   }, [isOpenContract, setValue]);
 
-  // Auto-calculate totalPrice if both dates are set and isOpenContract is false
+  // Calculate totalPrice robustly
   useEffect(() => {
     if (
       !isOpenContract &&
       startDate &&
       expectedEndDate &&
       !isNaN(startDate.getTime()) &&
-      !isNaN(expectedEndDate.getTime())
+      !isNaN(expectedEndDate.getTime()) &&
+      expectedEndDate > startDate
     ) {
       const msPerDay = 1000 * 60 * 60 * 24;
       const days = Math.max(
@@ -149,15 +162,25 @@ export function RentFormDialog({
         Math.ceil((expectedEndDate.getTime() - startDate.getTime()) / msPerDay),
       );
       setValue('totalPrice', days * pricePerDay);
+    } else {
+      setValue('totalPrice', 0);
     }
   }, [startDate, expectedEndDate, pricePerDay, isOpenContract, setValue]);
 
   // Auto-set returnedAt to expectedEndDate if contract is not open and expectedEndDate is set
   useEffect(() => {
-    if (!isOpenContract && expectedEndDate && !returnedAt) {
+    if (!isOpenContract && expectedEndDate) {
       setValue('returnedAt', expectedEndDate);
     }
-  }, [isOpenContract, expectedEndDate, returnedAt, setValue]);
+    if (isOpenContract) {
+      setValue('returnedAt', null);
+    }
+  }, [isOpenContract, expectedEndDate, setValue]);
+
+  // Keep totalPaid always equal to deposit
+  useEffect(() => {
+    setValue('totalPaid', deposit || 0);
+  }, [deposit, setValue]);
 
   const onSubmit = (data: RentFormFields) => {
     mutation.mutate({
@@ -168,13 +191,15 @@ export function RentFormDialog({
       returnedAt: data.returnedAt ? data.returnedAt : undefined,
       customerId: data.customerId,
       totalPrice: data.totalPrice ?? 0,
-      customPrice: data.customPrice ?? 0,
       deposit: data.deposit ?? 0,
       guarantee: data.guarantee ?? 0,
-      lateFee: data.lateFee ?? 0,
       isOpenContract: data.isOpenContract,
-      status: data.status,
-      damageReport: data.damageReport,
+      totalPaid: data.totalPaid ?? 0,
+      isFullyPaid: data.isFullyPaid ?? false,
+      status: 'active',
+      lateFee: 0,
+      damageReport: '',
+      isDeleted: false,
     });
   };
 
@@ -290,11 +315,10 @@ export function RentFormDialog({
               control={control}
               name="isOpenContract"
               render={({ field }) => (
-                <Checkbox
+                <input
+                  type="checkbox"
                   checked={field.value}
-                  onCheckedChange={(checked) =>
-                    field.onChange(checked === true)
-                  }
+                  onChange={(e) => field.onChange(e.target.checked)}
                   id="isOpenContract"
                 />
               )}
@@ -319,21 +343,6 @@ export function RentFormDialog({
               {errors.totalPrice && (
                 <p className="text-red-500 text-sm mt-1">
                   {errors.totalPrice.message}
-                </p>
-              )}
-            </div>
-            <div className="flex-1">
-              <Label htmlFor="customPrice">Custom Price</Label>
-              <Input
-                id="customPrice"
-                type="number"
-                {...register('customPrice', { valueAsNumber: true })}
-                placeholder="Custom price"
-                className="mt-1 w-full"
-              />
-              {errors.customPrice && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.customPrice.message}
                 </p>
               )}
             </div>
@@ -368,6 +377,46 @@ export function RentFormDialog({
               )}
             </div>
           </div>
+
+          {/* Mark as fully paid (checkbox, own line) */}
+          <div className="flex items-center space-x-3">
+            <Controller
+              control={control}
+              name="isFullyPaid"
+              render={({ field }) => (
+                <input
+                  type="checkbox"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                  id="isFullyPaid"
+                />
+              )}
+            />
+            <Label htmlFor="isFullyPaid" className="cursor-pointer">
+              Mark as fully paid
+            </Label>
+          </div>
+
+          {/* Total Paid (1/3 width) */}
+          <div className="flex">
+            <div className="w-1/3">
+              <Label htmlFor="totalPaid">Total Paid</Label>
+              <Input
+                id="totalPaid"
+                type="number"
+                value={totalPaid || 0}
+                disabled
+                className="mt-1 w-full"
+                readOnly
+              />
+              {errors.totalPaid && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.totalPaid.message}
+                </p>
+              )}
+            </div>
+          </div>
+
           {/* Submit Button */}
           <div className="flex justify-end">
             <Button type="submit" disabled={isSubmitting} className="px-6 py-2">

@@ -8,16 +8,15 @@ import {
   RowSelectionOptions,
   TextFilterModule,
 } from 'ag-grid-community';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '../ui/button';
-import { removeRent, getRents } from '@/api/rents'; // You'll need to create these
+import { removeRent, getRents } from '@/api/rents';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PencilSimple, Trash, X } from '@phosphor-icons/react';
-import { Separator } from '@radix-ui/react-separator';
 import { ConfirmationDialog } from '../confirmation-dialog';
 import { toast } from '@/components/ui/toast';
 import React from 'react';
-import { EditRentFormDialog } from './edit-rent-form'; // You'll need to create this
+import { EditRentFormDialog } from './edit-rent-form';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -26,13 +25,25 @@ ModuleRegistry.registerModules([
   ClientSideRowModelModule,
 ]);
 
+type RentRow = {
+  isOpenContract: boolean;
+  deposit: number | undefined;
+  id: string;
+  carModel: string;
+  startDate: string | Date;
+  pricePerDay: number;
+  status?: 'active' | 'completed' | 'canceled';
+  totalPaid?: number;
+  isFullyPaid?: boolean;
+  totalPrice: number;
+  // ...other fields as needed
+};
+
 export const RentsGrid = () => {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedRentForEdit, setSelectedRentForEdit] = useState<null | {
-    id: string;
-    carModel: string;
-  }>(null);
+  const [selectedRentForEdit, setSelectedRentForEdit] =
+    useState<null | RentRow>(null);
 
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
@@ -78,7 +89,6 @@ export const RentsGrid = () => {
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
 
   const handleDelete = () => {
-    console.log('Deleting selected rows:', selectedRows);
     selectedRows.forEach((row) => {
       deleteMutation.mutate(row.id);
     });
@@ -104,7 +114,7 @@ export const RentsGrid = () => {
     const statusColors = {
       active: 'text-green-500',
       completed: 'text-blue-500',
-      cancelled: 'text-red-500',
+      canceled: 'text-red-500',
     };
     return (
       <span className={statusColors[status as keyof typeof statusColors] || ''}>
@@ -162,14 +172,6 @@ export const RentsGrid = () => {
       sortable: true,
     },
     {
-      field: 'customPrice',
-      headerName: 'Custom Price',
-      width: 130,
-      cellStyle: { textAlign: 'right' },
-      valueFormatter: currencyFormatter,
-      filter: 'agNumberColumnFilter',
-    },
-    {
       field: 'deposit',
       headerName: 'Deposit',
       width: 100,
@@ -199,7 +201,7 @@ export const RentsGrid = () => {
       width: 100,
       filter: 'agSetColumnFilter',
       filterParams: {
-        values: ['active', 'completed', 'cancelled'],
+        values: ['active', 'completed', 'canceled'],
       },
       cellRenderer: statusFormatter,
     },
@@ -226,6 +228,14 @@ export const RentsGrid = () => {
               setSelectedRentForEdit({
                 id: params.data.id,
                 carModel: params.data.carModel,
+                startDate: params.data.startDate,
+                pricePerDay: params.data.pricePerDay,
+                status: params.data.status,
+                totalPaid: params.data.totalPaid,
+                isFullyPaid: params.data.isFullyPaid,
+                totalPrice: params.data.totalPrice,
+                isOpenContract: params.data.isOpenContract,
+                deposit: params.data.deposit,
               });
               setEditDialogOpen(true);
             }}
@@ -319,6 +329,15 @@ export const RentsGrid = () => {
           }}
           rentId={selectedRentForEdit.id}
           carModel={selectedRentForEdit.carModel}
+          startDate={selectedRentForEdit.startDate}
+          pricePerDay={selectedRentForEdit.pricePerDay}
+          status={selectedRentForEdit.status}
+          totalPaid={selectedRentForEdit.totalPaid}
+          isFullyPaid={selectedRentForEdit.isFullyPaid}
+          totalPrice={selectedRentForEdit.totalPrice}
+          isOpenContract={selectedRentForEdit.isOpenContract}
+          deposit={selectedRentForEdit.deposit}
+          // <-- add this
         />
       )}
     </div>

@@ -1,13 +1,11 @@
 import { api } from './api';
-
 export const createRent = async (data: {
   carId: string;
   userId: string;
   startDate: Date;
-  expectedEndDate?: Date;
-  returnedAt?: Date;
+  expectedEndDate?: Date | null;
+  returnedAt?: Date | null;
   totalPrice: number;
-  customPrice?: number;
   deposit: number;
   guarantee: number;
   lateFee?: number;
@@ -16,8 +14,27 @@ export const createRent = async (data: {
   damageReport?: string;
   customerId: string;
   isDeleted?: boolean;
+  totalPaid?: number;
+  isFullyPaid?: boolean;
 }) => {
-  const response = await api.post('/rents', data, {
+  // Convert dates to ISO strings if present
+  const dataToSend = {
+    ...data,
+    startDate:
+      data.startDate instanceof Date
+        ? data.startDate.toISOString()
+        : data.startDate,
+    expectedEndDate:
+      data.expectedEndDate instanceof Date
+        ? data.expectedEndDate.toISOString()
+        : (data.expectedEndDate ?? undefined),
+    returnedAt:
+      data.returnedAt instanceof Date
+        ? data.returnedAt.toISOString()
+        : (data.returnedAt ?? undefined),
+  };
+
+  const response = await api.post('/rents', dataToSend, {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -59,6 +76,9 @@ export const updateRent = async (
     lateFee: number;
     damageReport?: string;
     totalPrice?: number;
+    status?: 'active' | 'completed' | 'canceled';
+    totalPaid?: number;
+    isFullyPaid?: boolean;
   },
 ) => {
   // Convert Date to ISO string if present and is a Date
@@ -70,15 +90,25 @@ export const updateRent = async (
             updateData.returnedAt instanceof Date
               ? updateData.returnedAt.toISOString()
               : updateData.returnedAt,
-          status: 'completed',
         }
       : {}),
   };
+
+  // If status is not provided, set it based on returnedAt
+  if (!dataToSend.status && dataToSend.returnedAt) {
+    const returnedAtDate =
+      dataToSend.returnedAt instanceof Date
+        ? dataToSend.returnedAt
+        : new Date(dataToSend.returnedAt);
+    const now = new Date();
+    dataToSend.status = returnedAtDate <= now ? 'completed' : 'active';
+  }
 
   const response = await api.put(`/rents/${id}`, dataToSend, {
     headers: {
       'Content-Type': 'application/json',
     },
   });
+
   return response.data;
 };
