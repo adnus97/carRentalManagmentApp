@@ -2,15 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { CreateRentDto } from './dto/create-rent.dto';
 import { UpdateRentDto } from './dto/update-rent.dto';
 import { createId } from '@paralleldrive/cuid2';
-import { DatabaseService, organization } from 'src/db';
+import { cars, DatabaseService, organization } from 'src/db';
 import { eq, sql, and } from 'drizzle-orm';
 import { rents } from 'src/db/schema/rents';
+import { customers } from 'src/db/schema/customers';
 
-function ensureDate(val: any) {
-  if (val && typeof val === 'string') return new Date(val);
-  return val;
+function ensureDate(value: any): Date | undefined {
+  if (!value) return undefined;
+  if (value instanceof Date) return value;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? undefined : d;
 }
-
 @Injectable()
 export class RentsService {
   constructor(private readonly dbService: DatabaseService) {}
@@ -33,11 +35,56 @@ export class RentsService {
       .insert(rents)
       .values({ id, orgId, ...createRentDto });
   }
+  async getAllRentsWithCarAndCustomer(page = 1, pageSize = 20) {
+    const offset = (page - 1) * pageSize;
+
+    // Get total count for pagination
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(rents);
+
+    // Get paginated data with joins
+    const data = await this.dbService.db
+      .select({
+        id: rents.id,
+        carId: rents.carId,
+        customerId: rents.customerId,
+        startDate: rents.startDate,
+        expectedEndDate: rents.expectedEndDate,
+        isOpenContract: rents.isOpenContract,
+        returnedAt: rents.returnedAt,
+        totalPrice: rents.totalPrice,
+        deposit: rents.deposit,
+        guarantee: rents.guarantee,
+        lateFee: rents.lateFee,
+        totalPaid: rents.totalPaid,
+        isFullyPaid: rents.isFullyPaid,
+        status: rents.status,
+        damageReport: rents.damageReport,
+        carModel: cars.model,
+        carMake: cars.make,
+        pricePerDay: cars.pricePerDay,
+        customerName: sql<string>`CONCAT(${customers.firstName}, ' ', ${customers.lastName})`,
+        customerEmail: customers.email,
+      })
+      .from(rents)
+      .leftJoin(cars, eq(rents.carId, cars.id))
+      .leftJoin(customers, eq(rents.customerId, customers.id))
+      .orderBy(sql`${rents.startDate} DESC`)
+      .offset(offset)
+      .limit(pageSize);
+    console.log('Pagination:', { page, pageSize, offset });
+    return {
+      data,
+      page,
+      pageSize,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / pageSize),
+    };
+  }
 
   async findAll({ page = 1, pageSize = 20 }) {
     const offset = (page - 1) * pageSize;
-
-    // Fetch paginated rents
     const rentsList = await this.dbService.db
       .select()
       .from(rents)
@@ -65,13 +112,26 @@ export class RentsService {
       .where(and(eq(rents.id, id), eq(rents.isDeleted, false)));
   }
 
-  async update(id: string, updateRentDto: UpdateRentDto) {
+  async update(id: string, updateRentDto: Partial<CreateRentDto>) {
     const updateRentDtoFixed = {
       ...updateRentDto,
-      startDate: ensureDate(updateRentDto.startDate),
-      expectedEndDate: ensureDate(updateRentDto.expectedEndDate),
-      returnedAt: ensureDate(updateRentDto.returnedAt),
+      ...(updateRentDto.startDate && {
+        startDate: ensureDate(updateRentDto.startDate),
+      }),
+      ...(updateRentDto.expectedEndDate && {
+        expectedEndDate: ensureDate(updateRentDto.expectedEndDate),
+      }),
+      ...(updateRentDto.returnedAt && {
+        returnedAt: ensureDate(updateRentDto.returnedAt),
+      }),
     };
+
+    Object.keys(updateRentDtoFixed).forEach(
+      (key) =>
+        updateRentDtoFixed[key as keyof typeof updateRentDtoFixed] ===
+          undefined &&
+        delete updateRentDtoFixed[key as keyof typeof updateRentDtoFixed],
+    );
     return await this.dbService.db
       .update(rents)
       .set(updateRentDtoFixed)

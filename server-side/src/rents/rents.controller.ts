@@ -8,6 +8,7 @@ import {
   Delete,
   ValidationPipe,
   Put,
+  Query,
 } from '@nestjs/common';
 import { RentsService } from './rents.service';
 import { CreateRentDto } from './dto/create-rent.dto';
@@ -35,6 +36,18 @@ export class RentsController {
   @Get()
   findAll() {
     return this.rentsService.findAll({});
+  }
+  @Get('/with-car-and-customer')
+  async getAllRentsWithCarAndCustomer(
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    const pageNum = Math.max(1, parseInt(page || '1', 10));
+    const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
+    return this.rentsService.getAllRentsWithCarAndCustomer(
+      pageNum,
+      pageSizeNum,
+    );
   }
 
   @Get(':id')

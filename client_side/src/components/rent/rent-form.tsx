@@ -37,7 +37,10 @@ const rentSchema = z
     returnedAt: z.coerce.date().nullable().optional(),
     isOpenContract: z.boolean(),
     totalPrice: z.number().int().min(0).optional().nullable(),
-    deposit: z.number().int().min(0).default(0),
+    deposit: z
+      .number({ invalid_type_error: 'Deposit is required' })
+      .int('Deposit must be a number')
+      .min(1, 'Deposit is required'),
     guarantee: z.number().int().min(0).default(0),
     totalPaid: z.number().int().min(0).default(0),
     isFullyPaid: z.boolean().default(false),
@@ -138,7 +141,6 @@ export function RentFormDialog({
   const totalPaid = watch('totalPaid');
   const isFullyPaid = watch('isFullyPaid');
 
-  // Set totalPrice and expectedEndDate to 0/null if isOpenContract is checked
   useEffect(() => {
     if (isOpenContract) {
       setValue('totalPrice', 0);
@@ -146,7 +148,6 @@ export function RentFormDialog({
     }
   }, [isOpenContract, setValue]);
 
-  // Calculate totalPrice robustly
   useEffect(() => {
     if (
       !isOpenContract &&
@@ -167,7 +168,6 @@ export function RentFormDialog({
     }
   }, [startDate, expectedEndDate, pricePerDay, isOpenContract, setValue]);
 
-  // Auto-set returnedAt to expectedEndDate if contract is not open and expectedEndDate is set
   useEffect(() => {
     if (!isOpenContract && expectedEndDate) {
       setValue('returnedAt', expectedEndDate);
@@ -177,7 +177,6 @@ export function RentFormDialog({
     }
   }, [isOpenContract, expectedEndDate, setValue]);
 
-  // Keep totalPaid always equal to deposit
   useEffect(() => {
     setValue('totalPaid', deposit || 0);
   }, [deposit, setValue]);
@@ -205,20 +204,23 @@ export function RentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-full sm:max-w-[600px] p-4 pt-14">
-        <DialogTitle>Create Rent Contract</DialogTitle>
-        <DialogDescription>
+      <DialogContent className="w-full max-w-full sm:max-w-[500px] ">
+        {/* Hide title and description on small screens */}
+        <DialogTitle className="hidden sm:block">
+          Create Rent Contract
+        </DialogTitle>
+        <DialogDescription className="hidden sm:block">
           Fill out the form below to create a new rent contract for the selected
           vehicle.
         </DialogDescription>
-        <Separator className="my-2" />
+        <Separator className="my-2 hidden sm:block" />
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-6 w-full"
+          className="flex flex-col gap-3 w-full"
           noValidate
         >
           {/* Car Model and Customer side by side */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1">
               <Label>Car Model</Label>
               <Input
@@ -265,7 +267,7 @@ export function RentFormDialog({
           </div>
 
           {/* Dates */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1">
               <Label>Start Date</Label>
               <Controller
@@ -310,7 +312,7 @@ export function RentFormDialog({
           </div>
 
           {/* Open Contract */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             <Controller
               control={control}
               name="isOpenContract"
@@ -329,7 +331,7 @@ export function RentFormDialog({
           </div>
 
           {/* Pricing and Fees */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1">
               <Label htmlFor="totalPrice">Total Price (DHS)</Label>
               <Input
@@ -347,7 +349,7 @@ export function RentFormDialog({
               )}
             </div>
             <div className="flex-1">
-              <Label htmlFor="deposit">Deposit</Label>
+              <Label htmlFor="deposit">Deposit (DHS)</Label>
               <Input
                 id="deposit"
                 type="number"
@@ -362,7 +364,7 @@ export function RentFormDialog({
               )}
             </div>
             <div className="flex-1">
-              <Label htmlFor="guarantee">Guarantee</Label>
+              <Label htmlFor="guarantee">Guarantee (DHS)</Label>
               <Input
                 id="guarantee"
                 type="number"
@@ -379,7 +381,7 @@ export function RentFormDialog({
           </div>
 
           {/* Mark as fully paid (checkbox, own line) */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             <Controller
               control={control}
               name="isFullyPaid"
@@ -400,7 +402,7 @@ export function RentFormDialog({
           {/* Total Paid (1/3 width) */}
           <div className="flex">
             <div className="w-1/3">
-              <Label htmlFor="totalPaid">Total Paid</Label>
+              <Label htmlFor="totalPaid">Total Paid (DHS)</Label>
               <Input
                 id="totalPaid"
                 type="number"

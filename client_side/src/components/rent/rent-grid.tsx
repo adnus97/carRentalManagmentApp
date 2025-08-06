@@ -1,3 +1,5 @@
+'use client';
+
 import { AgGridReact } from 'ag-grid-react';
 import {
   ClientSideRowModelModule,
@@ -10,13 +12,22 @@ import {
 } from 'ag-grid-community';
 import { useMemo, useState } from 'react';
 import { Button } from '../ui/button';
-import { removeRent, getRents } from '@/api/rents';
+import { removeRent, getAllRentsWithCarAndCustomer } from '@/api/rents';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PencilSimple, Trash, X } from '@phosphor-icons/react';
 import { ConfirmationDialog } from '../confirmation-dialog';
 import { toast } from '@/components/ui/toast';
 import React from 'react';
 import { EditRentFormDialog } from './edit-rent-form';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -30,12 +41,17 @@ type RentRow = {
   deposit: number | undefined;
   id: string;
   carModel: string;
+  customerName?: string;
   startDate: string | Date;
+  expectedEndDate?: string | Date;
+  returnedAt?: string | Date;
   pricePerDay: number;
   status?: 'active' | 'completed' | 'canceled';
   totalPaid?: number;
   isFullyPaid?: boolean;
   totalPrice: number;
+  guarantee?: number;
+  lateFee?: number;
   // ...other fields as needed
 };
 
@@ -51,11 +67,13 @@ export const RentsGrid = () => {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(8);
 
-  const { data, isLoading } = useQuery({
+  // Fetch paginated rents with React Query and keepPreviousData for smooth transitions
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['rents', page, pageSize],
-    queryFn: () => getRents(page, pageSize),
+    queryFn: () => getAllRentsWithCarAndCustomer(page, pageSize),
+    placeholderData: (previousData) => previousData,
   });
 
   const deleteMutation = useMutation({
@@ -228,7 +246,10 @@ export const RentsGrid = () => {
               setSelectedRentForEdit({
                 id: params.data.id,
                 carModel: params.data.carModel,
+                customerName: params.data.customerName,
                 startDate: params.data.startDate,
+                expectedEndDate: params.data.expectedEndDate,
+                returnedAt: params.data.returnedAt,
                 pricePerDay: params.data.pricePerDay,
                 status: params.data.status,
                 totalPaid: params.data.totalPaid,
@@ -236,6 +257,8 @@ export const RentsGrid = () => {
                 totalPrice: params.data.totalPrice,
                 isOpenContract: params.data.isOpenContract,
                 deposit: params.data.deposit,
+                guarantee: params.data.guarantee,
+                lateFee: params.data.lateFee,
               });
               setEditDialogOpen(true);
             }}
@@ -261,6 +284,21 @@ export const RentsGrid = () => {
     },
   ];
 
+  // Pagination controls
+  const totalPages = data?.totalPages || 1;
+
+  // For page number rendering
+  const getPageNumbers = () => {
+    if (!totalPages) return [];
+    const pages: number[] = [];
+    for (let p = 1; p <= totalPages; p++) {
+      if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
+        pages.push(p);
+      }
+    }
+    return pages;
+  };
+
   return (
     <div
       className="ag-theme-alpine-dark p-4 rounded-lg shadow-lg"
@@ -281,30 +319,81 @@ export const RentsGrid = () => {
           </Button>
         )}
       </div>
-      {isLoading ? (
+      {isLoading || isFetching ? (
         <p className="text-white text-center">Loading rent contracts...</p>
       ) : (
-        <div style={gridStyle}>
-          <AgGridReact
-            rowHeight={50}
-            rowData={data?.data || []}
-            columnDefs={colDefs}
-            rowSelection={rowSelection}
-            pagination={true}
-            paginationPageSize={pageSize}
-            paginationPageSizeSelector={[10, 20, 50, 100]}
-            domLayout="autoHeight"
-            onSelectionChanged={(event) =>
-              setSelectedRows(event.api.getSelectedRows())
-            }
-            onPaginationChanged={(event) => {
-              const currentPage = event.api.paginationGetCurrentPage() + 1;
-              const currentPageSize = event.api.paginationGetPageSize();
-              if (currentPage !== page) setPage(currentPage);
-              if (currentPageSize !== pageSize) setPageSize(currentPageSize);
-            }}
-          />
-        </div>
+        <>
+          <div style={gridStyle}>
+            <AgGridReact
+              rowHeight={50}
+              rowData={data?.data || []}
+              columnDefs={colDefs}
+              rowSelection={rowSelection}
+              pagination={false}
+              domLayout="autoHeight"
+              onSelectionChanged={(event) =>
+                setSelectedRows(event.api.getSelectedRows())
+              }
+              className="!bg-green-800"
+              getRowClass={(params) => {
+                // Debug: log the data
+                console.log('Row data:', params.data);
+
+                if (
+                  !params.data ||
+                  typeof params.data.isFullyPaid === 'undefined'
+                )
+                  return '';
+
+                if (params.data.isFullyPaid === true) return 'bg-green';
+                if (params.data.isFullyPaid === false) return 'bg-red';
+
+                return '';
+              }}
+            />
+          </div>
+          {/* Pagination Widget */}
+          <Pagination className="mt-4">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  aria-disabled={page === 1}
+                  tabIndex={page === 1 ? -1 : 0}
+                  style={{ pointerEvents: page === 1 ? 'none' : undefined }}
+                />
+              </PaginationItem>
+              {getPageNumbers().map((p, idx, arr) => (
+                <React.Fragment key={p}>
+                  {idx > 0 && p - arr[idx - 1] > 1 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  <PaginationItem>
+                    <PaginationLink
+                      isActive={p === page}
+                      onClick={() => setPage(p)}
+                      tabIndex={p === page ? -1 : 0}
+                    >
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                </React.Fragment>
+              ))}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  aria-disabled={page === totalPages}
+                  tabIndex={page === totalPages ? -1 : 0}
+                  style={{
+                    pointerEvents: page === totalPages ? 'none' : undefined,
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </>
       )}
 
       <ConfirmationDialog
@@ -329,6 +418,7 @@ export const RentsGrid = () => {
           }}
           rentId={selectedRentForEdit.id}
           carModel={selectedRentForEdit.carModel}
+          customerName={selectedRentForEdit.customerName}
           startDate={selectedRentForEdit.startDate}
           pricePerDay={selectedRentForEdit.pricePerDay}
           status={selectedRentForEdit.status}
@@ -337,7 +427,9 @@ export const RentsGrid = () => {
           totalPrice={selectedRentForEdit.totalPrice}
           isOpenContract={selectedRentForEdit.isOpenContract}
           deposit={selectedRentForEdit.deposit}
-          // <-- add this
+          guarantee={selectedRentForEdit.guarantee}
+          lateFee={selectedRentForEdit.lateFee}
+          returnedAt={selectedRentForEdit.returnedAt}
         />
       )}
     </div>

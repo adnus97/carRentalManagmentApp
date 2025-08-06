@@ -182,7 +182,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <Separator className="my-2" />
 
                         {/* Menu Items */}
-                        <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-3 dark:hover:bg-gray-4 transition-colors duration-150 cursor-pointer">
+                        <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-md hover:!bg-gray-3 dark:hover:bg-gray-4 transition-colors duration-150 cursor-pointer">
                           <User size={18} className="text-gray-10" />
                           <span className="text-sm font-medium text-gray-12">
                             Account Settings

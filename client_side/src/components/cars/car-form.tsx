@@ -17,10 +17,8 @@ import { useState } from 'react';
 import { createCar } from '@/api/cars';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../ui/toast';
-
 import { DatePickerDemo } from '../date-picker';
 import { DialogDescription } from '@radix-ui/react-dialog';
-//import { toast } from '@/hooks/use-toast';
 
 const d = new Date();
 let year = d.getFullYear();
@@ -67,7 +65,6 @@ export function DialogDemo({
           label: 'Undo',
           onClick: () => {
             console.log('Undo clicked');
-            // Add your undo logic here
           },
         },
       });
@@ -81,7 +78,6 @@ export function DialogDemo({
         button: {
           label: 'Retry',
           onClick: () => {
-            // Retry logic here
             mutation.mutate({
               make: watch('make'),
               model: watch('model'),
@@ -91,7 +87,7 @@ export function DialogDemo({
               mileage: watch('mileage'),
               monthlyLeasePrice: watch('monthlyLeasePrice'),
               insuranceExpiryDate: watch('insuranceExpiryDate'),
-              status: 'active', // Default status
+              status: 'active',
             });
           },
         },
@@ -120,7 +116,6 @@ export function DialogDemo({
   });
 
   const onSubmit = (data: formFields) => {
-    alert('Form submitted!'); // Check if this fires
     mutation.mutate({
       make: data.make,
       model: data.model,
@@ -130,16 +125,14 @@ export function DialogDemo({
       mileage: data.mileage,
       monthlyLeasePrice: data.monthlyLeasePrice,
       insuranceExpiryDate: data.insuranceExpiryDate,
-      status: 'active', // Default status
+      status: 'active',
     });
-    console.log('Form Submitted:', data);
   };
 
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        console.log('Dialog open changed to:', open); // Debug log
         setIsOpen(open);
         if (!open) {
           reset();
@@ -156,14 +149,21 @@ export function DialogDemo({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[425px] pt-8">
-        <DialogTitle className="pb-1">Add a new Car </DialogTitle>
-        <DialogDescription className="text-sm text-muted-foreground">
-          Fill out the form below to add a new car to the system.{' '}
+      <DialogContent className="sm:max-w-[500px] pt-8">
+        {/* Hide title and description on small screens */}
+        <DialogTitle className="pb-1 hidden sm:block">
+          Add a new Car
+        </DialogTitle>
+        <DialogDescription className="text-sm text-muted-foreground hidden sm:block">
+          Fill out the form below to add a new car to the system.
         </DialogDescription>
-        <Separator className="mb-2" />
+        <Separator className="mb-2 hidden sm:block" />
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="flex flex-col space-y-4">
+          <div
+            className="
+              grid grid-cols-1 sm:grid-cols-2 gap-4
+            "
+          >
             {/* Make */}
             <div className="flex flex-col">
               <Label htmlFor="make" className="mb-1">
@@ -218,6 +218,8 @@ export function DialogDemo({
                 </span>
               )}
             </div>
+
+            {/* Price/Day */}
             <div className="flex flex-col">
               <Label htmlFor="pricePerDay" className="mb-1">
                 Price/Day (DHS)
@@ -229,77 +231,75 @@ export function DialogDemo({
                 {...register('pricePerDay', { valueAsNumber: true })}
               />
               {errors.pricePerDay && (
-                <span className="text-red-500 text-sm mt-1">
+                <span className="text-red-500 text-xs mt-1">
                   {errors.pricePerDay.message}
                 </span>
               )}
             </div>
 
-            {/* Purchase & Monthly Lease Prices */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col">
-                <Label htmlFor="purchasePrice" className="mb-1">
-                  Purchase Price (DHS)
-                </Label>
-                <Input
-                  id="purchasePrice"
-                  type="number"
-                  className="w-full"
-                  placeholder="e.g. 280000"
-                  {...register('purchasePrice', { valueAsNumber: true })}
-                />
-                {errors.purchasePrice && (
-                  <span className="text-red-500 text-xs mt-1">
-                    {errors.purchasePrice.message}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-col">
-                <Label htmlFor="monthlyLeasePrice" className="mb-1">
-                  Monthly Lease (DHS)
-                </Label>
-                <Input
-                  id="monthlyLeasePrice"
-                  type="number"
-                  className="w-full"
-                  placeholder="e.g. 4000"
-                  {...register('monthlyLeasePrice', { valueAsNumber: true })}
-                />
-                {errors.monthlyLeasePrice && (
-                  <span className="text-red-500 text-xs mt-1">
-                    {errors.monthlyLeasePrice.message}
-                  </span>
-                )}
-              </div>
+            {/* Purchase Price */}
+            <div className="flex flex-col">
+              <Label htmlFor="purchasePrice" className="mb-1">
+                Purchase Price (DHS)
+              </Label>
+              <Input
+                id="purchasePrice"
+                type="number"
+                className="w-full"
+                placeholder="e.g. 280000"
+                {...register('purchasePrice', { valueAsNumber: true })}
+              />
+              {errors.purchasePrice && (
+                <span className="text-red-500 text-xs mt-1">
+                  {errors.purchasePrice.message}
+                </span>
+              )}
             </div>
 
-            {/* Last Oil Change & Insurance Expiry Dates */}
+            {/* Monthly Lease Price */}
             <div className="flex flex-col">
-              <label htmlFor="insuranceExpiryDate" className="mb-1 font-medium">
-                Insurance Expiry
-              </label>
+              <Label htmlFor="monthlyLeasePrice" className="mb-1">
+                Monthly Lease (DHS)
+              </Label>
+              <Input
+                id="monthlyLeasePrice"
+                type="number"
+                className="w-full"
+                placeholder="e.g. 4000"
+                {...register('monthlyLeasePrice', { valueAsNumber: true })}
+              />
+              {errors.monthlyLeasePrice && (
+                <span className="text-red-500 text-xs mt-1">
+                  {errors.monthlyLeasePrice.message}
+                </span>
+              )}
+            </div>
 
+            {/* Insurance Expiry */}
+            <div className="flex flex-col sm:col-span-2">
+              <Label htmlFor="insuranceExpiryDate" className="mb-1">
+                Insurance Expiry
+              </Label>
               <Controller
                 control={control}
                 name="insuranceExpiryDate"
                 rules={{ required: 'Required' }}
                 render={({ field }) => (
                   <DatePickerDemo
-                    value={field.value} // Date | undefined
-                    onChange={field.onChange} // (d: Date) => void
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 )}
               />
-
               {errors.insuranceExpiryDate && (
-                <p className="text-red-500 text-xs mt-1">
+                <span className="text-red-500 text-xs mt-1">
                   {errors.insuranceExpiryDate.message}
-                </p>
+                </span>
               )}
             </div>
 
             {/* Mileage */}
-            <div className="flex flex-col">
+            <div className="flex flex-col sm:col-span-2">
               <Label htmlFor="mileage" className="mb-1">
                 Mileage
               </Label>
@@ -316,18 +316,14 @@ export function DialogDemo({
                 </span>
               )}
             </div>
+          </div>
 
-            {/* Save button */}
-            <div className="text-right">
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                onClick={() => console.log('Save button clicked')} // Debug log
-              >
-                {isSubmitting ? <Loader className="animate-spin mr-2" /> : null}
-                Save
-              </Button>
-            </div>
+          {/* Save button */}
+          <div className="text-right mt-6">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <Loader className="animate-spin mr-2" /> : null}
+              Save
+            </Button>
           </div>
         </form>
       </DialogContent>

@@ -19,8 +19,8 @@ export const createCar = async (data: {
   return response.data;
 };
 
-export const getCars = async () => {
-  const response = await api.get('/cars/org');
+export const getCars = async (page: number = 1, pageSize: number = 5) => {
+  const response = await api.get('/cars/org', { params: { page, pageSize } });
   return response.data;
 };
 

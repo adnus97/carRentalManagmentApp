@@ -7,6 +7,7 @@ import {
   Controller,
   Req,
   Put,
+  Query,
 } from '@nestjs/common';
 
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
@@ -19,13 +20,22 @@ export class CarsController {
   constructor(private readonly carsService: CarsService) {}
 
   @Get()
-  findAll() {
-    return this.carsService.findAll();
+  findAll(@Query('page') page: string, @Query('pageSize') pageSize: string) {
+    const pageNum = Math.max(1, parseInt(page || '1', 10));
+    const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
+    return this.carsService.findAll(pageNum, pageSizeNum);
   }
+
   @Get('/org')
-  findCarsByOrgId(@CurrentUser() user: CustomUser) {
+  findCarsByOrgId(
+    @CurrentUser() user: CustomUser,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    const pageNum = Math.max(1, parseInt(page || '1', 10));
+    const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
     const userId = user.id;
-    return this.carsService.findCarsByOrgId(userId);
+    return this.carsService.findCarsByOrgId(userId, pageNum, pageSizeNum);
   }
   @Get(':id')
   findOne(@Param('id') id: string) {

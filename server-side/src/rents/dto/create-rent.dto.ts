@@ -1,17 +1,14 @@
 import { Type } from 'class-transformer';
 import {
-  isEnum,
   IsString,
-  IsEmpty,
-  IsUrl,
-  Min,
   IsNotEmpty,
   IsDate,
   IsNumber,
-  Max,
   IsBoolean,
   IsOptional,
+  IsEnum,
 } from 'class-validator';
+
 export class CreateRentDto {
   @IsString()
   @IsNotEmpty()
@@ -22,7 +19,7 @@ export class CreateRentDto {
   customerId: string;
 
   @IsDate()
-  @Type(() => Date) // Ensure correct date transformation
+  @Type(() => Date)
   @IsNotEmpty()
   startDate: Date;
 
@@ -33,35 +30,48 @@ export class CreateRentDto {
 
   @IsBoolean()
   isOpenContract: boolean;
+
   @IsOptional()
   @IsDate()
   @Type(() => Date)
   returnedAt?: Date;
 
+  @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   totalPrice?: number;
 
   @IsNumber()
+  @Type(() => Number)
   deposit: number;
 
+  @IsOptional()
   @IsNumber()
-  totalPaid: number;
+  @Type(() => Number)
+  totalPaid?: number;
 
+  @IsOptional()
   @IsBoolean()
-  isFullyPaid: boolean;
+  isFullyPaid?: boolean;
 
+  @IsOptional()
   @IsNumber()
-  guarantee: number;
+  @Type(() => Number)
+  guarantee?: number;
 
+  @IsOptional()
   @IsNumber()
-  lateFee: number;
+  @Type(() => Number)
+  lateFee?: number;
 
-  @IsString()
+  @IsEnum(['active', 'completed', 'canceled'])
   status: 'active' | 'completed' | 'canceled';
 
+  @IsOptional()
   @IsString()
   damageReport?: string;
 
+  @IsOptional()
   @IsBoolean()
-  isDeleted: boolean = false; // Default to false
+  isDeleted?: boolean = false;
 }

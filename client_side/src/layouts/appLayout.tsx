@@ -10,34 +10,44 @@ import {
 } from '@/components/ui/breadcrumb';
 
 import { Separator } from '@/components/ui/separator';
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Outlet, useLocation } from '@tanstack/react-router';
 import { navigationConfig } from '@/config/navigation';
 
-// Define your navigation data (you can import this from your sidebar or create a shared constant)
 const navData = navigationConfig;
 
 export function AppLayout() {
   const location = useLocation();
+
+  // Get selected car name from query param (?car=...)
+  const search = location.search;
+  const params = new URLSearchParams(search);
+  const selectedCarName = params.get('car');
 
   // Find the current page title based on the pathname
   const getCurrentPageTitle = () => {
     const currentNav = navData.navMain.find(
       (nav) => nav.url === location.pathname,
     );
-    return currentNav?.title || 'Dashboard';
+    let title = currentNav?.title || 'Dashboard';
+
+    // If on rents page and car is selected, append car name
+    if (location.pathname === '/rents' && selectedCarName) {
+      title += ` - ${selectedCarName}`;
+    }
+    return title;
   };
 
   // Get breadcrumb items based on current path
   const getBreadcrumbItems = () => {
     const currentTitle = getCurrentPageTitle();
 
-    // For dashboard/home, show just the current page
-    if (location.pathname === '/dashboard' || location.pathname === '/') {
+    // For dashboard/home/rents, show just the current page
+    if (
+      location.pathname === '/dashboard' ||
+      location.pathname === '/' ||
+      location.pathname === '/rents'
+    ) {
       return [
         {
           title: currentTitle,
@@ -89,7 +99,8 @@ export function AppLayout() {
                   </div>
                 ))}
               </BreadcrumbList>
-              <DialogDemo />
+              {/* Only show Add car button on /_layout/dashboard */}
+              {location.pathname === '/dashboard' && <DialogDemo />}
             </Breadcrumb>
           </div>
         </header>

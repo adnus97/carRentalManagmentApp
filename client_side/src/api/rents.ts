@@ -112,3 +112,13 @@ export const updateRent = async (
 
   return response.data;
 };
+
+export const getAllRentsWithCarAndCustomer = async (
+  page: number = 1,
+  pageSize: number = 5,
+) => {
+  const response = await api.get('/rents/with-car-and-customer', {
+    params: { page, pageSize },
+  });
+  return response.data;
+};

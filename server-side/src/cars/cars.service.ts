@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { cars, DatabaseService, organization } from 'src/db';
-import { eq, ne, and } from 'drizzle-orm';
+import { eq, ne, and, sql } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 import { CreateCarDto } from './dto/create-car.dto';
 
@@ -8,17 +8,31 @@ import { CreateCarDto } from './dto/create-car.dto';
 export class CarsService {
   constructor(private readonly dbService: DatabaseService) {}
 
-  async findAll() {
-    const allCars = await this.dbService.db.select().from(cars);
-    console.log('All cars with status:', allCars);
+  async findAll(page = 1, pageSize = 20) {
+    const offset = (page - 1) * pageSize;
 
-    const filteredCars = await this.dbService.db
-      .select()
+    // Get total count for pagination
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
       .from(cars)
       .where(ne(cars.status, 'deleted'));
 
-    console.log('Filtered cars:', filteredCars);
-    return filteredCars;
+    // Get paginated cars
+    const data = await this.dbService.db
+      .select()
+      .from(cars)
+      .where(ne(cars.status, 'deleted'))
+      .orderBy(sql`${cars.createdAt} DESC`)
+      .offset(offset)
+      .limit(pageSize);
+
+    return {
+      data,
+      page,
+      pageSize,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / pageSize),
+    };
   }
 
   async findOne(id: string) {
@@ -44,19 +58,36 @@ export class CarsService {
       .values({ id, orgId, ...createCarDto });
   }
 
-  async findCarsByOrgId(userId: string) {
-    const result = await this.dbService.db
+  async findCarsByOrgId(userId: string, page = 1, pageSize = 20) {
+    const offset = (page - 1) * pageSize;
+
+    // Get total count for pagination
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(cars)
+      .leftJoin(organization, eq(cars.orgId, organization.id))
+      .where(and(eq(organization.userId, userId), ne(cars.status, 'deleted')));
+
+    // Get paginated cars
+    const rows = await this.dbService.db
       .select()
       .from(cars)
       .leftJoin(organization, eq(cars.orgId, organization.id))
-      .where(
-        and(
-          eq(organization.userId, userId),
-          ne(cars.status, 'deleted'), // Add this line to filter out deleted cars
-        ),
-      );
+      .where(and(eq(organization.userId, userId), ne(cars.status, 'deleted')))
+      .orderBy(sql`${cars.createdAt} DESC`)
+      .offset(offset)
+      .limit(pageSize);
 
-    return result.map((row) => row.cars);
+    // Map to car objects (if needed)
+    const data = rows.map((row) => row.cars);
+
+    return {
+      data,
+      page,
+      pageSize,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / pageSize),
+    };
   }
 
   async updateCar(id: string, updateData: Partial<CreateCarDto>) {
