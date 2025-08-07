@@ -232,15 +232,15 @@ h1 {
 
 /*---------------------------------------------*/
 
-.ag-row.bg-green {
-  background-color: #dcfce7 !important; /* Tailwind green-100 */
+.bg-green {
+  background-color: #dcfce7 !important;
 }
-.ag-row.bg-red {
-  background-color: #fee2e2 !important; /* Tailwind red-100 */
+.bg-red {
+  background-color: #fee2e2 !important;
 }
-.dark .ag-row.bg-green {
-  background-color: #166534 !important; /* Tailwind green-900 */
+.dark .bg-green {
+  background-color: #166534 !important;
 }
-.dark .ag-row.bg-red {
-  background-color: #7f1d1d !important; /* Tailwind red-900 */
+.dark .bg-red {
+  background-color: #7f1d1d !important;
 }

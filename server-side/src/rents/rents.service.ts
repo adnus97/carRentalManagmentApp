@@ -70,6 +70,7 @@ export class RentsService {
       .from(rents)
       .leftJoin(cars, eq(rents.carId, cars.id))
       .leftJoin(customers, eq(rents.customerId, customers.id))
+      .where(eq(rents.isDeleted, false))
       .orderBy(sql`${rents.startDate} DESC`)
       .offset(offset)
       .limit(pageSize);

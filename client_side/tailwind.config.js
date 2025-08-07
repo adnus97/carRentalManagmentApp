@@ -3,7 +3,7 @@ import { gray } from '@radix-ui/colors';
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ['class'],
-  content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}'],
+  content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}', './src/index.css'],
   theme: {
     extend: {
       borderRadius: {

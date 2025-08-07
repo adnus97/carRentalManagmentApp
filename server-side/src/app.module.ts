@@ -10,9 +10,11 @@ import { ImagekitModule } from './utils/imagekit/imagekit.module';
 import { CarsModule } from './cars/cars.module';
 import { CustomerModule } from './customer/customer.module';
 import { RentsModule } from './rents/rents.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     DatabaseModule,
     BetterAuthModule,
     AuthModule,

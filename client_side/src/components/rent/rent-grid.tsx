@@ -1,15 +1,19 @@
 'use client';
 
 import { AgGridReact } from 'ag-grid-react';
+
 import {
   ClientSideRowModelModule,
   ColDef,
   ModuleRegistry,
   NumberFilterModule,
+  RowClassRules,
   RowSelectionModule,
   RowSelectionOptions,
+  RowStyleModule,
   TextFilterModule,
 } from 'ag-grid-community';
+
 import { useMemo, useState } from 'react';
 import { Button } from '../ui/button';
 import { removeRent, getAllRentsWithCarAndCustomer } from '@/api/rents';
@@ -34,6 +38,7 @@ ModuleRegistry.registerModules([
   TextFilterModule,
   NumberFilterModule,
   ClientSideRowModelModule,
+  RowStyleModule,
 ]);
 
 type RentRow = {
@@ -63,6 +68,26 @@ export const RentsGrid = () => {
 
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
+  const rowClassRules = useMemo(
+    () => ({
+      'bg-green': (params: any) => {
+        const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+        const totalPaidNum = Number(totalPaid) || 0;
+        const totalPriceNum = Number(totalPrice) || 0;
+        return (
+          isFullyPaid === true ||
+          (isFullyPaid === false && totalPaidNum === totalPriceNum)
+        );
+      },
+      'bg-red': (params: any) => {
+        const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+        const totalPaidNum = Number(totalPaid) || 0;
+        const totalPriceNum = Number(totalPrice) || 0;
+        return isFullyPaid === false && totalPaidNum !== totalPriceNum;
+      },
+    }),
+    [],
+  );
   const queryClient = useQueryClient();
 
   // Pagination state
@@ -74,6 +99,7 @@ export const RentsGrid = () => {
     queryKey: ['rents', page, pageSize],
     queryFn: () => getAllRentsWithCarAndCustomer(page, pageSize),
     placeholderData: (previousData) => previousData,
+    refetchInterval: 180000, // Refetch every 3 minutes
   });
 
   const deleteMutation = useMutation({
@@ -331,25 +357,10 @@ export const RentsGrid = () => {
               rowSelection={rowSelection}
               pagination={false}
               domLayout="autoHeight"
+              rowClassRules={rowClassRules}
               onSelectionChanged={(event) =>
                 setSelectedRows(event.api.getSelectedRows())
               }
-              className="!bg-green-800"
-              getRowClass={(params) => {
-                // Debug: log the data
-                console.log('Row data:', params.data);
-
-                if (
-                  !params.data ||
-                  typeof params.data.isFullyPaid === 'undefined'
-                )
-                  return '';
-
-                if (params.data.isFullyPaid === true) return 'bg-green';
-                if (params.data.isFullyPaid === false) return 'bg-red';
-
-                return '';
-              }}
             />
           </div>
           {/* Pagination Widget */}
