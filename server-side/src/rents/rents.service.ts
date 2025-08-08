@@ -3,7 +3,7 @@ import { CreateRentDto } from './dto/create-rent.dto';
 import { UpdateRentDto } from './dto/update-rent.dto';
 import { createId } from '@paralleldrive/cuid2';
 import { cars, DatabaseService, organization } from 'src/db';
-import { eq, sql, and } from 'drizzle-orm';
+import { eq, sql, and, ne } from 'drizzle-orm';
 import { rents } from 'src/db/schema/rents';
 import { customers } from 'src/db/schema/customers';
 
@@ -13,12 +13,40 @@ function ensureDate(value: any): Date | undefined {
   const d = new Date(value);
   return isNaN(d.getTime()) ? undefined : d;
 }
+
 @Injectable()
 export class RentsService {
   constructor(private readonly dbService: DatabaseService) {}
 
+  /**
+   * Check if a car is available for a specific date range
+   */
+  private async isCarAvailableForRange(
+    carId: string,
+    startDate: Date,
+    endDate: Date,
+    excludeRentId?: string,
+  ): Promise<boolean> {
+    const overlappingRents = await this.dbService.db
+      .select()
+      .from(rents)
+      .where(
+        and(
+          eq(rents.carId, carId),
+          eq(rents.isDeleted, false),
+          eq(rents.status, 'active'),
+          excludeRentId ? ne(rents.id, excludeRentId) : sql`TRUE`,
+          // Overlap condition: existing.startDate <= newEnd AND existing.returnedAt >= newStart
+          sql`(${rents.startDate} <= ${endDate} AND ${rents.returnedAt} >= ${startDate})`,
+        ),
+      );
+
+    return overlappingRents.length === 0;
+  }
+
   async create(createRentDto: CreateRentDto, userId: string) {
     const id = createId();
+
     const currentUserOrgId = await this.dbService.db
       .select({ id: organization.id })
       .from(organization)
@@ -31,10 +59,24 @@ export class RentsService {
 
     const orgId = currentUserOrgId[0].id;
 
-    return await this.dbService.db
-      .insert(rents)
-      .values({ id, orgId, ...createRentDto });
+    // ✅ Check availability before inserting
+    const available = await this.isCarAvailableForRange(
+      createRentDto.carId,
+      createRentDto.startDate,
+      createRentDto.returnedAt,
+    );
+
+    if (!available) {
+      throw new Error('This car is already rented for the selected period.');
+    }
+
+    return await this.dbService.db.insert(rents).values({
+      id,
+      orgId,
+      ...createRentDto,
+    });
   }
+
   async getAllRentsWithCarAndCustomer(page = 1, pageSize = 20) {
     const offset = (page - 1) * pageSize;
 
@@ -74,7 +116,7 @@ export class RentsService {
       .orderBy(sql`${rents.startDate} DESC`)
       .offset(offset)
       .limit(pageSize);
-    console.log('Pagination:', { page, pageSize, offset });
+
     return {
       data,
       page,
@@ -133,6 +175,31 @@ export class RentsService {
           undefined &&
         delete updateRentDtoFixed[key as keyof typeof updateRentDtoFixed],
     );
+
+    // ✅ If dates are being updated, check for overlaps
+    if (updateRentDtoFixed.startDate && updateRentDtoFixed.returnedAt) {
+      // Get the carId for this rent
+      const rentRecord = await this.dbService.db
+        .select({ carId: rents.carId })
+        .from(rents)
+        .where(eq(rents.id, id));
+
+      if (rentRecord.length > 0) {
+        const available = await this.isCarAvailableForRange(
+          rentRecord[0].carId,
+          updateRentDtoFixed.startDate,
+          updateRentDtoFixed.returnedAt,
+          id, // exclude current rent from check
+        );
+
+        if (!available) {
+          throw new Error(
+            'This car is already rented for the selected period.',
+          );
+        }
+      }
+    }
+
     return await this.dbService.db
       .update(rents)
       .set(updateRentDtoFixed)

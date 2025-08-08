@@ -21,15 +21,17 @@ export class RentStatusCronService {
           and(
             isNotNull(rents.returnedAt),
             lte(rents.returnedAt, now),
-            ne(rents.status, 'completed'),
-            ne(rents.status, 'canceled'),
+            eq(rents.status, 'active'),
+            eq(rents.isDeleted, false),
           ),
         )
         .execute();
 
-      this.logger.log(
-        `Auto-completed ${result.rowCount} rent(s) at ${now.toISOString()}`,
-      );
+      if (result.rowCount > 0) {
+        this.logger.log(
+          `Auto-completed ${result.rowCount} rent(s) at ${now.toISOString()}`,
+        );
+      }
     } catch (err: any) {
       this.logger.error('Error auto-completing rents:', err.message);
       if (err.query) this.logger.error('SQL:', err.query);

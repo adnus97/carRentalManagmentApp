@@ -1,20 +1,17 @@
 'use client';
 
 import { AgGridReact } from 'ag-grid-react';
-
 import {
   ClientSideRowModelModule,
   ColDef,
   ModuleRegistry,
   NumberFilterModule,
-  RowClassRules,
   RowSelectionModule,
   RowSelectionOptions,
   RowStyleModule,
   TextFilterModule,
 } from 'ag-grid-community';
-
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { removeRent, getAllRentsWithCarAndCustomer } from '@/api/rents';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -57,7 +54,6 @@ type RentRow = {
   totalPrice: number;
   guarantee?: number;
   lateFee?: number;
-  // ...other fields as needed
 };
 
 export const RentsGrid = () => {
@@ -65,42 +61,31 @@ export const RentsGrid = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedRentForEdit, setSelectedRentForEdit] =
     useState<null | RentRow>(null);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
-  const rowClassRules = useMemo(
-    () => ({
-      'bg-green': (params: any) => {
-        const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
-        const totalPaidNum = Number(totalPaid) || 0;
-        const totalPriceNum = Number(totalPrice) || 0;
-        return (
-          isFullyPaid === true ||
-          (isFullyPaid === false && totalPaidNum === totalPriceNum)
-        );
-      },
-      'bg-red': (params: any) => {
-        const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
-        const totalPaidNum = Number(totalPaid) || 0;
-        const totalPriceNum = Number(totalPrice) || 0;
-        return isFullyPaid === false && totalPaidNum !== totalPriceNum;
-      },
-    }),
-    [],
-  );
+
   const queryClient = useQueryClient();
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(8);
+  const [pageSize] = useState(10);
 
-  // Fetch paginated rents with React Query and keepPreviousData for smooth transitions
+  // Fetch paginated rents
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['rents', page, pageSize],
     queryFn: () => getAllRentsWithCarAndCustomer(page, pageSize),
     placeholderData: (previousData) => previousData,
-    refetchInterval: 180000, // Refetch every 3 minutes
+    refetchInterval: 60000, // match cron
   });
+
+  useEffect(() => {
+    if (!isFetching) setLastUpdated(new Date());
+  }, [isFetching]);
+
+  // DELETE LOGIC
+  const [selectedRows, setSelectedRows] = useState<any[]>([]);
 
   const deleteMutation = useMutation({
     mutationFn: removeRent,
@@ -112,8 +97,7 @@ export const RentsGrid = () => {
         description: 'Rent contract has been deleted successfully.',
       });
     },
-    onError: (error) => {
-      console.error('Error:', error);
+    onError: () => {
       toast({
         type: 'error',
         title: 'Error',
@@ -122,16 +106,6 @@ export const RentsGrid = () => {
     },
   });
 
-  const rowSelection = useMemo<
-    RowSelectionOptions | 'single' | 'multiple'
-  >(() => {
-    return {
-      mode: 'multiRow',
-    };
-  }, []);
-
-  const [selectedRows, setSelectedRows] = useState<any[]>([]);
-
   const handleDelete = () => {
     selectedRows.forEach((row) => {
       deleteMutation.mutate(row.id);
@@ -139,9 +113,14 @@ export const RentsGrid = () => {
     setSelectedRows([]);
   };
 
-  const currencyFormatter = (params: any) => {
-    return params.value ? `${params.value.toLocaleString()} DHS` : '';
-  };
+  const rowSelection = useMemo<
+    RowSelectionOptions | 'single' | 'multiple'
+  >(() => {
+    return { mode: 'multiRow' };
+  }, []);
+
+  const currencyFormatter = (params: any) =>
+    params.value ? `${params.value.toLocaleString()} DHS` : '';
 
   const formatDateToDDMMYYYY = (params: any) => {
     if (!params.value) return '';
@@ -154,18 +133,68 @@ export const RentsGrid = () => {
   };
 
   const statusFormatter = (params: any) => {
-    const status = params.value;
-    const statusColors = {
-      active: 'text-green-500',
-      completed: 'text-blue-500',
-      canceled: 'text-red-500',
+    const { status, returnedAt } = params.data;
+    const now = new Date();
+    const isOverdue =
+      status === 'active' && returnedAt && new Date(returnedAt) < now;
+
+    if (isOverdue) {
+      return (
+        <span className="bg-yellow-200 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300 px-2 py-1 rounded">
+          Overdue
+        </span>
+      );
+    }
+
+    const statusMap: Record<string, { label: string; className: string }> = {
+      active: {
+        label: 'Active',
+        className:
+          'bg-green-200 dark:bg-green-900 text-green-800 dark:text-green-300 px-2 py-1 rounded',
+      },
+      completed: {
+        label: 'Completed',
+        className:
+          'bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-300 px-2 py-1 rounded',
+      },
+      canceled: {
+        label: 'Canceled',
+        className:
+          'bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-300 px-2 py-1 rounded',
+      },
     };
-    return (
-      <span className={statusColors[status as keyof typeof statusColors] || ''}>
-        {status?.charAt(0).toUpperCase() + status?.slice(1)}
-      </span>
-    );
+
+    const s = statusMap[status] || { label: status, className: '' };
+    return <span className={s.className}>{s.label}</span>;
   };
+
+  // Row coloring rules
+  const rowClassRules = useMemo(
+    () => ({
+      'green-row': (params: any) => {
+        const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+        const totalPaidNum = Number(totalPaid) || 0;
+        const totalPriceNum = Number(totalPrice) || 0;
+        return (
+          isFullyPaid === true ||
+          (isFullyPaid === false && totalPaidNum === totalPriceNum)
+        );
+      },
+      'red-row': (params: any) => {
+        const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+        const totalPaidNum = Number(totalPaid) || 0;
+        const totalPriceNum = Number(totalPrice) || 0;
+        return isFullyPaid === false && totalPaidNum !== totalPriceNum;
+      },
+      'yellow-row': (params: any) => {
+        const { status, returnedAt } = params.data || {};
+        return (
+          status === 'active' && returnedAt && new Date(returnedAt) < new Date()
+        );
+      },
+    }),
+    [],
+  );
 
   const colDefs: ColDef[] = [
     {
@@ -196,7 +225,8 @@ export const RentsGrid = () => {
       width: 150,
       sortable: true,
       filter: 'agDateColumnFilter',
-      valueFormatter: formatDateToDDMMYYYY,
+      valueFormatter: (params) =>
+        params.data?.isOpenContract ? 'Open' : formatDateToDDMMYYYY(params),
     },
     {
       field: 'returnedAt',
@@ -204,49 +234,51 @@ export const RentsGrid = () => {
       width: 130,
       sortable: true,
       filter: 'agDateColumnFilter',
-      valueFormatter: formatDateToDDMMYYYY,
+      valueFormatter: (params) =>
+        params.data?.isOpenContract ? 'Open' : formatDateToDDMMYYYY(params),
     },
     {
       field: 'totalPrice',
       headerName: 'Total Price',
-      width: 120,
+      width: 130,
       cellStyle: { textAlign: 'right' },
       valueFormatter: currencyFormatter,
       filter: 'agNumberColumnFilter',
       sortable: true,
     },
     {
-      field: 'deposit',
-      headerName: 'Deposit',
-      width: 100,
-      cellStyle: { textAlign: 'right' },
-      valueFormatter: currencyFormatter,
-      filter: 'agNumberColumnFilter',
-    },
-    {
-      field: 'guarantee',
-      headerName: 'Guarantee',
-      width: 110,
-      cellStyle: { textAlign: 'right' },
-      valueFormatter: currencyFormatter,
-      filter: 'agNumberColumnFilter',
-    },
-    {
-      field: 'lateFee',
-      headerName: 'Late Fee',
-      width: 100,
-      cellStyle: { textAlign: 'right' },
-      valueFormatter: currencyFormatter,
-      filter: 'agNumberColumnFilter',
+      headerName: 'Payment Progress',
+      width: 200,
+      cellRenderer: (params: {
+        data: { totalPaid: number; totalPrice: number };
+      }) => {
+        const paid = params.data.totalPaid || 0;
+        const total = params.data.totalPrice || 0;
+        const percent = total > 0 ? Math.round((paid / total) * 100) : 0;
+        const displayPercent = percent > 100 ? 100 : percent;
+
+        return (
+          <div className="flex flex-col items-center justify-center w-full h-full">
+            <div className="w-4/5 bg-gray-200 dark:bg-gray-700 rounded h-3 mb-1">
+              <div
+                className="bg-green-500 h-3 rounded"
+                style={{ width: `${displayPercent}%` }}
+              ></div>
+            </div>
+            <span className="text-xs">
+              {percent}% — Paid: {paid.toLocaleString()} /{' '}
+              {total.toLocaleString()} DHS
+            </span>
+          </div>
+        );
+      },
     },
     {
       field: 'status',
       headerName: 'Status',
-      width: 100,
+      width: 110,
       filter: 'agSetColumnFilter',
-      filterParams: {
-        values: ['active', 'completed', 'canceled'],
-      },
+      filterParams: { values: ['active', 'completed', 'canceled'] },
       cellRenderer: statusFormatter,
     },
     {
@@ -254,55 +286,38 @@ export const RentsGrid = () => {
       headerName: 'Open Contract',
       width: 130,
       filter: 'agSetColumnFilter',
-      filterParams: {
-        values: ['Yes', 'No'],
-      },
+      filterParams: { values: ['Yes', 'No'] },
       valueFormatter: (params: any) => (params.value ? 'Yes' : 'No'),
     },
     {
       headerName: 'Actions',
-      field: 'actions',
       width: 200,
       cellRenderer: (params: any) => (
         <div className="flex gap-2 items-center h-full">
           <Button
             variant="ghost"
-            className="flex items-center gap-2 hover:bg-gray-4"
+            disabled={['completed', 'canceled'].includes(params.data.status)}
+            title={
+              ['completed', 'canceled'].includes(params.data.status)
+                ? 'Cannot edit completed or canceled contracts'
+                : 'Edit rent'
+            }
             onClick={() => {
-              setSelectedRentForEdit({
-                id: params.data.id,
-                carModel: params.data.carModel,
-                customerName: params.data.customerName,
-                startDate: params.data.startDate,
-                expectedEndDate: params.data.expectedEndDate,
-                returnedAt: params.data.returnedAt,
-                pricePerDay: params.data.pricePerDay,
-                status: params.data.status,
-                totalPaid: params.data.totalPaid,
-                isFullyPaid: params.data.isFullyPaid,
-                totalPrice: params.data.totalPrice,
-                isOpenContract: params.data.isOpenContract,
-                deposit: params.data.deposit,
-                guarantee: params.data.guarantee,
-                lateFee: params.data.lateFee,
-              });
+              setSelectedRentForEdit(params.data);
               setEditDialogOpen(true);
             }}
           >
-            <PencilSimple size={16} />
-            Edit
+            <PencilSimple size={16} /> Edit
           </Button>
           {params.data.status === 'active' && (
             <Button
               variant="outline"
               className="flex items-center gap-2 text-red-600 hover:bg-red-50"
               onClick={() => {
-                // Handle end contract logic
                 console.log('End contract:', params.data.id);
               }}
             >
-              <X size={16} />
-              End
+              <X size={16} /> End
             </Button>
           )}
         </div>
@@ -310,10 +325,7 @@ export const RentsGrid = () => {
     },
   ];
 
-  // Pagination controls
   const totalPages = data?.totalPages || 1;
-
-  // For page number rendering
   const getPageNumbers = () => {
     if (!totalPages) return [];
     const pages: number[] = [];
@@ -330,28 +342,55 @@ export const RentsGrid = () => {
       className="ag-theme-alpine-dark p-4 rounded-lg shadow-lg"
       style={containerStyle}
     >
-      <h2 className="text-xl text-var(--gray-12) mb-4 font-bold">
-        Rent Contracts Dashboard
-      </h2>
-      <div className="flex justify-between mb-4">
-        <p className="text-var(--gray-9)">Manage your rent contracts below:</p>
-        {selectedRows.length > 0 && (
-          <Button
-            variant="secondary"
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash size={20} /> Delete ({selectedRows.length})
-          </Button>
-        )}
+      <h2 className="text-xl mb-1 font-bold">Rent Contracts Dashboard</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Last updated: {lastUpdated.toLocaleTimeString()}
+      </p>
+
+      <div className="flex justify-between mb-4 items-center">
+        <p>Manage your rent contracts below:</p>
+        <div className="flex gap-4 text-xs items-center">
+          <div className="flex items-center gap-1">
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: '#22c55e' }}
+            ></span>
+            Fully Paid
+          </div>
+          <div className="flex items-center gap-1">
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: '#ef4444' }}
+            ></span>
+            Not Fully Paid
+          </div>
+          <div className="flex items-center gap-1">
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: '#eab308' }}
+            ></span>
+            Overdue
+          </div>
+        </div>
       </div>
+
+      {selectedRows.length > 0 && (
+        <Button
+          variant="secondary"
+          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white mb-2"
+          onClick={() => setShowDeleteDialog(true)}
+        >
+          <Trash size={20} /> Delete ({selectedRows.length})
+        </Button>
+      )}
+
       {isLoading || isFetching ? (
-        <p className="text-white text-center">Loading rent contracts...</p>
+        <p className="text-center">Loading rent contracts...</p>
       ) : (
         <>
           <div style={gridStyle}>
             <AgGridReact
-              rowHeight={50}
+              rowHeight={60}
               rowData={data?.data || []}
               columnDefs={colDefs}
               rowSelection={rowSelection}
@@ -363,7 +402,8 @@ export const RentsGrid = () => {
               }
             />
           </div>
-          {/* Pagination Widget */}
+
+          {/* Pagination */}
           <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
@@ -419,7 +459,6 @@ export const RentsGrid = () => {
         variant="destructive"
       />
 
-      {/* Edit Rent Form Dialog */}
       {selectedRentForEdit && (
         <EditRentFormDialog
           open={editDialogOpen}

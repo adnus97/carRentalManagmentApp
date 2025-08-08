@@ -1,3 +1,5 @@
+'use client';
+
 import { AgGridReact } from 'ag-grid-react';
 import {
   ClientSideRowModelModule,
@@ -7,10 +9,11 @@ import {
   RowSelectionModule,
   RowSelectionOptions,
   TextFilterModule,
+  CellStyleModule,
 } from 'ag-grid-community';
 import { useMemo, useState } from 'react';
 import { Button } from '../ui/button';
-import { deleteCar, getCars } from '@/api/cars';
+import { deleteCar, getCars, Car } from '@/api/cars';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Hammer, ShoppingCart, Trash } from '@phosphor-icons/react';
 import { ConfirmationDialog } from '../confirmation-dialog';
@@ -32,10 +35,11 @@ ModuleRegistry.registerModules([
   TextFilterModule,
   NumberFilterModule,
   ClientSideRowModelModule,
+  CellStyleModule,
 ]);
 
 export const CarsGrid = () => {
-  const [showSignOutDialog, setShowSignOutDialog] = React.useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [rentDialogOpen, setRentDialogOpen] = useState(false);
   const [selectedCarForRent, setSelectedCarForRent] = useState<null | {
     pricePerDay: number;
@@ -49,7 +53,7 @@ export const CarsGrid = () => {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize] = useState(10);
 
   // Fetch paginated cars
   const { data, isLoading, isFetching } = useQuery({
@@ -66,15 +70,9 @@ export const CarsGrid = () => {
         type: 'success',
         title: 'Success!',
         description: 'Car has been deleted successfully.',
-        button: {
-          label: 'Undo',
-          onClick: () => {
-            // Add your undo logic here
-          },
-        },
       });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         type: 'error',
         title: 'Error',
@@ -86,10 +84,9 @@ export const CarsGrid = () => {
   const rowSelection = useMemo<
     RowSelectionOptions | 'single' | 'multiple'
   >(() => {
-    return {
-      mode: 'multiRow',
-    };
+    return { mode: 'multiRow' };
   }, []);
+
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
 
   const handleDelete = () => {
@@ -99,9 +96,8 @@ export const CarsGrid = () => {
     setSelectedRows([]);
   };
 
-  const currencyFormatter = (params: any) => {
-    return params.value ? `${params.value.toLocaleString()} DHS` : '';
-  };
+  const currencyFormatter = (params: any) =>
+    params.value ? `${params.value.toLocaleString()} DHS` : '';
 
   const formatDateToDDMMYYYY = (params: any) => {
     if (!params.value) return '';
@@ -113,8 +109,7 @@ export const CarsGrid = () => {
     });
   };
 
-  const colDefs: ColDef[] = [
-    // ... your column definitions ...
+  const colDefs: ColDef<Car>[] = [
     {
       field: 'make',
       headerName: 'Make',
@@ -159,16 +154,43 @@ export const CarsGrid = () => {
       cellStyle: { textAlign: 'right' },
       valueFormatter: currencyFormatter,
     },
+
+    // Availability column with colored dot + text
     {
       headerName: 'Availability',
       field: 'isAvailable',
       width: 150,
       filter: 'agSetColumnFilter',
-      filterParams: {
-        values: ['Available', 'Not Available'],
+      filterParams: { values: ['Available', 'Not Available'] },
+      cellRenderer: (params: { value: boolean }) => {
+        const available = params.value === true;
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: available ? '#22c55e' : '#ef4444' }}
+            ></span>
+            <span>{available ? 'Available' : 'Not Available'}</span>
+          </div>
+        );
       },
-      cellStyle: { textAlign: 'right' },
     },
+
+    // Next available date
+    {
+      headerName: 'Next Available',
+      field: 'nextAvailableDate',
+      width: 160,
+      valueFormatter: (params) =>
+        params.value
+          ? new Date(params.value).toLocaleDateString('en-GB')
+          : 'Available now',
+      tooltipValueGetter: (params) =>
+        params.value
+          ? `Available from ${new Date(params.value).toLocaleDateString('en-GB')}`
+          : 'Available now',
+    },
+
     {
       headerName: 'Insurance Expiry',
       field: 'insuranceExpiryDate',
@@ -178,12 +200,13 @@ export const CarsGrid = () => {
       cellStyle: { textAlign: 'right' },
       valueFormatter: formatDateToDDMMYYYY,
     },
+
+    // Actions column
     {
       headerName: 'Actions',
-      field: 'actions',
       width: 300,
       cellRenderer: (params: any) => (
-        <div className="flex gap-2  items-center h-full">
+        <div className="flex gap-2 items-center h-full">
           <Button
             variant="ghost"
             className="flex items-center gap-2 hover:bg-gray-4"
@@ -195,6 +218,18 @@ export const CarsGrid = () => {
               });
               setRentDialogOpen(true);
             }}
+            disabled={!params.data.isAvailable}
+            title={
+              params.data.isAvailable
+                ? 'Rent this car'
+                : `This car is rented until ${
+                    params.data.nextAvailableDate
+                      ? new Date(
+                          params.data.nextAvailableDate,
+                        ).toLocaleDateString('en-GB')
+                      : 'unknown'
+                  }`
+            }
           >
             <ShoppingCart size={40} />
             Rent
@@ -229,21 +264,38 @@ export const CarsGrid = () => {
       className="ag-theme-alpine-dark p-4 rounded-lg shadow-lg"
       style={containerStyle}
     >
-      <h2 className="text-xl text-var(--gray-12) mb-4 font-bold">
-        Your Cars Dashboard
-      </h2>
-      <div className="flex justify-between mb-4">
-        <p className="text-var(--gray-9)">Manage your available cars below:</p>
-        {selectedRows.length > 0 && (
-          <Button
-            variant="secondary"
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-            onClick={() => setShowSignOutDialog(true)}
-          >
-            <Trash size={20} /> Delete ({selectedRows.length})
-          </Button>
-        )}
+      <h2 className="text-xl mb-4 font-bold">Your Cars Dashboard</h2>
+
+      <div className="flex justify-between mb-4 items-center">
+        <p>Manage your available cars below:</p>
+        <div className="flex gap-4 text-xs items-center">
+          <div className="flex items-center gap-1">
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: '#22c55e' }}
+            ></span>
+            Available
+          </div>
+          <div className="flex items-center gap-1">
+            <span
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: '#ef4444' }}
+            ></span>
+            Not Available
+          </div>
+        </div>
       </div>
+
+      {selectedRows.length > 0 && (
+        <Button
+          variant="secondary"
+          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white mb-2"
+          onClick={() => setShowDeleteDialog(true)}
+        >
+          <Trash size={20} /> Delete ({selectedRows.length})
+        </Button>
+      )}
+
       {isLoading || isFetching ? (
         <p className="text-white text-center">Loading cars...</p>
       ) : (
@@ -261,6 +313,7 @@ export const CarsGrid = () => {
               }
             />
           </div>
+
           {/* Pagination Widget */}
           <Pagination className="mt-4">
             <PaginationContent>
@@ -304,9 +357,10 @@ export const CarsGrid = () => {
           </Pagination>
         </>
       )}
+
       <ConfirmationDialog
-        open={showSignOutDialog}
-        onOpenChange={setShowSignOutDialog}
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
         onConfirm={handleDelete}
         title="Confirmation"
         description="Are you sure you want to delete the car?"
@@ -315,6 +369,7 @@ export const CarsGrid = () => {
         loadingText="Deleting..."
         variant="destructive"
       />
+
       {/* Rent Form Dialog */}
       {selectedCarForRent && (
         <RentFormDialog

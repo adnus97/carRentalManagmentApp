@@ -244,3 +244,40 @@ h1 {
 .dark .bg-red {
   background-color: #7f1d1d !important;
 }
+
+.green-row {
+  border-left: 5px solid #22c55e !important;
+  background-color: rgba(34, 197, 94, 0.05) !important; /* lighter tint */
+}
+.dark .green-row {
+  background-color: rgba(
+    34,
+    197,
+    94,
+    0.12
+  ) !important; /* lighter in dark mode */
+}
+
+.green-row {
+  border-left: 5px solid #22c55e !important;
+  background-color: rgba(34, 197, 94, 0.05) !important;
+}
+.dark .green-row {
+  background-color: rgba(34, 197, 94, 0.12) !important;
+}
+
+.red-row {
+  border-left: 5px solid #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.05) !important;
+}
+.dark .red-row {
+  background-color: rgba(239, 68, 68, 0.12) !important;
+}
+
+.yellow-row {
+  border-left: 5px solid #eab308 !important;
+  background-color: rgba(234, 179, 8, 0.05) !important;
+}
+.dark .yellow-row {
+  background-color: rgba(234, 179, 8, 0.12) !important;
+}
