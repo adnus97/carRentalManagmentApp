@@ -8,41 +8,36 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-
 import { Separator } from '@/components/ui/separator';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Outlet, useLocation } from '@tanstack/react-router';
 import { navigationConfig } from '@/config/navigation';
+import { ModeToggle } from '@/components/mode-toggle';
 
 const navData = navigationConfig;
 
 export function AppLayout() {
   const location = useLocation();
 
-  // Get selected car name from query param (?car=...)
   const search = location.search;
   const params = new URLSearchParams(search);
   const selectedCarName = params.get('car');
 
-  // Find the current page title based on the pathname
   const getCurrentPageTitle = () => {
     const currentNav = navData.navMain.find(
       (nav) => nav.url === location.pathname,
     );
     let title = currentNav?.title || 'Dashboard';
 
-    // If on rents page and car is selected, append car name
     if (location.pathname === '/rents' && selectedCarName) {
       title += ` - ${selectedCarName}`;
     }
     return title;
   };
 
-  // Get breadcrumb items based on current path
   const getBreadcrumbItems = () => {
     const currentTitle = getCurrentPageTitle();
 
-    // For dashboard/home/rents, show just the current page
     if (
       location.pathname === '/dashboard' ||
       location.pathname === '/' ||
@@ -56,7 +51,6 @@ export function AppLayout() {
       ];
     }
 
-    // For other pages, show Dashboard -> Current Page
     return [
       {
         title: 'Dashboard',
@@ -76,7 +70,7 @@ export function AppLayout() {
     <SidebarProvider>
       <AppSidebar />
       <div className="w-full">
-        <header className="flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4">
+        <header className="flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4 z-50">
           <SidebarTrigger />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="w-full">
@@ -99,12 +93,16 @@ export function AppLayout() {
                   </div>
                 ))}
               </BreadcrumbList>
-              {/* Only show Add car button on /_layout/dashboard */}
               {location.pathname === '/dashboard' && <DialogDemo />}
+              <ModeToggle />
             </Breadcrumb>
           </div>
         </header>
-        <Outlet />
+
+        {/* Responsive padding: pt-32 on small/medium, pt-4 on large+ */}
+        <main>
+          <Outlet />
+        </main>
       </div>
     </SidebarProvider>
   );

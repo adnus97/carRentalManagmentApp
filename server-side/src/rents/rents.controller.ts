@@ -19,6 +19,7 @@ function ensureDate(val: any) {
   if (val && typeof val === 'string') return new Date(val);
   return val;
 }
+
 @Auth()
 @Controller('rents')
 export class RentsController {
@@ -37,6 +38,7 @@ export class RentsController {
   findAll() {
     return this.rentsService.findAll({});
   }
+
   @Get('/with-car-and-customer')
   async getAllRentsWithCarAndCustomer(
     @Query('page') page: string,

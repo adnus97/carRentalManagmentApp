@@ -9,7 +9,6 @@ import {
 import { organization } from './organization';
 import { cars } from './cars';
 import { customers } from './customers';
-import { is } from 'drizzle-orm';
 
 export const rents = pgTable('rents', {
   id: varchar('id', { length: 255 }).primaryKey().notNull(),
@@ -33,8 +32,8 @@ export const rents = pgTable('rents', {
   totalPaid: integer('total_paid').default(0).notNull(),
   isFullyPaid: boolean('is_fully_paid').default(false).notNull(),
   status: text('status', {
-    enum: ['active', 'completed', 'canceled'],
-  }).default('active'),
+    enum: ['reserved', 'active', 'completed', 'canceled'],
+  }).default('reserved'),
   damageReport: text('damage_report').default(''),
   isDeleted: boolean('is_deleted').default(false).notNull(),
 });

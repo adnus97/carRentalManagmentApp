@@ -11,7 +11,7 @@ import {
   TextFilterModule,
   CellStyleModule,
 } from 'ag-grid-community';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { deleteCar, getCars, Car } from '@/api/cars';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -51,15 +51,29 @@ export const CarsGrid = () => {
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
   const queryClient = useQueryClient();
 
-  // Pagination state
+  // Responsive pagination state
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1700 ? 7 : 12;
+    }
+    return 10;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setPageSize(window.innerWidth < 1700 ? 7 : 12);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch paginated cars
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['cars', page, pageSize],
+    queryKey: ['cars', page, pageSize], // include pageSize so it refetches when it changes
     queryFn: () => getCars(page, pageSize),
     placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: false,
   });
 
   const mutation = useMutation({

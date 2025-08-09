@@ -27,25 +27,46 @@ import {
 } from '@/components/ui/select';
 import { getCustomers } from '@/api/customers';
 import { Separator } from '../ui/separator';
+import { RentStatus } from '@/types/rent-status.type';
 
 const rentSchema = z
   .object({
-    carId: z.string().nonempty('Car is required'),
-    customerId: z.string().nonempty('Customer is required'),
+    carId: z.string().min(1, 'Car is required'),
+    customerId: z.string().min(1, 'Customer is required'),
     startDate: z.date({ required_error: 'Start date is required' }),
     expectedEndDate: z.coerce.date().nullable().optional(),
     returnedAt: z.coerce.date().nullable().optional(),
-    isOpenContract: z.boolean(),
-    totalPrice: z.number().int().min(0).optional().nullable(),
+    isOpenContract: z.boolean().default(false),
+    totalPrice: z
+      .number({ invalid_type_error: 'Total price must be a number' })
+      .min(0, 'Total price cannot be negative')
+      .optional()
+      .nullable(),
     deposit: z
-      .number({ invalid_type_error: 'Deposit is required' })
-      .int('Deposit must be a number')
-      .min(1, 'Deposit is required'),
-    guarantee: z.number().int().min(0).default(0),
-    totalPaid: z.number().int().min(0).default(0),
+      .number({ invalid_type_error: 'Deposit must be a number' })
+      .min(0, 'Deposit cannot be negative')
+      .default(0),
+    guarantee: z
+      .number({ invalid_type_error: 'Guarantee must be a number' })
+      .min(0, 'Guarantee cannot be negative')
+      .default(0),
+    totalPaid: z
+      .number({ invalid_type_error: 'Total paid must be a number' })
+      .min(0, 'Total paid cannot be negative')
+      .default(0),
     isFullyPaid: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
+    // Validate that either expectedEndDate or isOpenContract is set
+    if (!data.isOpenContract && !data.expectedEndDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Expected end date is required for fixed contracts',
+        path: ['expectedEndDate'],
+      });
+    }
+
+    // Validate end date is after start date
     if (
       data.expectedEndDate &&
       data.startDate &&
@@ -57,7 +78,54 @@ const rentSchema = z
         path: ['expectedEndDate'],
       });
     }
+
+    // Validate start date is not too far in the past (1 year)
+    if (data.startDate) {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+      if (data.startDate < oneYearAgo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Start date cannot be more than one year in the past',
+          path: ['startDate'],
+        });
+      }
+    }
+
+    // Only validate total paid vs total price for fixed contracts
+    if (
+      !data.isOpenContract &&
+      data.totalPrice !== undefined &&
+      data.totalPrice !== null &&
+      data.totalPaid !== undefined &&
+      data.totalPaid !== null &&
+      data.totalPaid > data.totalPrice
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Total paid cannot exceed total price for fixed contracts',
+        path: ['totalPaid'],
+      });
+    }
+
+    // Only validate fully paid logic for fixed contracts
+    if (
+      !data.isOpenContract &&
+      data.isFullyPaid &&
+      data.totalPrice !== undefined &&
+      data.totalPrice !== null &&
+      data.totalPaid !== data.totalPrice
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Total paid must equal total price when marked as fully paid (fixed contracts only)',
+        path: ['isFullyPaid'],
+      });
+    }
   });
+
 type RentFormFields = z.infer<typeof rentSchema>;
 
 type RentFormDialogProps = {
@@ -94,11 +162,16 @@ export function RentFormDialog({
         description: 'Rent contract created successfully.',
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to create rent contract.';
+
       toast({
         type: 'error',
         title: 'Error',
-        description: 'Failed to create rent contract.',
+        description: errorMessage,
       });
     },
   });
@@ -111,6 +184,7 @@ export function RentFormDialog({
     reset,
     watch,
     setValue,
+    trigger,
   } = useForm<RentFormFields>({
     resolver: zodResolver(rentSchema),
     defaultValues: {
@@ -138,16 +212,21 @@ export function RentFormDialog({
   const startDate = watch('startDate');
   const expectedEndDate = watch('expectedEndDate');
   const deposit = watch('deposit');
+  const totalPrice = watch('totalPrice');
   const totalPaid = watch('totalPaid');
   const isFullyPaid = watch('isFullyPaid');
 
+  // Handle open contract toggle
   useEffect(() => {
     if (isOpenContract) {
       setValue('totalPrice', 0);
       setValue('expectedEndDate', null);
+      setValue('returnedAt', null);
     }
-  }, [isOpenContract, setValue]);
+    trigger(['expectedEndDate', 'totalPrice']);
+  }, [isOpenContract, setValue, trigger]);
 
+  // Calculate total price based on dates and price per day
   useEffect(() => {
     if (
       !isOpenContract &&
@@ -163,11 +242,12 @@ export function RentFormDialog({
         Math.ceil((expectedEndDate.getTime() - startDate.getTime()) / msPerDay),
       );
       setValue('totalPrice', days * pricePerDay);
-    } else {
+    } else if (!isOpenContract) {
       setValue('totalPrice', 0);
     }
   }, [startDate, expectedEndDate, pricePerDay, isOpenContract, setValue]);
 
+  // Set returned date same as expected end date for fixed contracts
   useEffect(() => {
     if (!isOpenContract && expectedEndDate) {
       setValue('returnedAt', expectedEndDate);
@@ -177,35 +257,73 @@ export function RentFormDialog({
     }
   }, [isOpenContract, expectedEndDate, setValue]);
 
+  // Handle fully paid checkbox
   useEffect(() => {
-    setValue('totalPaid', deposit || 0);
-  }, [deposit, setValue]);
+    if (
+      isFullyPaid &&
+      !isOpenContract &&
+      totalPrice !== undefined &&
+      totalPrice !== null
+    ) {
+      // For fixed contracts, set total paid to total price
+      setValue('totalPaid', totalPrice);
+    } else if (isFullyPaid && isOpenContract) {
+      // For open contracts, don't automatically set total paid
+      // User can manually enter any amount
+    } else if (!isFullyPaid) {
+      // If not fully paid, set to deposit amount
+      setValue('totalPaid', deposit || 0);
+    }
+    trigger(['totalPaid', 'isFullyPaid']);
+  }, [isFullyPaid, totalPrice, deposit, isOpenContract, setValue, trigger]);
+
+  // Update total paid when deposit changes (if not fully paid)
+  useEffect(() => {
+    if (!isFullyPaid) {
+      setValue('totalPaid', deposit || 0);
+    }
+  }, [deposit, isFullyPaid, setValue]);
 
   const onSubmit = (data: RentFormFields) => {
+    if (!data.carId) {
+      toast({
+        type: 'error',
+        title: 'Validation Error',
+        description: 'Please select a car.',
+      });
+      return;
+    }
+
+    if (!data.customerId) {
+      toast({
+        type: 'error',
+        title: 'Validation Error',
+        description: 'Please select a customer.',
+      });
+      return;
+    }
+
     mutation.mutate({
       carId: data.carId,
-      userId: data.customerId,
-      startDate: data.startDate,
-      expectedEndDate: data.expectedEndDate ? data.expectedEndDate : undefined,
-      returnedAt: data.returnedAt ? data.returnedAt : undefined,
       customerId: data.customerId,
+      startDate: data.startDate,
+      expectedEndDate: data.expectedEndDate || undefined,
+      returnedAt: data.returnedAt || undefined,
       totalPrice: data.totalPrice ?? 0,
       deposit: data.deposit ?? 0,
       guarantee: data.guarantee ?? 0,
       isOpenContract: data.isOpenContract,
       totalPaid: data.totalPaid ?? 0,
-      isFullyPaid: data.isFullyPaid ?? false,
-      status: 'active',
+      isFullyPaid: data.isFullyPaid,
+      status: 'reserved' as RentStatus,
       lateFee: 0,
       damageReport: '',
-      isDeleted: false,
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-full sm:max-w-[500px] ">
-        {/* Hide title and description on small screens */}
+      <DialogContent className="w-full max-w-full sm:max-w-[500px]">
         <DialogTitle className="hidden sm:block">
           Create Rent Contract
         </DialogTitle>
@@ -214,12 +332,13 @@ export function RentFormDialog({
           vehicle.
         </DialogDescription>
         <Separator className="my-2 hidden sm:block" />
+
         <form
           onSubmit={handleSubmit(onSubmit)}
           className="flex flex-col gap-3 w-full"
           noValidate
         >
-          {/* Car Model and Customer side by side */}
+          {/* Car Model and Customer */}
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1">
               <Label>Car Model</Label>
@@ -230,7 +349,7 @@ export function RentFormDialog({
               />
             </div>
             <div className="flex-1">
-              <Label htmlFor="customerId">Customer</Label>
+              <Label htmlFor="customerId">Customer *</Label>
               <Controller
                 control={control}
                 name="customerId"
@@ -241,7 +360,9 @@ export function RentFormDialog({
                       value={field.value || ''}
                       disabled={customersLoading}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger
+                        className={errors.customerId ? 'border-red-500' : ''}
+                      >
                         <SelectValue placeholder="Select a customer" />
                       </SelectTrigger>
                       <SelectContent>
@@ -269,7 +390,7 @@ export function RentFormDialog({
           {/* Dates */}
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1">
-              <Label>Start Date</Label>
+              <Label>Start Date *</Label>
               <Controller
                 control={control}
                 name="startDate"
@@ -289,7 +410,7 @@ export function RentFormDialog({
               )}
             </div>
             <div className="flex-1">
-              <Label>Expected End Date</Label>
+              <Label>Expected End Date {!isOpenContract && '*'}</Label>
               <Controller
                 control={control}
                 name="expectedEndDate"
@@ -322,6 +443,7 @@ export function RentFormDialog({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.target.checked)}
                   id="isOpenContract"
+                  className="rounded"
                 />
               )}
             />
@@ -339,8 +461,9 @@ export function RentFormDialog({
                 type="number"
                 {...register('totalPrice', { valueAsNumber: true })}
                 placeholder="Total price"
-                className="mt-1 w-full"
-                disabled={true}
+                className={`mt-1 w-full ${errors.totalPrice ? 'border-red-500' : ''}`}
+                disabled={isOpenContract}
+                readOnly={!isOpenContract}
               />
               {errors.totalPrice && (
                 <p className="text-red-500 text-sm mt-1">
@@ -349,13 +472,14 @@ export function RentFormDialog({
               )}
             </div>
             <div className="flex-1">
-              <Label htmlFor="deposit">Deposit (DHS)</Label>
+              <Label htmlFor="deposit">Deposit (DHS) *</Label>
               <Input
                 id="deposit"
                 type="number"
                 {...register('deposit', { valueAsNumber: true })}
                 placeholder="Deposit amount"
-                className="mt-1 w-full"
+                className={`mt-1 w-full ${errors.deposit ? 'border-red-500' : ''}`}
+                min="0"
               />
               {errors.deposit && (
                 <p className="text-red-500 text-sm mt-1">
@@ -370,7 +494,8 @@ export function RentFormDialog({
                 type="number"
                 {...register('guarantee', { valueAsNumber: true })}
                 placeholder="Guarantee amount"
-                className="mt-1 w-full"
+                className={`mt-1 w-full ${errors.guarantee ? 'border-red-500' : ''}`}
+                min="0"
               />
               {errors.guarantee && (
                 <p className="text-red-500 text-sm mt-1">
@@ -380,7 +505,7 @@ export function RentFormDialog({
             </div>
           </div>
 
-          {/* Mark as fully paid (checkbox, own line) */}
+          {/* Mark as fully paid */}
           <div className="flex items-center space-x-2">
             <Controller
               control={control}
@@ -391,25 +516,34 @@ export function RentFormDialog({
                   checked={field.value}
                   onChange={(e) => field.onChange(e.target.checked)}
                   id="isFullyPaid"
+                  className="rounded"
+                  disabled={!isOpenContract && !totalPrice}
                 />
               )}
             />
             <Label htmlFor="isFullyPaid" className="cursor-pointer">
               Mark as fully paid
             </Label>
+            {errors.isFullyPaid && (
+              <p className="text-red-500 text-sm">
+                {errors.isFullyPaid.message}
+              </p>
+            )}
           </div>
 
-          {/* Total Paid (1/3 width) */}
+          {/* Total Paid */}
           <div className="flex">
             <div className="w-1/3">
               <Label htmlFor="totalPaid">Total Paid (DHS)</Label>
               <Input
                 id="totalPaid"
                 type="number"
-                value={totalPaid || 0}
-                disabled
-                className="mt-1 w-full"
-                readOnly
+                {...register('totalPaid', { valueAsNumber: true })}
+                className={`mt-1 w-full ${errors.totalPaid ? 'border-red-500' : ''}`}
+                disabled={!isOpenContract && isFullyPaid}
+                readOnly={!isOpenContract && isFullyPaid}
+                min="0"
+                placeholder="Amount paid"
               />
               {errors.totalPaid && (
                 <p className="text-red-500 text-sm mt-1">
@@ -420,12 +554,20 @@ export function RentFormDialog({
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting} className="px-6 py-2">
               {isSubmitting ? (
                 <Loader className="animate-spin mr-2 inline-block" />
               ) : null}
-              Save Rent
+              Create Rent Contract
             </Button>
           </div>
         </form>

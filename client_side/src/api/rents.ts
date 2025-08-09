@@ -1,8 +1,8 @@
 import { api } from './api';
+import { RentStatus } from '@/types/rent-status.type';
 
 export const createRent = async (data: {
   carId: string;
-  userId: string;
   startDate: Date;
   expectedEndDate?: Date | null;
   returnedAt?: Date | null;
@@ -11,7 +11,7 @@ export const createRent = async (data: {
   guarantee: number;
   lateFee?: number;
   isOpenContract: boolean;
-  status: 'active' | 'completed' | 'canceled';
+  status: RentStatus; // ✅ Use RentStatus instead of string union
   damageReport?: string;
   customerId: string;
   isDeleted?: boolean;
@@ -72,9 +72,12 @@ export const updateRent = async (
     lateFee?: number;
     damageReport?: string;
     totalPrice?: number;
-    status?: 'active' | 'completed' | 'canceled';
+    status?: RentStatus; // ✅ Use RentStatus
     totalPaid?: number;
     isFullyPaid?: boolean;
+    deposit?: number;
+    guarantee?: number;
+    isOpenContract?: boolean;
   },
 ) => {
   // Fetch current rent if only one date is provided
@@ -94,14 +97,8 @@ export const updateRent = async (
     }),
   };
 
-  // Auto-set status if returnedAt is in the past
-  if (!dataToSend.status && dataToSend.returnedAt) {
-    const returnedAtDate =
-      dataToSend.returnedAt instanceof Date
-        ? dataToSend.returnedAt
-        : new Date(dataToSend.returnedAt);
-    dataToSend.status = returnedAtDate <= new Date() ? 'completed' : 'active';
-  }
+  // ✅ Remove auto-status logic since backend handles it now
+  // The backend will automatically determine the correct status
 
   const response = await api.put(`/rents/${id}`, dataToSend, {
     headers: { 'Content-Type': 'application/json' },

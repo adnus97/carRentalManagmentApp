@@ -1,39 +1,62 @@
-import { Type } from 'class-transformer';
 import {
-  IsString,
-  IsNotEmpty,
-  IsDate,
-  IsNumber,
-  IsBoolean,
   IsOptional,
+  IsBoolean,
+  IsString,
+  IsNumber,
   IsEnum,
+  IsDateString,
+  IsDate,
 } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+
+// Custom date transformer
+const DateTransform = Transform(({ value }) => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value;
+
+  // Handle various date formats
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? undefined : date;
+});
 
 export class CreateRentDto {
   @IsString()
-  @IsNotEmpty()
   carId: string;
 
   @IsString()
-  @IsNotEmpty()
   customerId: string;
 
+  @Transform(({ value }) => {
+    if (!value) return undefined;
+    if (value instanceof Date) return value;
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? undefined : date;
+  })
   @IsDate()
-  @Type(() => Date)
-  @IsNotEmpty()
   startDate: Date;
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return undefined;
+    if (value instanceof Date) return value;
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? undefined : date;
+  })
   @IsDate()
-  @Type(() => Date)
   expectedEndDate?: Date;
 
+  @IsOptional()
   @IsBoolean()
-  isOpenContract: boolean;
+  isOpenContract?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return undefined;
+    if (value instanceof Date) return value;
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? undefined : date;
+  })
   @IsDate()
-  @Type(() => Date)
   returnedAt?: Date;
 
   @IsOptional()
@@ -41,18 +64,10 @@ export class CreateRentDto {
   @Type(() => Number)
   totalPrice?: number;
 
-  @IsNumber()
-  @Type(() => Number)
-  deposit: number;
-
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
-  totalPaid?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  isFullyPaid?: boolean;
+  deposit?: number;
 
   @IsOptional()
   @IsNumber()
@@ -64,8 +79,18 @@ export class CreateRentDto {
   @Type(() => Number)
   lateFee?: number;
 
-  @IsEnum(['active', 'completed', 'canceled'])
-  status: 'active' | 'completed' | 'canceled';
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  totalPaid?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isFullyPaid?: boolean;
+
+  @IsOptional()
+  @IsEnum(['reserved', 'active', 'completed', 'canceled'])
+  status?: 'reserved' | 'active' | 'completed' | 'canceled';
 
   @IsOptional()
   @IsString()
@@ -73,5 +98,5 @@ export class CreateRentDto {
 
   @IsOptional()
   @IsBoolean()
-  isDeleted?: boolean = false;
+  isDeleted?: boolean;
 }

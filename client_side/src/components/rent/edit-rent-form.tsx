@@ -27,8 +27,8 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-// Lucide icons (install with: npm install lucide-react)
 import { Car, User } from 'lucide-react';
+import { RentStatus } from '@/types/rent-status.type';
 
 const editRentSchema = z.object({
   returnedAt: z.date({ required_error: 'Return date is required' }),
@@ -37,7 +37,7 @@ const editRentSchema = z.object({
   guarantee: z.number().int().min(0).default(0),
   damageReport: z.string().nullable(),
   totalPrice: z.number().int().min(0).optional(),
-  status: z.enum(['active', 'completed', 'canceled']),
+  status: z.enum(['reserved', 'active', 'completed', 'canceled']),
   totalPaid: z.number().int().min(0).optional(),
   isFullyPaid: z.boolean().optional(),
   isOpenContract: z.boolean(),
@@ -58,7 +58,7 @@ type EditRentFormDialogProps = {
   returnedAt?: string | Date;
   pricePerDay: number;
   totalPrice: number;
-  status?: 'active' | 'completed' | 'canceled';
+  status?: RentStatus;
   isFullyPaid?: boolean;
   totalPaid?: number;
   deposit?: number;
@@ -115,7 +115,7 @@ export function EditRentFormDialog({
       guarantee: initialGuarantee ?? 0,
       damageReport: '',
       totalPrice: initialTotalPrice ?? 0,
-      status: initialStatus ?? 'active',
+      status: initialStatus ?? 'reserved',
       totalPaid: initialTotalPaid ?? 0,
       isFullyPaid: initialIsFullyPaid ?? false,
       isOpenContract: isOpenContract,
@@ -127,6 +127,7 @@ export function EditRentFormDialog({
   const deposit = watch('deposit');
   const lateFee = watch('lateFee');
   const guarantee = watch('guarantee');
+  const currentStatus = watch('status');
   const [totalPrice, setTotalPrice] = useState<number>(initialTotalPrice ?? 0);
 
   // Set form values and total price when rentData is loaded
@@ -154,7 +155,7 @@ export function EditRentFormDialog({
         guarantee: rentData.guarantee ?? initialGuarantee ?? 0,
         damageReport: rentData.damageReport ?? '',
         totalPrice: priceToUse,
-        status: rentData.status ?? initialStatus ?? 'active',
+        status: rentData.status ?? initialStatus ?? 'reserved',
         totalPaid:
           typeof rentData.totalPaid === 'number' &&
           Number.isFinite(rentData.totalPaid)
@@ -216,13 +217,6 @@ export function EditRentFormDialog({
     setValue('totalPaid', (deposit || 0) + (lateFee || 0));
   }, [deposit, lateFee, setValue]);
 
-  // If open contract and returnedAt is now or in the past, force status to "completed"
-  useEffect(() => {
-    if (isOpenContract && returnedAt && new Date(returnedAt) <= new Date()) {
-      setValue('status', 'completed');
-    }
-  }, [isOpenContract, returnedAt, setValue]);
-
   const mutation = useMutation({
     mutationFn: (data: EditRentFormFields) => {
       return updateRent(rentId, {
@@ -237,14 +231,22 @@ export function EditRentFormDialog({
       toast({
         type: 'success',
         title: 'Success!',
-        description: 'Rent contract updated successfully.',
+        description: 'Rent contract created successfully.',
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      let errorMessage = 'Failed to create rent contract.';
+
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         type: 'error',
         title: 'Error',
-        description: 'Failed to update rent contract.',
+        description: errorMessage,
       });
     },
   });
@@ -253,22 +255,22 @@ export function EditRentFormDialog({
     mutation.mutate(data);
   };
 
-  // Status options
-  let statusOptions: { value: string; label: string }[] = [
+  // Status options - backend will handle automatic transitions
+  const statusOptions: { value: RentStatus; label: string }[] = [
+    { value: 'reserved', label: 'Reserved' },
     { value: 'active', label: 'Active' },
+    { value: 'completed', label: 'Completed' },
     { value: 'canceled', label: 'Canceled' },
   ];
-  const isCompleted =
-    isOpenContract && returnedAt && new Date(returnedAt) <= new Date();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-full sm:max-w-[400px] ">
-        {/* Hide title/desc on small screens */}
+      <DialogContent className="w-full max-w-full sm:max-w-[400px]">
         <DialogTitle className="hidden sm:block">Edit Rent</DialogTitle>
+
         {/* Car & Customer Info Box */}
         {(carModel || customerName) && (
-          <div className="bg-muted/50 dark:bg-gray-2 bg-gray-3 rounded-md px-3 py-2  flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm">
+          <div className="bg-muted/50 dark:bg-gray-2 bg-gray-3 rounded-md px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm">
             {carModel && (
               <div className="flex items-center gap-2">
                 <Car size={16} className="text-muted-foreground" />
@@ -287,7 +289,9 @@ export function EditRentFormDialog({
             )}
           </div>
         )}
+
         <Separator className="my-2 hidden sm:block" />
+
         {rentLoading ? (
           <div className="flex justify-center items-center py-8">
             <Loader className="animate-spin" />
@@ -320,42 +324,35 @@ export function EditRentFormDialog({
                 </p>
               )}
             </div>
+
             {/* Status Dropdown */}
             <div>
               <Label htmlFor="status">Status</Label>
-              {isCompleted ? (
-                <Input
-                  value="Completed"
-                  disabled
-                  className="mt-1 w-full"
-                  readOnly
-                />
-              ) : (
-                <Controller
-                  control={control}
-                  name="status"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {statusOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              )}
+              <Controller
+                control={control}
+                name="status"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
               {errors.status && (
                 <p className="text-red-500 text-xs mt-1">
                   {errors.status.message}
                 </p>
               )}
             </div>
+
             {/* Deposit & Late Fee side by side */}
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="flex-1">
@@ -411,6 +408,7 @@ export function EditRentFormDialog({
                 )}
               </div>
             </div>
+
             {/* Guarantee */}
             <div>
               <Label htmlFor="guarantee">Guarantee</Label>
@@ -438,6 +436,7 @@ export function EditRentFormDialog({
                 </p>
               )}
             </div>
+
             {/* Total Paid & Total Price side by side */}
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="flex-1">
@@ -474,6 +473,7 @@ export function EditRentFormDialog({
                 />
               </div>
             </div>
+
             {/* Is Fully Paid */}
             <div className="flex items-center space-x-2">
               <Controller
@@ -493,6 +493,7 @@ export function EditRentFormDialog({
                 Mark as fully paid
               </Label>
             </div>
+
             {/* Damage Report */}
             <div>
               <Label htmlFor="damageReport">Damage Report</Label>
@@ -515,6 +516,7 @@ export function EditRentFormDialog({
                 </p>
               )}
             </div>
+
             {/* Submit Button */}
             <div className="flex justify-end">
               <Button

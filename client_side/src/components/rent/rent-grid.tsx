@@ -15,7 +15,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { removeRent, getAllRentsWithCarAndCustomer } from '@/api/rents';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PencilSimple, Trash, X } from '@phosphor-icons/react';
+import { PencilSimple, Trash } from '@phosphor-icons/react';
 import { ConfirmationDialog } from '../confirmation-dialog';
 import { toast } from '@/components/ui/toast';
 import React from 'react';
@@ -29,6 +29,7 @@ import {
   PaginationNext,
   PaginationEllipsis,
 } from '@/components/ui/pagination';
+import { RentStatus } from '@/types/rent-status.type';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -48,7 +49,7 @@ type RentRow = {
   expectedEndDate?: string | Date;
   returnedAt?: string | Date;
   pricePerDay: number;
-  status?: 'active' | 'completed' | 'canceled';
+  status?: RentStatus;
   totalPaid?: number;
   isFullyPaid?: boolean;
   totalPrice: number;
@@ -68,16 +69,30 @@ export const RentsGrid = () => {
 
   const queryClient = useQueryClient();
 
-  // Pagination state
+  // Responsive pageSize
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1700 ? 7 : 12;
+    }
+    return 10;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setPageSize(window.innerWidth < 1700 ? 7 : 12);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch paginated rents
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['rents', page, pageSize],
     queryFn: () => getAllRentsWithCarAndCustomer(page, pageSize),
     placeholderData: (previousData) => previousData,
-    refetchInterval: 60000, // match cron
+    refetchOnWindowFocus: false,
+    refetchInterval: 60000, // 1 minute
   });
 
   useEffect(() => {
@@ -97,11 +112,26 @@ export const RentsGrid = () => {
         description: 'Rent contract has been deleted successfully.',
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.log('Full error object:', error); // ✅ Debug log
+
+      let errorMessage = 'An error occurred while deleting the rent contract.';
+
+      // Handle Axios error response structure
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      console.log('Extracted error message:', errorMessage); // ✅ Debug log
+
       toast({
         type: 'error',
         title: 'Error',
-        description: 'An error occurred while deleting the rent contract.',
+        description: errorMessage,
       });
     },
   });
@@ -146,26 +176,48 @@ export const RentsGrid = () => {
       );
     }
 
-    const statusMap: Record<string, { label: string; className: string }> = {
-      active: {
-        label: 'Active',
-        className:
-          'bg-green-200 dark:bg-green-900 text-green-800 dark:text-green-300 px-2 py-1 rounded',
-      },
-      completed: {
-        label: 'Completed',
-        className:
-          'bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-300 px-2 py-1 rounded',
-      },
-      canceled: {
-        label: 'Canceled',
-        className:
-          'bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-300 px-2 py-1 rounded',
-      },
-    };
+    const statusMap: Record<RentStatus, { label: string; className: string }> =
+      {
+        reserved: {
+          label: 'Reserved',
+          className:
+            'bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-300 px-2 py-1 rounded',
+        },
+        active: {
+          label: 'Active',
+          className:
+            'bg-green-200 dark:bg-green-900 text-green-800 dark:text-green-300 px-2 py-1 rounded',
+        },
+        completed: {
+          label: 'Completed',
+          className:
+            'bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-300 px-2 py-1 rounded',
+        },
+        canceled: {
+          label: 'Canceled',
+          className:
+            'bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-300 px-2 py-1 rounded',
+        },
+      };
 
-    const s = statusMap[status] || { label: status, className: '' };
+    const s = statusMap[status as RentStatus] || {
+      label: status,
+      className: '',
+    };
     return <span className={s.className}>{s.label}</span>;
+  };
+
+  // ✅ Helper to update a row locally in the grid without refetch
+  const updateRowInGrid = (updatedRow: Partial<RentRow> & { id: string }) => {
+    queryClient.setQueryData(['rents', page, pageSize], (oldData: any) => {
+      if (!oldData) return oldData;
+      return {
+        ...oldData,
+        data: oldData.data.map((row: RentRow) =>
+          row.id === updatedRow.id ? { ...row, ...updatedRow } : row,
+        ),
+      };
+    });
   };
 
   // Row coloring rules
@@ -191,6 +243,10 @@ export const RentsGrid = () => {
         return (
           status === 'active' && returnedAt && new Date(returnedAt) < new Date()
         );
+      },
+      'purple-row': (params: any) => {
+        const { status } = params.data || {};
+        return status === 'reserved';
       },
     }),
     [],
@@ -225,8 +281,13 @@ export const RentsGrid = () => {
       width: 150,
       sortable: true,
       filter: 'agDateColumnFilter',
-      valueFormatter: (params) =>
-        params.data?.isOpenContract ? 'Open' : formatDateToDDMMYYYY(params),
+      valueFormatter: (params) => {
+        const { expectedEndDate } = params.data || {};
+        if (!expectedEndDate) {
+          return 'Open';
+        }
+        return formatDateToDDMMYYYY({ value: expectedEndDate });
+      },
     },
     {
       field: 'returnedAt',
@@ -234,8 +295,13 @@ export const RentsGrid = () => {
       width: 130,
       sortable: true,
       filter: 'agDateColumnFilter',
-      valueFormatter: (params) =>
-        params.data?.isOpenContract ? 'Open' : formatDateToDDMMYYYY(params),
+      valueFormatter: (params) => {
+        const { returnedAt } = params.data || {};
+        if (!returnedAt) {
+          return 'Open';
+        }
+        return formatDateToDDMMYYYY({ value: returnedAt });
+      },
     },
     {
       field: 'totalPrice',
@@ -256,7 +322,6 @@ export const RentsGrid = () => {
         const total = params.data.totalPrice || 0;
         const percent = total > 0 ? Math.round((paid / total) * 100) : 0;
         const displayPercent = percent > 100 ? 100 : percent;
-
         return (
           <div className="flex flex-col items-center justify-center w-full h-full">
             <div className="w-4/5 bg-gray-200 dark:bg-gray-700 rounded h-3 mb-1">
@@ -276,9 +341,9 @@ export const RentsGrid = () => {
     {
       field: 'status',
       headerName: 'Status',
-      width: 110,
+      width: 150,
       filter: 'agSetColumnFilter',
-      filterParams: { values: ['active', 'completed', 'canceled'] },
+      filterParams: { values: ['reserved', 'active', 'completed', 'canceled'] },
       cellRenderer: statusFormatter,
     },
     {
@@ -292,36 +357,35 @@ export const RentsGrid = () => {
     {
       headerName: 'Actions',
       width: 200,
-      cellRenderer: (params: any) => (
-        <div className="flex gap-2 items-center h-full">
-          <Button
-            variant="ghost"
-            disabled={['completed', 'canceled'].includes(params.data.status)}
-            title={
-              ['completed', 'canceled'].includes(params.data.status)
-                ? 'Cannot edit completed or canceled contracts'
-                : 'Edit rent'
-            }
-            onClick={() => {
-              setSelectedRentForEdit(params.data);
-              setEditDialogOpen(true);
-            }}
-          >
-            <PencilSimple size={16} /> Edit
-          </Button>
-          {params.data.status === 'active' && (
+      cellRenderer: (params: any) => {
+        const fullyPaid = params.data.totalPaid === params.data.totalPrice;
+        const hasReturnedAt = Boolean(params.data.returnedAt);
+        const isActuallyReturned =
+          hasReturnedAt && new Date(params.data.returnedAt) <= new Date();
+
+        // Only disable if BOTH fully paid AND actually returned
+        const shouldDisable = fullyPaid && isActuallyReturned;
+
+        return (
+          <div className="flex gap-2 items-center h-full">
             <Button
-              variant="outline"
-              className="flex items-center gap-2 text-red-600 hover:bg-red-50"
+              variant="ghost"
+              disabled={shouldDisable}
+              title={
+                shouldDisable
+                  ? 'Cannot edit a fully paid and returned contract'
+                  : 'Edit rent'
+              }
               onClick={() => {
-                console.log('End contract:', params.data.id);
+                setSelectedRentForEdit(params.data);
+                setEditDialogOpen(true);
               }}
             >
-              <X size={16} /> End
+              <PencilSimple size={16} /> Edit
             </Button>
-          )}
-        </div>
-      ),
+          </div>
+        );
+      },
     },
   ];
 
@@ -403,15 +467,12 @@ export const RentsGrid = () => {
             />
           </div>
 
-          {/* Pagination */}
           <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   aria-disabled={page === 1}
-                  tabIndex={page === 1 ? -1 : 0}
-                  style={{ pointerEvents: page === 1 ? 'none' : undefined }}
                 />
               </PaginationItem>
               {getPageNumbers().map((p, idx, arr) => (
@@ -425,7 +486,6 @@ export const RentsGrid = () => {
                     <PaginationLink
                       isActive={p === page}
                       onClick={() => setPage(p)}
-                      tabIndex={p === page ? -1 : 0}
                     >
                       {p}
                     </PaginationLink>
@@ -436,10 +496,6 @@ export const RentsGrid = () => {
                 <PaginationNext
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   aria-disabled={page === totalPages}
-                  tabIndex={page === totalPages ? -1 : 0}
-                  style={{
-                    pointerEvents: page === totalPages ? 'none' : undefined,
-                  }}
                 />
               </PaginationItem>
             </PaginationContent>
