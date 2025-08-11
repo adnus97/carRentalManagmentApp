@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+} from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '../ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
 import { DatePickerDemo } from '../date-picker';
 import { toast } from '../ui/toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,24 +22,43 @@ import { updateRent, getRentById } from '@/api/rents';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '../ui/separator';
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
-import { Car, User } from 'lucide-react';
+  Car,
+  User,
+  Calculator,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Lock,
+  Clock,
+} from 'lucide-react';
 import { RentStatus } from '@/types/rent-status.type';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
+// MAD Currency Icon Component
+const MADIcon = ({ className = 'h-3 w-3' }: { className?: string }) => (
+  <div
+    className={`inline-flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold text-xs px-5 py-1 ${className}`}
+  >
+    (MAD)
+  </div>
+);
+
+// Schema - Removed status field
 const editRentSchema = z.object({
   returnedAt: z.date({ required_error: 'Return date is required' }),
-  lateFee: z.number({ required_error: 'Late fee is required' }).int().min(0),
-  deposit: z.number().int().min(0).default(0),
-  guarantee: z.number().int().min(0).default(0),
-  damageReport: z.string().nullable(),
-  totalPrice: z.number().int().min(0).optional(),
-  status: z.enum(['reserved', 'active', 'completed', 'canceled']),
-  totalPaid: z.number().int().min(0).optional(),
+  lateFee: z.number({ required_error: 'Late fee is required' }).min(0),
+  deposit: z.number().min(0).default(0),
+  guarantee: z.number().min(0).default(0),
+  damageReport: z.string().optional(),
+  totalPrice: z.number().min(0).optional(),
+  totalPaid: z.number().min(0).optional(),
   isFullyPaid: z.boolean().optional(),
   isOpenContract: z.boolean(),
   carModel: z.string().optional(),
@@ -47,8 +67,147 @@ const editRentSchema = z.object({
 });
 
 type EditRentFormFields = z.infer<typeof editRentSchema>;
+type ValidFieldName = keyof EditRentFormFields;
 
-type EditRentFormDialogProps = {
+// Status config
+const statusConfig = {
+  reserved: { color: 'bg-blue-500', icon: Clock, label: 'Reserved' },
+  active: { color: 'bg-green-500', icon: CheckCircle2, label: 'Active' },
+  completed: { color: 'bg-gray-500', icon: CheckCircle2, label: 'Completed' },
+  canceled: { color: 'bg-red-500', icon: XCircle, label: 'Canceled' },
+};
+
+// Updated permissions without status field
+const getFieldPermissions = (status: RentStatus, isOpenContract: boolean) => {
+  const permissions: Record<
+    RentStatus,
+    {
+      editable: ValidFieldName[];
+      readonly: ValidFieldName[];
+      hidden: ValidFieldName[];
+    }
+  > = {
+    reserved: {
+      editable: [
+        'returnedAt',
+        'deposit',
+        'lateFee',
+        'guarantee',
+        'totalPaid',
+        'isFullyPaid',
+        'damageReport',
+      ],
+      readonly: ['totalPrice'],
+      hidden: [],
+    },
+    active: {
+      editable: [
+        'lateFee',
+        'totalPaid',
+        'isFullyPaid',
+        'damageReport',
+        ...(isOpenContract ? (['returnedAt'] as ValidFieldName[]) : []),
+      ],
+      readonly: [
+        'totalPrice',
+        'deposit',
+        'guarantee',
+        ...(!isOpenContract ? (['returnedAt'] as ValidFieldName[]) : []),
+      ],
+      hidden: [],
+    },
+    completed: {
+      editable: ['totalPaid', 'isFullyPaid', 'damageReport', 'lateFee'],
+      readonly: ['totalPrice', 'deposit', 'guarantee', 'returnedAt'],
+      hidden: [],
+    },
+    canceled: {
+      editable: [],
+      readonly: [
+        'totalPrice',
+        'deposit',
+        'guarantee',
+        'returnedAt',
+        'lateFee',
+        'totalPaid',
+        'isFullyPaid',
+        'damageReport',
+      ],
+      hidden: [],
+    },
+  };
+  return permissions[status] || permissions.reserved;
+};
+
+// Updated tooltip messages without status
+const getTooltipMessage = (
+  field: ValidFieldName,
+  status: RentStatus,
+  isOpenContract: boolean,
+) => {
+  const messages: Record<ValidFieldName, Record<RentStatus, string>> = {
+    returnedAt: {
+      reserved: '',
+      active: isOpenContract ? '' : 'Return date is fixed for closed contracts',
+      completed: 'Cannot modify return date for completed rentals',
+      canceled: 'Cannot modify canceled rentals',
+    },
+    deposit: {
+      reserved: '',
+      active: 'Deposit cannot be changed for active rentals',
+      completed: 'Deposit is locked for completed rentals',
+      canceled: 'Cannot modify canceled rentals',
+    },
+    guarantee: {
+      reserved: '',
+      active: 'Guarantee cannot be changed for active rentals',
+      completed: 'Guarantee is locked for completed rentals',
+      canceled: 'Cannot modify canceled rentals',
+    },
+    totalPrice: {
+      reserved: isOpenContract
+        ? 'Auto-calculated based on return date'
+        : 'Price is fixed for closed contracts',
+      active: isOpenContract
+        ? 'Auto-calculated based on return date'
+        : 'Price is fixed for closed contracts',
+      completed: 'Total price is locked for completed rentals',
+      canceled: 'Cannot modify canceled rentals',
+    },
+    lateFee: {
+      reserved: '',
+      active: '',
+      completed: '',
+      canceled: 'Cannot modify canceled rentals',
+    },
+    totalPaid: {
+      reserved: '',
+      active: '',
+      completed: '',
+      canceled: 'Cannot modify canceled rentals',
+    },
+    isFullyPaid: {
+      reserved: '',
+      active: '',
+      completed: '',
+      canceled: 'Cannot modify canceled rentals',
+    },
+    damageReport: {
+      reserved: '',
+      active: '',
+      completed: '',
+      canceled: 'Cannot modify canceled rentals',
+    },
+    carModel: { reserved: '', active: '', completed: '', canceled: '' },
+    customerName: { reserved: '', active: '', completed: '', canceled: '' },
+    startDate: { reserved: '', active: '', completed: '', canceled: '' },
+    isOpenContract: { reserved: '', active: '', completed: '', canceled: '' },
+  };
+
+  return messages[field]?.[status] || '';
+};
+
+type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   rentId: string;
@@ -65,6 +224,7 @@ type EditRentFormDialogProps = {
   guarantee?: number;
   lateFee?: number;
   isOpenContract: boolean;
+  onRentUpdated?: () => void;
 };
 
 export function EditRentFormDialog({
@@ -84,7 +244,8 @@ export function EditRentFormDialog({
   guarantee: initialGuarantee,
   lateFee: initialLateFee,
   isOpenContract,
-}: EditRentFormDialogProps) {
+  onRentUpdated,
+}: Props) {
   const queryClient = useQueryClient();
   const originalTotalPriceRef = useRef<number>(initialTotalPrice ?? 0);
 
@@ -115,31 +276,82 @@ export function EditRentFormDialog({
       guarantee: initialGuarantee ?? 0,
       damageReport: '',
       totalPrice: initialTotalPrice ?? 0,
-      status: initialStatus ?? 'reserved',
       totalPaid: initialTotalPaid ?? 0,
       isFullyPaid: initialIsFullyPaid ?? false,
       isOpenContract: isOpenContract,
     },
   });
 
-  // Watch fields
   const returnedAt = watch('returnedAt');
   const deposit = watch('deposit');
   const lateFee = watch('lateFee');
-  const guarantee = watch('guarantee');
-  const currentStatus = watch('status');
   const [totalPrice, setTotalPrice] = useState<number>(initialTotalPrice ?? 0);
 
-  // Set form values and total price when rentData is loaded
+  const currentStatus = initialStatus || 'reserved';
+
+  // Memoize permissions to prevent re-renders
+  const permissions = useMemo(
+    () => getFieldPermissions(currentStatus, isOpenContract),
+    [currentStatus, isOpenContract],
+  );
+
+  // Memoize status config to prevent re-renders
+  const currentStatusConfig = useMemo(
+    () => statusConfig[currentStatus],
+    [currentStatus],
+  );
+
+  // Memoize FieldWrapper component
+  const FieldWrapper = useCallback(
+    ({
+      children,
+      field,
+      label,
+    }: {
+      children: React.ReactNode;
+      field: ValidFieldName;
+      label: string;
+    }) => {
+      if (permissions.hidden.includes(field)) return null;
+
+      const isReadonly = permissions.readonly.includes(field);
+      const tooltipMessage = getTooltipMessage(
+        field,
+        currentStatus,
+        isOpenContract,
+      );
+
+      return (
+        <div className="space-y-1">
+          <Label className="text-xs font-medium flex items-center gap-1">
+            {label}
+            {isReadonly && tooltipMessage && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Lock className="h-3 w-3 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">{tooltipMessage}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </Label>
+          <div className={`${isReadonly ? 'opacity-60' : ''}`}>{children}</div>
+        </div>
+      );
+    },
+    [permissions, currentStatus, isOpenContract],
+  );
+
   useEffect(() => {
     if (open && rentData) {
       const priceToUse =
         typeof rentData.totalPrice === 'number' &&
         Number.isFinite(rentData.totalPrice)
           ? rentData.totalPrice
-          : typeof initialTotalPrice === 'number'
-            ? initialTotalPrice
-            : 0;
+          : (initialTotalPrice ?? 0);
 
       originalTotalPriceRef.current = priceToUse;
 
@@ -155,37 +367,17 @@ export function EditRentFormDialog({
         guarantee: rentData.guarantee ?? initialGuarantee ?? 0,
         damageReport: rentData.damageReport ?? '',
         totalPrice: priceToUse,
-        status: rentData.status ?? initialStatus ?? 'reserved',
         totalPaid:
-          typeof rentData.totalPaid === 'number' &&
-          Number.isFinite(rentData.totalPaid)
+          typeof rentData.totalPaid === 'number'
             ? rentData.totalPaid
-            : (rentData.deposit ?? initialDeposit ?? 0) +
-              (rentData.lateFee ?? initialLateFee ?? 0),
+            : (rentData.deposit ?? 0) + (rentData.lateFee ?? 0),
         isFullyPaid: rentData.isFullyPaid ?? initialIsFullyPaid ?? false,
         isOpenContract: rentData.isOpenContract ?? isOpenContract,
       });
       setTotalPrice(priceToUse);
     }
-  }, [
-    open,
-    rentData,
-    reset,
-    initialTotalPrice,
-    isOpenContract,
-    carModel,
-    customerName,
-    startDate,
-    initialReturnedAt,
-    initialLateFee,
-    initialDeposit,
-    initialGuarantee,
-    initialStatus,
-    initialTotalPaid,
-    initialIsFullyPaid,
-  ]);
+  }, [open, rentData, reset]);
 
-  // Update total price when returnedAt changes (only for open contracts)
   useEffect(() => {
     if (
       isOpenContract &&
@@ -195,16 +387,14 @@ export function EditRentFormDialog({
     ) {
       const start = new Date(startDate);
       const end = new Date(returnedAt);
-
       if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
-        const msPerDay = 1000 * 60 * 60 * 24;
         const days = Math.max(
           1,
-          Math.ceil((end.getTime() - start.getTime()) / msPerDay),
+          Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
         );
         const price = days * pricePerDay;
-        setTotalPrice(Number.isFinite(price) ? price : 0);
-        setValue('totalPrice', Number.isFinite(price) ? price : 0);
+        setTotalPrice(price);
+        setValue('totalPrice', price);
         return;
       }
     }
@@ -212,323 +402,385 @@ export function EditRentFormDialog({
     setValue('totalPrice', originalTotalPriceRef.current);
   }, [isOpenContract, startDate, returnedAt, pricePerDay, setValue]);
 
-  // Always update totalPaid as deposit + lateFee
   useEffect(() => {
     setValue('totalPaid', (deposit || 0) + (lateFee || 0));
   }, [deposit, lateFee, setValue]);
 
-  const mutation = useMutation({
-    mutationFn: (data: EditRentFormFields) => {
-      return updateRent(rentId, {
-        ...data,
-        damageReport: data.damageReport ?? undefined,
-      });
-    },
+  const cancelMutation = useMutation({
+    mutationFn: () =>
+      updateRent(rentId, { status: 'canceled' }, currentStatus, isOpenContract),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rents'] });
+      if (onRentUpdated) {
+        onRentUpdated();
+      }
       onOpenChange(false);
-      reset();
       toast({
         type: 'success',
         title: 'Success!',
-        description: 'Rent contract created successfully.',
+        description: 'Rental contract has been canceled.',
       });
     },
     onError: (error: any) => {
-      let errorMessage = 'Failed to create rent contract.';
-
-      if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
       toast({
         type: 'error',
         title: 'Error',
-        description: errorMessage,
+        description:
+          error?.response?.data?.message ||
+          error.message ||
+          'Failed to cancel rental contract.',
+      });
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: ({
+      data,
+      status,
+      isOpenContract,
+    }: {
+      data: Record<string, any>;
+      status: RentStatus;
+      isOpenContract: boolean;
+    }) => updateRent(rentId, data, status, isOpenContract),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rents'] });
+      if (onRentUpdated) {
+        onRentUpdated();
+      }
+      onOpenChange(false);
+      toast({
+        type: 'success',
+        title: 'Success!',
+        description: 'Rental contract updated successfully.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        type: 'error',
+        title: 'Error',
+        description:
+          error?.response?.data?.message ||
+          error.message ||
+          'Failed to update rental contract.',
       });
     },
   });
 
   const onSubmit = (data: EditRentFormFields) => {
-    mutation.mutate(data);
+    const filteredData: Record<string, any> = {};
+    permissions.editable.forEach((field) => {
+      const value = data[field];
+      filteredData[field] =
+        field === 'damageReport' && value === '' ? null : value;
+    });
+
+    if (Object.keys(filteredData).length === 0) {
+      toast({
+        type: 'info',
+        title: 'No Changes',
+        description: 'No changes were made to update.',
+      });
+      return;
+    }
+
+    mutation.mutate({
+      data: filteredData,
+      status: currentStatus,
+      isOpenContract,
+    });
   };
 
-  // Status options - backend will handle automatic transitions
-  const statusOptions: { value: RentStatus; label: string }[] = [
-    { value: 'reserved', label: 'Reserved' },
-    { value: 'active', label: 'Active' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'canceled', label: 'Canceled' },
-  ];
+  const handleCancel = () => {
+    cancelMutation.mutate();
+  };
+
+  const getCurrentStatusMessage = () => {
+    switch (currentStatus) {
+      case 'active':
+        return isOpenContract
+          ? 'Active open contracts: update return date, payments, and damage reports.'
+          : 'Active closed contracts: update payments and damage reports only.';
+      case 'completed':
+        return 'Completed rentals: update payment records and damage reports only.';
+      case 'canceled':
+        return 'Canceled rentals: no modifications allowed.';
+      default:
+        return 'Reserved rentals can be fully modified.';
+    }
+  };
+
+  const hasEditableFields = permissions.editable.length > 0;
+  const canCancel =
+    currentStatus !== 'canceled' && currentStatus !== 'completed';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-full sm:max-w-[400px]">
-        <DialogTitle className="hidden sm:block">Edit Rent</DialogTitle>
-
-        {/* Car & Customer Info Box */}
-        {(carModel || customerName) && (
-          <div className="bg-muted/50 dark:bg-gray-2 bg-gray-3 rounded-md px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-sm">
-            {carModel && (
-              <div className="flex items-center gap-2">
-                <Car size={16} className="text-muted-foreground" />
-                <span>
-                  Car: <span className="font-medium">{carModel}</span>
-                </span>
-              </div>
+      <DialogContent className="w-full max-w-[500px] max-h-[96vh] overflow-y-auto p-4">
+        <div className="space-y-2 pb-2">
+          <DialogTitle className="flex items-center gap-2 text-lg flex-wrap">
+            <span>Edit Rental Contract</span>
+            <Badge
+              variant="secondary"
+              className={`${currentStatusConfig.color} text-white flex items-center gap-1 text-xs`}
+            >
+              <currentStatusConfig.icon className="h-3 w-3" />
+              {currentStatusConfig.label}
+            </Badge>
+            {isOpenContract && (
+              <Badge variant="outline" className="text-xs">
+                Open
+              </Badge>
             )}
-            {customerName && (
-              <div className="flex items-center gap-2">
-                <User size={16} className="text-muted-foreground" />
-                <span>
-                  Customer: <span className="font-medium">{customerName}</span>
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+          </DialogTitle>
 
-        <Separator className="my-2 hidden sm:block" />
+          {(carModel || customerName) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {carModel && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Car className="h-3 w-3" />
+                  {carModel}
+                </Badge>
+              )}
+              {customerName && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  {customerName}
+                </Badge>
+              )}
+            </div>
+          )}
+
+          <Alert className="py-2">
+            <AlertCircle className="h-3 w-3" />
+            <AlertDescription className="text-xs leading-tight">
+              {getCurrentStatusMessage()}
+            </AlertDescription>
+          </Alert>
+        </div>
+
+        <Separator />
 
         {rentLoading ? (
           <div className="flex justify-center items-center py-8">
-            <Loader className="animate-spin" />
+            <Loader className="animate-spin h-6 w-6" />
           </div>
         ) : (
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="flex flex-col gap-2 w-full"
-            noValidate
-          >
-            {/* Returned At */}
-            <div>
-              <Label>Returned At</Label>
-              <Controller
-                control={control}
-                name="returnedAt"
-                render={({ field }) => (
-                  <div className="w-full">
-                    <DatePickerDemo
-                      value={field.value ?? undefined}
-                      onChange={field.onChange}
-                      disabled={!isOpenContract}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            <div className="space-y-2">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Schedule
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                <FieldWrapper field="returnedAt" label="Return Date">
+                  <Controller
+                    control={control}
+                    name="returnedAt"
+                    render={({ field }) => (
+                      <DatePickerDemo
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={!permissions.editable.includes('returnedAt')}
+                      />
+                    )}
+                  />
+                  {errors.returnedAt && (
+                    <p className="text-red-500 text-xs">
+                      {errors.returnedAt.message}
+                    </p>
+                  )}
+                </FieldWrapper>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                Financial Details <MADIcon />
+              </h3>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FieldWrapper field="deposit" label="Deposit">
+                  <Controller
+                    control={control}
+                    name="deposit"
+                    render={({ field }) => (
+                      <Input
+                        type="number"
+                        min={0}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === '' ? 0 : Number(val));
+                        }}
+                        disabled={!permissions.editable.includes('deposit')}
+                        className="text-right h-8 text-xs"
+                      />
+                    )}
+                  />
+                </FieldWrapper>
+                <FieldWrapper field="lateFee" label="Late Fee">
+                  <Controller
+                    control={control}
+                    name="lateFee"
+                    render={({ field }) => (
+                      <Input
+                        type="number"
+                        min={0}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === '' ? 0 : Number(val));
+                        }}
+                        disabled={!permissions.editable.includes('lateFee')}
+                        className="text-right h-8 text-xs"
+                      />
+                    )}
+                  />
+                </FieldWrapper>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FieldWrapper field="totalPaid" label="Total Paid">
+                  <div className="relative">
+                    <Controller
+                      control={control}
+                      name="totalPaid"
+                      render={({ field }) => (
+                        <Input
+                          type="number"
+                          value={field.value || 0}
+                          readOnly
+                          disabled
+                          className="text-right bg-muted h-8 text-xs"
+                        />
+                      )}
                     />
+                    <Calculator className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                   </div>
-                )}
-              />
-              {errors.returnedAt && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.returnedAt.message}
-                </p>
-              )}
-            </div>
+                </FieldWrapper>
+                <FieldWrapper field="guarantee" label="Guarantee">
+                  <Controller
+                    control={control}
+                    name="guarantee"
+                    render={({ field }) => (
+                      <Input
+                        type="number"
+                        min={0}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === '' ? 0 : Number(val));
+                        }}
+                        disabled={!permissions.editable.includes('guarantee')}
+                        className="text-right h-8 text-xs"
+                      />
+                    )}
+                  />
+                </FieldWrapper>
+              </div>
 
-            {/* Status Dropdown */}
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Controller
-                control={control}
-                name="status"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.status && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.status.message}
-                </p>
-              )}
-            </div>
-
-            {/* Deposit & Late Fee side by side */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1">
-                <Label htmlFor="deposit">Deposit</Label>
-                <Controller
-                  control={control}
-                  name="deposit"
-                  render={({ field }) => (
-                    <Input
-                      id="deposit"
-                      type="number"
-                      min={0}
-                      {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        field.onChange(val === '' ? 0 : Number(val));
-                      }}
-                      className="mt-1 w-full"
-                    />
-                  )}
-                />
-                {errors.deposit && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.deposit.message}
+              <div className="bg-blue-50 dark:bg-blue-950/20 rounded-md p-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-medium">Total Price</span>
+                    <MADIcon />
+                    {isOpenContract && (
+                      <Badge variant="outline" className="text-xs px-1 py-0">
+                        Auto
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-lg font-bold text-blue-600">
+                    {Number.isFinite(totalPrice)
+                      ? totalPrice.toLocaleString()
+                      : 0}
+                  </span>
+                </div>
+                {isOpenContract && (
+                  <p className="text-xs text-muted-foreground">
+                    {pricePerDay}/day × days
                   </p>
                 )}
               </div>
-              <div className="flex-1">
-                <Label htmlFor="lateFee">Late Fee</Label>
+
+              <FieldWrapper field="isFullyPaid" label="Payment Status">
+                <div className="flex items-center space-x-2">
+                  <Controller
+                    control={control}
+                    name="isFullyPaid"
+                    render={({ field }) => (
+                      <input
+                        type="checkbox"
+                        checked={!!field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        disabled={!permissions.editable.includes('isFullyPaid')}
+                        className="h-3 w-3"
+                      />
+                    )}
+                  />
+                  <Label className="text-xs">Fully paid</Label>
+                </div>
+              </FieldWrapper>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Notes
+              </h3>
+              <FieldWrapper field="damageReport" label="Damage Report">
                 <Controller
                   control={control}
-                  name="lateFee"
+                  name="damageReport"
                   render={({ field }) => (
-                    <Input
-                      id="lateFee"
-                      type="number"
-                      min={0}
+                    <Textarea
                       {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        field.onChange(val === '' ? 0 : Number(val));
-                      }}
-                      className="mt-1 w-full"
+                      value={field.value || ''}
+                      placeholder="Damages, issues, or notes..."
+                      disabled={!permissions.editable.includes('damageReport')}
+                      rows={2}
+                      className="text-xs resize-none"
                     />
                   )}
                 />
-                {errors.lateFee && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.lateFee.message}
-                  </p>
-                )}
-              </div>
+              </FieldWrapper>
             </div>
 
-            {/* Guarantee */}
-            <div>
-              <Label htmlFor="guarantee">Guarantee</Label>
-              <Controller
-                control={control}
-                name="guarantee"
-                render={({ field }) => (
-                  <Input
-                    id="guarantee"
-                    type="number"
-                    min={0}
-                    {...field}
-                    value={field.value ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      field.onChange(val === '' ? 0 : Number(val));
-                    }}
-                    className="mt-1 w-full"
-                  />
-                )}
-              />
-              {errors.guarantee && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.guarantee.message}
-                </p>
-              )}
-            </div>
-
-            {/* Total Paid & Total Price side by side */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1">
-                <Label htmlFor="totalPaid">Total Paid (DHS)</Label>
-                <Controller
-                  control={control}
-                  name="totalPaid"
-                  render={({ field }) => (
-                    <Input
-                      id="totalPaid"
-                      type="number"
-                      min={0}
-                      {...field}
-                      value={field.value ?? 0}
-                      disabled
-                      className="mt-1 w-full"
-                      readOnly
-                    />
+            <div className="flex justify-between pt-2">
+              {canCancel && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleCancel}
+                  disabled={cancelMutation.isPending}
+                  className="h-8 px-4 text-xs bg-red-700 text-white"
+                >
+                  {cancelMutation.isPending ? (
+                    <>
+                      <Loader className="animate-spin mr-1 h-3 w-3" />
+                      Canceling...
+                    </>
+                  ) : (
+                    'Cancel Contract'
                   )}
-                />
-                {errors.totalPaid && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.totalPaid.message}
-                  </p>
-                )}
-              </div>
-              <div className="flex-1">
-                <Label>Total Price (DHS)</Label>
-                <Input
-                  value={Number.isFinite(totalPrice) ? totalPrice : 0}
-                  disabled
-                  className="mt-1 w-full"
-                  readOnly
-                />
-              </div>
-            </div>
-
-            {/* Is Fully Paid */}
-            <div className="flex items-center space-x-2">
-              <Controller
-                control={control}
-                name="isFullyPaid"
-                render={({ field }) => (
-                  <input
-                    id="isFullyPaid"
-                    type="checkbox"
-                    checked={!!field.value}
-                    onChange={(e) => field.onChange(e.target.checked)}
-                    className="cursor-pointer"
-                  />
-                )}
-              />
-              <Label htmlFor="isFullyPaid" className="cursor-pointer">
-                Mark as fully paid
-              </Label>
-            </div>
-
-            {/* Damage Report */}
-            <div>
-              <Label htmlFor="damageReport">Damage Report</Label>
-              <Controller
-                control={control}
-                name="damageReport"
-                render={({ field }) => (
-                  <Textarea
-                    id="damageReport"
-                    {...field}
-                    value={field.value ?? ''}
-                    placeholder="Describe any damages..."
-                    className="mt-1 w-full"
-                  />
-                )}
-              />
-              {errors.damageReport && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.damageReport.message}
-                </p>
+                </Button>
               )}
-            </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-2"
-              >
-                {isSubmitting ? (
-                  <Loader className="animate-spin mr-2 inline-block" />
-                ) : null}
-                Save Changes
-              </Button>
+              {hasEditableFields && (
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="h-8 px-4 text-xs ml-auto"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader className="animate-spin mr-1 h-3 w-3" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+              )}
             </div>
           </form>
         )}

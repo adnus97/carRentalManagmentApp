@@ -69,9 +69,8 @@ export class RentsController {
   ) {
     return this.rentsService.update(id, updateData);
   }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.rentsService.remove(id, {});
+  @Put(':id/soft-delete')
+  async softDelete(@Param('id') id: string) {
+    return this.rentsService.remove(id);
   }
 }

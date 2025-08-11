@@ -41,7 +41,7 @@ ModuleRegistry.registerModules([
 
 type RentRow = {
   isOpenContract: boolean;
-  deposit: number | undefined;
+  deposit?: number;
   id: string;
   carModel: string;
   customerName?: string;
@@ -58,11 +58,12 @@ type RentRow = {
 };
 
 export const RentsGrid = () => {
-  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedRentForEdit, setSelectedRentForEdit] =
     useState<null | RentRow>(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [selectedRows, setSelectedRows] = useState<any[]>([]);
 
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
@@ -99,25 +100,39 @@ export const RentsGrid = () => {
     if (!isFetching) setLastUpdated(new Date());
   }, [isFetching]);
 
-  // DELETE LOGIC
-  const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  // Helper function to determine actual status (matching backend logic)
+  const getActualStatus = (rent: RentRow): RentStatus => {
+    const now = new Date();
+    const startDate = new Date(rent.startDate);
+    const returnedAt = rent.returnedAt ? new Date(rent.returnedAt) : null;
+    const expectedEndDate = rent.expectedEndDate
+      ? new Date(rent.expectedEndDate)
+      : null;
 
+    if (rent.status === 'canceled') return 'canceled';
+    if (returnedAt && returnedAt <= now) return 'completed';
+    if (startDate > now) return 'reserved';
+    return 'active';
+  };
+
+  // Helper function to check if a rental can be deleted
+  const canBeDeleted = (rent: RentRow): boolean => {
+    return getActualStatus(rent) !== 'active';
+  };
+
+  // DELETE LOGIC
   const deleteMutation = useMutation({
-    mutationFn: removeRent,
+    mutationFn: removeRent, // ✅ now points to /soft-delete endpoint
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rents'] });
       toast({
         type: 'success',
         title: 'Success!',
-        description: 'Rent contract has been deleted successfully.',
+        description: 'Rent contract(s) deleted successfully.',
       });
     },
     onError: (error: any) => {
-      console.log('Full error object:', error); // ✅ Debug log
-
       let errorMessage = 'An error occurred while deleting the rent contract.';
-
-      // Handle Axios error response structure
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error?.response?.data?.error) {
@@ -125,9 +140,6 @@ export const RentsGrid = () => {
       } else if (error?.message) {
         errorMessage = error.message;
       }
-
-      console.log('Extracted error message:', errorMessage); // ✅ Debug log
-
       toast({
         type: 'error',
         title: 'Error',
@@ -136,18 +148,49 @@ export const RentsGrid = () => {
     },
   });
 
-  const handleDelete = () => {
-    selectedRows.forEach((row) => {
-      deleteMutation.mutate(row.id);
-    });
-    setSelectedRows([]);
+  const handleDelete = async () => {
+    const deletableRows = selectedRows.filter(canBeDeleted);
+    const activeRows = selectedRows.filter((row) => !canBeDeleted(row));
+
+    if (activeRows.length > 0) {
+      toast({
+        type: 'warning',
+        title: 'Some rentals cannot be deleted',
+        description: `${activeRows.length} active rental(s) cannot be deleted. Only ${deletableRows.length} rental(s) will be deleted.`,
+      });
+    }
+
+    if (deletableRows.length === 0) {
+      toast({
+        type: 'error',
+        title: 'Cannot delete',
+        description:
+          'No rentals can be deleted. Active rentals must be completed or canceled first.',
+      });
+      setShowDeleteDialog(false);
+      return;
+    }
+
+    try {
+      await Promise.allSettled(
+        deletableRows.map((row) => deleteMutation.mutateAsync(row.id)),
+      );
+      setSelectedRows([]);
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+
+    setShowDeleteDialog(false);
   };
 
-  const rowSelection = useMemo<
-    RowSelectionOptions | 'single' | 'multiple'
-  >(() => {
-    return { mode: 'multiRow' };
-  }, []);
+  // const rowSelection = useMemo<RowSelectionOptions | 'single' | 'multiple'>(
+  //   () => ({
+  //     mode: 'multiRow',
+  //     checkboxes: true,
+  //     headerCheckbox: true,
+  //   }),
+  //   [],
+  // );
 
   const currencyFormatter = (params: any) =>
     params.value ? `${params.value.toLocaleString()} DHS` : '';
@@ -163,10 +206,13 @@ export const RentsGrid = () => {
   };
 
   const statusFormatter = (params: any) => {
-    const { status, returnedAt } = params.data;
+    const actualStatus = getActualStatus(params.data);
     const now = new Date();
+    const returnedAt = params.data.returnedAt
+      ? new Date(params.data.returnedAt)
+      : null;
     const isOverdue =
-      status === 'active' && returnedAt && new Date(returnedAt) < now;
+      actualStatus === 'active' && returnedAt && returnedAt < now;
 
     if (isOverdue) {
       return (
@@ -200,59 +246,81 @@ export const RentsGrid = () => {
         },
       };
 
-    const s = statusMap[status as RentStatus] || {
-      label: status,
+    const s = statusMap[actualStatus] || {
+      label: actualStatus,
       className: '',
     };
     return <span className={s.className}>{s.label}</span>;
   };
 
-  // ✅ Helper to update a row locally in the grid without refetch
-  const updateRowInGrid = (updatedRow: Partial<RentRow> & { id: string }) => {
-    queryClient.setQueryData(['rents', page, pageSize], (oldData: any) => {
-      if (!oldData) return oldData;
-      return {
-        ...oldData,
-        data: oldData.data.map((row: RentRow) =>
-          row.id === updatedRow.id ? { ...row, ...updatedRow } : row,
-        ),
-      };
-    });
-  };
-
-  // Row coloring rules
   const rowClassRules = useMemo(
     () => ({
       'green-row': (params: any) => {
         const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
-        const totalPaidNum = Number(totalPaid) || 0;
-        const totalPriceNum = Number(totalPrice) || 0;
         return (
           isFullyPaid === true ||
-          (isFullyPaid === false && totalPaidNum === totalPriceNum)
+          (isFullyPaid === false && Number(totalPaid) === Number(totalPrice))
         );
       },
       'red-row': (params: any) => {
         const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
-        const totalPaidNum = Number(totalPaid) || 0;
-        const totalPriceNum = Number(totalPrice) || 0;
-        return isFullyPaid === false && totalPaidNum !== totalPriceNum;
-      },
-      'yellow-row': (params: any) => {
-        const { status, returnedAt } = params.data || {};
         return (
-          status === 'active' && returnedAt && new Date(returnedAt) < new Date()
+          isFullyPaid === false && Number(totalPaid) !== Number(totalPrice)
         );
       },
-      'purple-row': (params: any) => {
-        const { status } = params.data || {};
-        return status === 'reserved';
+      'yellow-row': (params: any) => {
+        const actualStatus = getActualStatus(params.data);
+        const { returnedAt } = params.data || {};
+        return (
+          actualStatus === 'active' &&
+          returnedAt &&
+          new Date(returnedAt) < new Date()
+        );
       },
+      'purple-row': (params: any) =>
+        getActualStatus(params.data) === 'reserved',
     }),
     [],
   );
 
+  const rowData = useMemo(() => {
+    return data?.data ? [...data.data] : [];
+  }, [data?.data]);
+
   const colDefs: ColDef[] = [
+    {
+      headerName: '',
+      checkboxSelection: true,
+      headerCheckboxSelection: true,
+      width: 50,
+      pinned: 'left',
+      lockPinned: true,
+      suppressMovable: true,
+      cellClassRules: {
+        'left-border-green': (params) => {
+          const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+          return (
+            isFullyPaid === true ||
+            (isFullyPaid === false && Number(totalPaid) === Number(totalPrice))
+          );
+        },
+        'left-border-red': (params) => {
+          const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+          return (
+            isFullyPaid === false && Number(totalPaid) !== Number(totalPrice)
+          );
+        },
+        'left-border-yellow': (params) => {
+          const actualStatus = getActualStatus(params.data);
+          const { returnedAt } = params.data || {};
+          return (
+            actualStatus === 'active' &&
+            returnedAt &&
+            new Date(returnedAt) < new Date()
+          );
+        },
+      },
+    },
     {
       field: 'carModel',
       headerName: 'Car Model',
@@ -281,45 +349,108 @@ export const RentsGrid = () => {
       width: 150,
       sortable: true,
       filter: 'agDateColumnFilter',
-      valueFormatter: (params) => {
-        const { expectedEndDate } = params.data || {};
-        if (!expectedEndDate) {
-          return 'Open';
-        }
-        return formatDateToDDMMYYYY({ value: expectedEndDate });
-      },
+      valueFormatter: (params) =>
+        params.data?.expectedEndDate
+          ? formatDateToDDMMYYYY({ value: params.data.expectedEndDate })
+          : 'Open',
     },
     {
       field: 'returnedAt',
       headerName: 'Returned At',
-      width: 130,
+      width: 141,
       sortable: true,
       filter: 'agDateColumnFilter',
-      valueFormatter: (params) => {
-        const { returnedAt } = params.data || {};
-        if (!returnedAt) {
-          return 'Open';
-        }
-        return formatDateToDDMMYYYY({ value: returnedAt });
-      },
+      valueFormatter: (params) =>
+        params.data?.returnedAt
+          ? formatDateToDDMMYYYY({ value: params.data.returnedAt })
+          : 'Open',
     },
     {
       field: 'totalPrice',
       headerName: 'Total Price',
-      width: 130,
+      width: 140,
       cellStyle: { textAlign: 'right' },
-      valueFormatter: currencyFormatter,
+      valueGetter: (params) => {
+        const {
+          isOpenContract,
+          totalPrice,
+          startDate,
+          returnedAt,
+          pricePerDay,
+        } = params.data || {};
+
+        if (isOpenContract && returnedAt && startDate && pricePerDay) {
+          const start = new Date(startDate);
+          const end = new Date(returnedAt);
+          if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
+            const days = Math.ceil(
+              (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+            );
+            return days * pricePerDay;
+          }
+        }
+
+        if (isOpenContract && !returnedAt) {
+          return null;
+        }
+
+        return totalPrice || 0;
+      },
+      valueFormatter: (params) => {
+        if (params.value === null || params.value === undefined) {
+          return 'Open';
+        }
+        return `${params.value.toLocaleString()} DHS`;
+      },
       filter: 'agNumberColumnFilter',
       sortable: true,
     },
     {
       headerName: 'Payment Progress',
-      width: 200,
+      width: 220,
       cellRenderer: (params: {
-        data: { totalPaid: number; totalPrice: number };
+        data: {
+          totalPaid: number;
+          totalPrice: number;
+          isOpenContract: boolean;
+          returnedAt?: string;
+          startDate?: string;
+          pricePerDay?: number;
+        };
       }) => {
-        const paid = params.data.totalPaid || 0;
-        const total = params.data.totalPrice || 0;
+        const {
+          totalPaid,
+          totalPrice,
+          isOpenContract,
+          returnedAt,
+          startDate,
+          pricePerDay,
+        } = params.data;
+        const paid = totalPaid || 0;
+        let total = totalPrice || 0;
+
+        if (isOpenContract && returnedAt && startDate && pricePerDay) {
+          const start = new Date(startDate);
+          const end = new Date(returnedAt);
+          if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
+            const days = Math.ceil(
+              (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+            );
+            total = days * pricePerDay;
+          }
+        }
+
+        if (isOpenContract && !returnedAt) {
+          return (
+            <div className="flex flex-col items-center justify-center w-full h-full">
+              <span className="text-xs text-muted-foreground">
+                Open Contract
+              </span>
+              <span className="text-xs">Paid: {paid.toLocaleString()} DHS</span>
+            </div>
+          );
+        }
+
         const percent = total > 0 ? Math.round((paid / total) * 100) : 0;
         const displayPercent = percent > 100 ? 100 : percent;
         return (
@@ -341,7 +472,7 @@ export const RentsGrid = () => {
     {
       field: 'status',
       headerName: 'Status',
-      width: 150,
+      width: 160,
       filter: 'agSetColumnFilter',
       filterParams: { values: ['reserved', 'active', 'completed', 'canceled'] },
       cellRenderer: statusFormatter,
@@ -349,30 +480,30 @@ export const RentsGrid = () => {
     {
       field: 'isOpenContract',
       headerName: 'Open Contract',
-      width: 130,
+      width: 150,
       filter: 'agSetColumnFilter',
       filterParams: { values: ['Yes', 'No'] },
       valueFormatter: (params: any) => (params.value ? 'Yes' : 'No'),
     },
     {
       headerName: 'Actions',
+      pinned: 'right',
       width: 200,
       cellRenderer: (params: any) => {
+        const actualStatus = getActualStatus(params.data);
         const fullyPaid = params.data.totalPaid === params.data.totalPrice;
         const hasReturnedAt = Boolean(params.data.returnedAt);
         const isActuallyReturned =
           hasReturnedAt && new Date(params.data.returnedAt) <= new Date();
-
-        // Only disable if BOTH fully paid AND actually returned
-        const shouldDisable = fullyPaid && isActuallyReturned;
+        const shouldDisableEdit = fullyPaid && isActuallyReturned;
 
         return (
           <div className="flex gap-2 items-center h-full">
             <Button
               variant="ghost"
-              disabled={shouldDisable}
+              disabled={shouldDisableEdit}
               title={
-                shouldDisable
+                shouldDisableEdit
                   ? 'Cannot edit a fully paid and returned contract'
                   : 'Edit rent'
               }
@@ -400,6 +531,9 @@ export const RentsGrid = () => {
     }
     return pages;
   };
+
+  const deletableCount = selectedRows.filter(canBeDeleted).length;
+  const activeCount = selectedRows.length - deletableCount;
 
   return (
     <div
@@ -439,13 +573,23 @@ export const RentsGrid = () => {
       </div>
 
       {selectedRows.length > 0 && (
-        <Button
-          variant="secondary"
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white mb-2"
-          onClick={() => setShowDeleteDialog(true)}
-        >
-          <Trash size={20} /> Delete ({selectedRows.length})
-        </Button>
+        <div className="flex items-center gap-2 mb-2">
+          <Button
+            variant="secondary"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={selectedRows.length === 0}
+          >
+            <Trash size={20} />
+            Delete ({deletableCount}/{selectedRows.length})
+          </Button>
+
+          {activeCount > 0 && (
+            <span className="text-xs text-yellow-600">
+              {activeCount} active rental(s) cannot be deleted
+            </span>
+          )}
+        </div>
       )}
 
       {isLoading || isFetching ? (
@@ -455,15 +599,16 @@ export const RentsGrid = () => {
           <div style={gridStyle}>
             <AgGridReact
               rowHeight={60}
-              rowData={data?.data || []}
+              rowData={rowData}
               columnDefs={colDefs}
-              rowSelection={rowSelection}
+              rowSelection="multiple"
               pagination={false}
               domLayout="autoHeight"
               rowClassRules={rowClassRules}
-              onSelectionChanged={(event) =>
-                setSelectedRows(event.api.getSelectedRows())
-              }
+              onSelectionChanged={(event) => {
+                const selectedNodes = event.api.getSelectedRows();
+                setSelectedRows(selectedNodes);
+              }}
             />
           </div>
 
@@ -508,7 +653,11 @@ export const RentsGrid = () => {
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDelete}
         title="Confirmation"
-        description="Are you sure you want to delete the selected rent contract(s)?"
+        description={
+          activeCount > 0
+            ? `${deletableCount} rental(s) will be deleted. ${activeCount} active rental(s) will be skipped as they cannot be deleted.`
+            : `Are you sure you want to delete the selected ${deletableCount} rental contract(s)?`
+        }
         confirmText="Delete"
         cancelText="Cancel"
         loadingText="Deleting..."
@@ -518,7 +667,7 @@ export const RentsGrid = () => {
       {selectedRentForEdit && (
         <EditRentFormDialog
           open={editDialogOpen}
-          onOpenChange={(open: boolean | ((prevState: boolean) => boolean)) => {
+          onOpenChange={(open) => {
             setEditDialogOpen(open);
             if (!open) setSelectedRentForEdit(null);
           }}
@@ -536,6 +685,10 @@ export const RentsGrid = () => {
           guarantee={selectedRentForEdit.guarantee}
           lateFee={selectedRentForEdit.lateFee}
           returnedAt={selectedRentForEdit.returnedAt}
+          onRentUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['rents'] });
+            queryClient.refetchQueries({ queryKey: ['rents', page, pageSize] });
+          }}
         />
       )}
     </div>

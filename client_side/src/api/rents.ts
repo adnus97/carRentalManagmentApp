@@ -11,8 +11,8 @@ export const createRent = async (data: {
   guarantee: number;
   lateFee?: number;
   isOpenContract: boolean;
-  status: RentStatus; // ✅ Use RentStatus instead of string union
-  damageReport?: string;
+  status: RentStatus;
+  damageReport?: string | null; // ✅ Allow null
   customerId: string;
   isDeleted?: boolean;
   totalPaid?: number;
@@ -57,8 +57,8 @@ export const getRentById = async (id: string) => {
 
 export const removeRent = async (id: string) => {
   const response = await api.put(
-    `/rents/${id}`,
-    { isDeleted: true }, // boolean
+    `/rents/${id}/soft-delete`, // ✅
+
     { headers: { 'Content-Type': 'application/json' } },
   );
   return response.data;
@@ -66,47 +66,73 @@ export const removeRent = async (id: string) => {
 
 export const updateRent = async (
   id: string,
-  updateData: {
-    startDate?: Date | string;
-    returnedAt?: Date | string;
-    lateFee?: number;
-    damageReport?: string;
-    totalPrice?: number;
-    status?: RentStatus; // ✅ Use RentStatus
-    totalPaid?: number;
-    isFullyPaid?: boolean;
-    deposit?: number;
-    guarantee?: number;
-    isOpenContract?: boolean;
-  },
+  updateData: Record<string, any>,
+  currentStatus?: RentStatus,
+  isOpenContract?: boolean,
 ) => {
-  // Fetch current rent if only one date is provided
-  if (updateData.startDate || updateData.returnedAt) {
-    const currentRent = await getRentById(id);
-    if (!updateData.startDate) updateData.startDate = currentRent.startDate;
-    if (!updateData.returnedAt) updateData.returnedAt = currentRent.returnedAt;
-  }
-
-  const dataToSend = {
-    ...updateData,
-    ...(updateData.startDate instanceof Date && {
-      startDate: updateData.startDate.toISOString(),
-    }),
-    ...(updateData.returnedAt instanceof Date && {
-      returnedAt: updateData.returnedAt.toISOString(),
-    }),
+  // Allowed fields per status (must match backend rules)
+  const allowedFieldsByStatus: Record<RentStatus, string[]> = {
+    reserved: [
+      'carId',
+      'customerId',
+      'startDate',
+      'expectedEndDate',
+      'returnedAt',
+      'isOpenContract',
+      'totalPrice',
+      'deposit',
+      'guarantee',
+      'lateFee',
+      'totalPaid',
+      'isFullyPaid',
+      'status', // ✅ Keep status for cancel functionality
+      'damageReport',
+    ],
+    active: [
+      'totalPrice',
+      'lateFee',
+      'totalPaid',
+      'isFullyPaid',
+      'damageReport',
+      'status', // ✅ Keep status for cancel functionality
+      ...(isOpenContract ? ['returnedAt'] : []),
+    ],
+    completed: ['totalPaid', 'isFullyPaid', 'damageReport', 'lateFee'],
+    canceled: ['status'], // ✅ Allow status change to reactivate
   };
 
-  // ✅ Remove auto-status logic since backend handles it now
-  // The backend will automatically determine the correct status
+  // Filter updateData to only allowed fields
+  const allowedFields = currentStatus
+    ? allowedFieldsByStatus[currentStatus]
+    : Object.keys(updateData);
 
-  const response = await api.put(`/rents/${id}`, dataToSend, {
+  const filteredData: Record<string, any> = {};
+
+  for (const key of allowedFields) {
+    const value = updateData[key];
+    if (value !== undefined) {
+      if (key === 'damageReport') {
+        filteredData[key] = value === '' ? null : value;
+      } else {
+        filteredData[key] = value;
+      }
+    }
+  }
+
+  // Handle date formatting
+  if (filteredData.startDate instanceof Date) {
+    filteredData.startDate = filteredData.startDate.toISOString();
+  }
+  if (filteredData.returnedAt instanceof Date) {
+    filteredData.returnedAt = filteredData.returnedAt.toISOString();
+  }
+
+  const response = await api.put(`/rents/${id}`, filteredData, {
     headers: { 'Content-Type': 'application/json' },
   });
 
   return response.data;
 };
-
 export const getAllRentsWithCarAndCustomer = async (
   page: number = 1,
   pageSize: number = 5,

@@ -232,34 +232,8 @@ h1 {
 
 /*---------------------------------------------*/
 
-.bg-green {
-  background-color: #dcfce7 !important;
-}
-.bg-red {
-  background-color: #fee2e2 !important;
-}
-.dark .bg-green {
-  background-color: #166534 !important;
-}
-.dark .bg-red {
-  background-color: #7f1d1d !important;
-}
-
+/* Keep background colors for the whole row */
 .green-row {
-  border-left: 5px solid #22c55e !important;
-  background-color: rgba(34, 197, 94, 0.05) !important; /* lighter tint */
-}
-.dark .green-row {
-  background-color: rgba(
-    34,
-    197,
-    94,
-    0.12
-  ) !important; /* lighter in dark mode */
-}
-
-.green-row {
-  border-left: 5px solid #22c55e !important;
   background-color: rgba(34, 197, 94, 0.05) !important;
 }
 .dark .green-row {
@@ -267,7 +241,6 @@ h1 {
 }
 
 .red-row {
-  border-left: 5px solid #ef4444 !important;
   background-color: rgba(239, 68, 68, 0.05) !important;
 }
 .dark .red-row {
@@ -275,9 +248,27 @@ h1 {
 }
 
 .yellow-row {
-  border-left: 5px solid #eab308 !important;
   background-color: rgba(234, 179, 8, 0.05) !important;
 }
 .dark .yellow-row {
   background-color: rgba(234, 179, 8, 0.12) !important;
+}
+
+/* Borders only for the first column (checkbox) */
+.left-border-green {
+  border-left: 5px solid #22c55e !important;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+.left-border-red {
+  border-left: 5px solid #ef4444 !important;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+.left-border-yellow {
+  border-left: 5px solid #eab308 !important;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
 }

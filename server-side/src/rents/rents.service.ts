@@ -116,14 +116,14 @@ export class RentsService {
     switch (currentStatus) {
       case 'active':
         if (operation === 'delete') {
-          return 'This rental is currently active and cannot be deleted. Please complete or cancel the rental first.';
+          return 'Cannot delete an active rental. Please complete or cancel it first.';
         } else {
           return 'This rental is currently active. You can only update payment information, damage reports, or change the status to completed/canceled.';
         }
 
       case 'completed':
         if (operation === 'delete') {
-          return 'Completed rentals cannot be deleted as they are needed for record keeping and reporting purposes.';
+          return 'Completed rentals can be deleted for record management purposes.';
         } else {
           return 'This rental is completed. You can only update payment records and damage reports.';
         }
@@ -135,7 +135,7 @@ export class RentsService {
         break;
 
       case 'reserved':
-        // Reserved rentals can be fully modified, so this shouldn't trigger
+        // Reserved rentals can be fully modified and deleted
         break;
     }
 
@@ -720,15 +720,18 @@ export class RentsService {
       );
     }
   }
-
-  async remove(id: string, updateData?: Partial<CreateRentDto>) {
+  async remove(id: string) {
     try {
+      if (!id) {
+        throw new BadRequestException('Rental contract ID is required');
+      }
+
       const existingRent = await this.dbService.db
         .select()
         .from(rents)
         .where(and(eq(rents.id, id), eq(rents.isDeleted, false)));
 
-      if (existingRent.length === 0) {
+      if (!existingRent.length) {
         throw new BadRequestException(
           'Rental contract not found or has already been deleted.',
         );
@@ -742,40 +745,30 @@ export class RentsService {
         rent.status,
       );
 
-      // Check if rent can be deleted based on status
       if (currentStatus === 'active') {
         throw new BadRequestException(
-          this.getStatusBasedErrorMessage(currentStatus, 'delete'),
+          'Cannot delete this rental as it is currently active. Please complete or cancel it first.',
         );
       }
 
-      if (currentStatus === 'completed') {
-        throw new BadRequestException(
-          this.getStatusBasedErrorMessage(currentStatus, 'delete'),
-        );
-      }
-
-      const deleteData = {
-        isDeleted: true,
-        ...updateData,
-      };
-
+      // ✅ Use the TypeScript property name directly
       const result = await this.dbService.db
         .update(rents)
-        .set(deleteData)
+        .set({
+          isDeleted: true,
+        } as any)
         .where(eq(rents.id, id));
 
       return {
         success: true,
-        message: 'Rental contract deleted successfully',
+        message: `Rental contract deleted successfully (status: ${currentStatus})`,
         data: result,
       };
     } catch (error) {
+      console.error('Error deleting rental:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
-
-      // Handle database errors with user-friendly messages
       throw new BadRequestException(
         'Unable to delete rental contract. Please try again or contact support.',
       );

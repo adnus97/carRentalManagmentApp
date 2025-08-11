@@ -67,3 +67,23 @@ export const deleteCar = async (id: string) => {
   );
   return response.data;
 };
+
+export const updateCar = async (
+  id: string,
+  data: Partial<{
+    make: string;
+    model: string;
+    year: number;
+    purchasePrice: number;
+    pricePerDay: number;
+    mileage: number;
+    monthlyLeasePrice: number;
+    insuranceExpiryDate: Date;
+    status: 'active' | 'sold' | 'leased' | 'maintenance' | 'deleted';
+  }>,
+) => {
+  const response = await api.put(`/cars/${id}`, data, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+};
