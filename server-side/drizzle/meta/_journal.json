@@ -8,6 +8,13 @@
       "when": 1754704819542,
       "tag": "0000_tan_war_machine",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1754922075519,
+      "tag": "0001_minor_boomerang",
+      "breakpoints": true
     }
   ]
 }

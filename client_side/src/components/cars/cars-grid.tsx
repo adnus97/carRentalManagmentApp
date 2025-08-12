@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/pagination';
 import { format, isBefore, addDays } from 'date-fns';
 import { EditCarFormDialog } from './edit-car-form';
+import { useRouter } from '@tanstack/react-router';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -47,7 +48,7 @@ export const CarsGrid = () => {
     null,
   );
   const [selectedRows, setSelectedRows] = useState<Car[]>([]);
-
+  const router = useRouter();
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
   const queryClient = useQueryClient();
@@ -320,12 +321,25 @@ export const CarsGrid = () => {
               rowHeight={50}
               rowData={data?.data || []}
               columnDefs={colDefs}
-              rowSelection="multiple" // ✅ No auto column
+              rowSelection="multiple"
               pagination={false}
               domLayout="autoHeight"
               onSelectionChanged={(event) =>
                 setSelectedRows(event.api.getSelectedRows())
               }
+              onRowDoubleClicked={(event) => {
+                const carId = event.data?.id; //
+
+                if (!carId) {
+                  console.error('No car ID found in row data');
+                  return;
+                }
+
+                router.navigate({
+                  to: '/carDetails/$id',
+                  params: { id: carId },
+                });
+              }}
             />
           </div>
 

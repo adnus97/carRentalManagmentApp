@@ -87,3 +87,65 @@ export const updateCar = async (
   });
   return response.data;
 };
+
+// src/api/cars.ts
+export interface CarDetails {
+  car: Car;
+  rentalHistory: {
+    id: string;
+    startDate: string;
+    expectedEndDate: string;
+    returnedAt: string | null;
+    totalPrice: number;
+    totalPaid: number;
+    status: string;
+    customerName: string;
+  }[];
+  maintenanceLogs: any[];
+  oilChanges: any[];
+  targets: any[];
+  financialStats: {
+    totalRevenue: number;
+    totalRents: number;
+    avgRentPrice: number;
+  };
+}
+
+export const getCarDetails = async (id: string): Promise<CarDetails> => {
+  const response = await api.get(`/cars/${id}/details`);
+  return response.data;
+};
+export const addMaintenanceLog = async (
+  carId: string,
+  data: { description: string; cost: number; date: Date },
+) => {
+  const response = await api.post(`/cars/${carId}/maintenance`, data, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+};
+
+export const addOilChange = async (
+  carId: string,
+  data: { changedAt: Date; mileage: number; notes?: string },
+) => {
+  const response = await api.post(`/cars/${carId}/oil-change`, data, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+};
+
+export const addMonthlyTarget = async (
+  carId: string,
+  data: {
+    startDate: Date;
+    endDate: Date;
+    targetRents: number;
+    revenueGoal: number;
+  },
+) => {
+  const response = await api.post(`/cars/${carId}/targets`, data, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+};

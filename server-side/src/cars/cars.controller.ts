@@ -8,55 +8,178 @@ import {
   Req,
   Put,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
 import { CarsService } from './cars.service';
 import { CreateCarDto } from './dto/create-car.dto';
+import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
+import { CreateMonthlyTargetDto } from './dto/create-monthly-target.dto';
+import { CreateOilChangeDto } from './dto/create-oil-change.dto';
 
 @Auth()
 @Controller('cars')
 export class CarsController {
   constructor(private readonly carsService: CarsService) {}
 
+  /** Helper to ensure JSON-safe responses */
+  private safeReturn<T>(data: T): T {
+    return JSON.parse(JSON.stringify(data));
+  }
+
+  /** Centralized controller-level error handler */
+  private handleControllerError(error: any): never {
+    // If it's already a NestJS HTTP exception, rethrow it
+    if (error instanceof BadRequestException) throw error;
+    if (error.getStatus && error.getResponse) throw error;
+
+    // Otherwise, wrap it in a generic BadRequestException
+    throw new BadRequestException(
+      error?.message || 'An unexpected error occurred',
+    );
+  }
+
   @Get()
-  findAll(@Query('page') page: string, @Query('pageSize') pageSize: string) {
-    const pageNum = Math.max(1, parseInt(page || '1', 10));
-    const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
-    return this.carsService.findAll(pageNum, pageSizeNum);
+  async findAll(
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    try {
+      const pageNum = Math.max(1, parseInt(page || '1', 10));
+      const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
+      return this.safeReturn(
+        await this.carsService.findAll(pageNum, pageSizeNum),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
   }
 
   @Get('/org')
-  findCarsByOrgId(
+  async findCarsByOrgId(
     @CurrentUser() user: CustomUser,
     @Query('page') page: string,
     @Query('pageSize') pageSize: string,
   ) {
-    const pageNum = Math.max(1, parseInt(page || '1', 10));
-    const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
-    const userId = user.id;
-    return this.carsService.findCarsByOrgId(userId, pageNum, pageSizeNum);
+    try {
+      const pageNum = Math.max(1, parseInt(page || '1', 10));
+      const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
+      return this.safeReturn(
+        await this.carsService.findCarsByOrgId(user.id, pageNum, pageSizeNum),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
   }
+
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.carsService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    try {
+      return this.safeReturn(await this.carsService.findOne(id));
+    } catch (error) {
+      this.handleControllerError(error);
+    }
   }
 
   @Post()
-  createCar(
+  async createCar(
     @Body(ValidationPipe) createCarDto: CreateCarDto,
     @CurrentUser() user: CustomUser,
   ) {
-    const userId = user.id;
-    console.log('User ID:', userId);
-    return this.carsService.createCar(createCarDto, userId);
+    try {
+      return this.safeReturn(
+        await this.carsService.createCar(createCarDto, user.id),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
   }
 
   @Put(':id')
-  updateCar(
+  async updateCar(
     @Param('id') id: string,
     @Body(ValidationPipe) updateData: Partial<CreateCarDto>,
   ) {
-    return this.carsService.updateCar(id, updateData);
+    try {
+      return this.safeReturn(await this.carsService.updateCar(id, updateData));
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  @Get(':id/details')
+  async getCarDetails(@Param('id') id: string, @Req() req: any) {
+    try {
+      return this.safeReturn(
+        await this.carsService.getCarDetails(id, req.user?.sub),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  @Post(':id/targets')
+  async createMonthlyTarget(
+    @Param('id') carId: string,
+    @Body() createTargetDto: CreateMonthlyTargetDto,
+    @Req() req: any,
+  ) {
+    try {
+      return this.safeReturn(
+        await this.carsService.createMonthlyTarget(
+          carId,
+          createTargetDto,
+          req.user?.sub,
+        ),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  @Get(':id/targets')
+  async getCarTargets(@Param('id') carId: string, @Req() req: any) {
+    try {
+      return this.safeReturn(
+        await this.carsService.getCarTargets(carId, req.user?.sub),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  @Post(':id/maintenance')
+  async addMaintenanceLog(
+    @Param('id') carId: string,
+    @Body() maintenanceDto: CreateMaintenanceDto,
+    @Req() req: any,
+  ) {
+    try {
+      return this.safeReturn(
+        await this.carsService.addMaintenanceLog(
+          carId,
+          maintenanceDto,
+          req.user?.sub,
+        ),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  @Post(':id/oil-change')
+  async addOilChange(
+    @Param('id') carId: string,
+    @Body() oilChangeDto: CreateOilChangeDto,
+    @Req() req: any,
+  ) {
+    try {
+      return this.safeReturn(
+        await this.carsService.addOilChange(carId, oilChangeDto, req.user?.sub),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
   }
 }

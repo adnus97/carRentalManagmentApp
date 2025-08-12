@@ -8,14 +8,93 @@ import { eq, ne, and, sql } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 import { CreateCarDto } from './dto/create-car.dto';
 import { rents } from 'src/db/schema/rents';
+import { carOilChanges } from 'src/db/schema/car_oil_changes';
+import { carMonthlyTargets } from 'src/db/schema/carMonthlyTargets';
+import { customers } from 'src/db/schema/customers';
+import { maintenanceLogs } from 'src/db/schema/maintenanceLogs';
+import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
+import { CreateMonthlyTargetDto } from './dto/create-monthly-target.dto';
+import { CreateOilChangeDto } from './dto/create-oil-change.dto';
 
 @Injectable()
 export class CarsService {
   constructor(private readonly dbService: DatabaseService) {}
 
-  /**
-   * Get all cars with dynamic availability and next available date
-   */
+  /** Helper to ensure JSON-safe responses */
+  private safeReturn<T>(data: T): T {
+    return JSON.parse(JSON.stringify(data));
+  }
+
+  /** Centralized DB error handler */
+  private handleDbError(error: any): never {
+    if (error.code === '23505') {
+      throw new BadRequestException(
+        'A car with these details already exists in your fleet. Please check your input.',
+      );
+    }
+    if (error.code === '23503') {
+      throw new BadRequestException(
+        'Invalid organization reference. Please contact support.',
+      );
+    }
+    if (error.code === '23514') {
+      throw new BadRequestException(
+        'Some of the provided information is invalid. Please check your input and try again.',
+      );
+    }
+    if (error.code === '23502') {
+      throw new BadRequestException(
+        'Required information is missing. Please fill in all required fields.',
+      );
+    }
+    throw error;
+  }
+
+  /** SQL for availability */
+  private isAvailableSQL = sql<boolean>`
+    ${cars.status} = 'active' AND NOT EXISTS (
+      SELECT 1 FROM ${rents}
+      WHERE ${rents.carId} = ${cars.id}
+        AND ${rents.isDeleted} = false
+        AND ${rents.status} = 'active'
+        AND ${rents.startDate} <= NOW()
+        AND ${rents.returnedAt} > NOW()
+    )
+  `;
+
+  /** SQL for next available date */
+  private nextAvailableDateSQL = sql<Date | null>`
+    (
+      SELECT MIN(${rents.returnedAt})
+      FROM ${rents}
+      WHERE ${rents.carId} = ${cars.id}
+        AND ${rents.isDeleted} = false
+        AND ${rents.status} = 'active'
+        AND ${rents.returnedAt} > NOW()
+    )
+  `;
+
+  /** Convert date strings to Date objects */
+  private normalizeDates<T extends Record<string, any>>(data: T): T {
+    const dateFields = [
+      'insuranceExpiryDate',
+      'createdAt',
+      'updatedAt',
+      'startDate',
+      'endDate',
+      'changedAt',
+    ];
+    return Object.fromEntries(
+      Object.entries(data).map(([key, value]) => {
+        if (dateFields.includes(key) && typeof value === 'string') {
+          return [key, new Date(value)];
+        }
+        return [key, value];
+      }),
+    ) as T;
+  }
+
+  /** Get all cars */
   async findAll(page = 1, pageSize = 20) {
     try {
       const offset = (page - 1) * pageSize;
@@ -40,27 +119,8 @@ export class CarsService {
           status: cars.status,
           createdAt: cars.createdAt,
           updatedAt: cars.updatedAt,
-          // 🔥 UPDATED: Include car status in availability calculation
-          isAvailable: sql<boolean>`
-          ${cars.status} = 'active' AND NOT EXISTS (
-            SELECT 1 FROM ${rents}
-            WHERE ${rents.carId} = ${cars.id}
-              AND ${rents.isDeleted} = false
-              AND ${rents.status} = 'active'
-              AND ${rents.startDate} <= NOW()
-              AND ${rents.returnedAt} > NOW()
-          )
-        `.as('isAvailable'),
-          nextAvailableDate: sql<Date | null>`
-          (
-            SELECT MIN(${rents.returnedAt})
-            FROM ${rents}
-            WHERE ${rents.carId} = ${cars.id}
-              AND ${rents.isDeleted} = false
-              AND ${rents.status} = 'active'
-              AND ${rents.returnedAt} > NOW()
-          )
-        `.as('nextAvailableDate'),
+          isAvailable: this.isAvailableSQL.as('isAvailable'),
+          nextAvailableDate: this.nextAvailableDateSQL.as('nextAvailableDate'),
         })
         .from(cars)
         .where(ne(cars.status, 'deleted'))
@@ -68,28 +128,22 @@ export class CarsService {
         .offset(offset)
         .limit(pageSize);
 
-      return {
+      return this.safeReturn({
         data,
         page,
         pageSize,
         total: Number(count),
         totalPages: Math.ceil(Number(count) / pageSize),
-      };
+      });
     } catch (error) {
-      console.error('Error fetching cars:', error);
-      throw new BadRequestException(
-        'Unable to retrieve cars. Please try again or contact support.',
-      );
+      this.handleDbError(error);
     }
   }
-  /**
-   * Get a single car with dynamic availability and next available date
-   */
+
+  /** Get one car */
   async findOne(id: string) {
     try {
-      if (!id) {
-        throw new BadRequestException('Car ID is required');
-      }
+      if (!id) throw new BadRequestException('Car ID is required');
 
       const [car] = await this.dbService.db
         .select({
@@ -106,72 +160,34 @@ export class CarsService {
           status: cars.status,
           createdAt: cars.createdAt,
           updatedAt: cars.updatedAt,
-          // 🔥 UPDATED: Include car status in availability calculation
-          isAvailable: sql<boolean>`
-          ${cars.status} = 'active' AND NOT EXISTS (
-            SELECT 1 FROM ${rents}
-            WHERE ${rents.carId} = ${cars.id}
-              AND ${rents.isDeleted} = false
-              AND ${rents.status} = 'active'
-              AND ${rents.startDate} <= NOW()
-              AND ${rents.returnedAt} > NOW()
-          )
-        `.as('isAvailable'),
-          nextAvailableDate: sql<Date | null>`
-          (
-            SELECT MIN(${rents.returnedAt})
-            FROM ${rents}
-            WHERE ${rents.carId} = ${cars.id}
-              AND ${rents.isDeleted} = false
-              AND ${rents.status} = 'active'
-              AND ${rents.returnedAt} > NOW()
-          )
-        `.as('nextAvailableDate'),
+          isAvailable: this.isAvailableSQL.as('isAvailable'),
+          nextAvailableDate: this.nextAvailableDateSQL.as('nextAvailableDate'),
         })
         .from(cars)
         .where(and(eq(cars.id, id), ne(cars.status, 'deleted')));
 
-      if (!car) {
-        throw new NotFoundException('Car not found or has been deleted');
-      }
+      if (!car) throw new NotFoundException('Car not found');
 
-      return car;
+      return this.safeReturn(car);
     } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
-
-      console.error('Error fetching car:', error);
-      throw new BadRequestException(
-        'Unable to retrieve car details. Please try again or contact support.',
-      );
+      this.handleDbError(error);
     }
   }
 
-  /**
-   * Get cars by organization with dynamic availability and next available date
-   */
+  /** Get cars by organization */
   async findCarsByOrgId(userId: string, page = 1, pageSize = 20) {
     try {
-      if (!userId) {
-        throw new BadRequestException('User ID is required');
-      }
+      if (!userId) throw new BadRequestException('User ID is required');
 
       const offset = (page - 1) * pageSize;
 
-      // First verify the user has an organization
       const userOrg = await this.dbService.db
         .select({ id: organization.id })
         .from(organization)
         .where(eq(organization.userId, userId));
 
       if (!userOrg.length) {
-        throw new BadRequestException(
-          'No organization found for this user. Please contact support.',
-        );
+        throw new BadRequestException('No organization found for this user.');
       }
 
       const [{ count }] = await this.dbService.db
@@ -197,27 +213,8 @@ export class CarsService {
           status: cars.status,
           createdAt: cars.createdAt,
           updatedAt: cars.updatedAt,
-          // 🔥 UPDATED: Include car status in availability calculation
-          isAvailable: sql<boolean>`
-          ${cars.status} = 'active' AND NOT EXISTS (
-            SELECT 1 FROM ${rents}
-            WHERE ${rents.carId} = ${cars.id}
-              AND ${rents.isDeleted} = false
-              AND ${rents.status} = 'active'
-              AND ${rents.startDate} <= NOW()
-              AND ${rents.returnedAt} > NOW()
-          )
-        `.as('isAvailable'),
-          nextAvailableDate: sql<Date | null>`
-          (
-            SELECT MIN(${rents.returnedAt})
-            FROM ${rents}
-            WHERE ${rents.carId} = ${cars.id}
-              AND ${rents.isDeleted} = false
-              AND ${rents.status} = 'active'
-              AND ${rents.returnedAt} > NOW()
-          )
-        `.as('nextAvailableDate'),
+          isAvailable: this.isAvailableSQL.as('isAvailable'),
+          nextAvailableDate: this.nextAvailableDateSQL.as('nextAvailableDate'),
         })
         .from(cars)
         .leftJoin(organization, eq(cars.orgId, organization.id))
@@ -226,440 +223,111 @@ export class CarsService {
         .offset(offset)
         .limit(pageSize);
 
-      return {
+      return this.safeReturn({
         data: rows,
         page,
         pageSize,
         total: Number(count),
         totalPages: Math.ceil(Number(count) / pageSize),
-      };
+      });
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      console.error('Error fetching cars by organization:', error);
-      throw new BadRequestException(
-        'Unable to retrieve your cars. Please try again or contact support.',
-      );
+      this.handleDbError(error);
     }
   }
 
+  /** Create a car */
   async createCar(createCarDto: CreateCarDto, userId: string) {
     try {
-      if (!userId) {
+      if (!userId)
         throw new BadRequestException('User authentication required');
-      }
 
-      // Validate required fields
-      if (!createCarDto.make || !createCarDto.model) {
-        throw new BadRequestException('Car make and model are required');
-      }
+      createCarDto = this.normalizeDates(createCarDto);
 
-      if (
-        !createCarDto.year ||
-        createCarDto.year < 1900 ||
-        createCarDto.year > new Date().getFullYear() + 1
-      ) {
-        throw new BadRequestException(
-          `Please provide a valid year between 1900 and ${new Date().getFullYear() + 1}`,
-        );
-      }
-
-      // Validate financial data
-      if (
-        createCarDto.purchasePrice !== undefined &&
-        createCarDto.purchasePrice < 0
-      ) {
-        throw new BadRequestException('Purchase price cannot be negative');
-      }
-
-      if (
-        createCarDto.pricePerDay !== undefined &&
-        createCarDto.pricePerDay < 0
-      ) {
-        throw new BadRequestException('Daily rental price cannot be negative');
-      }
-
-      if (
-        createCarDto.monthlyLeasePrice !== undefined &&
-        createCarDto.monthlyLeasePrice < 0
-      ) {
-        throw new BadRequestException('Monthly lease price cannot be negative');
-      }
-
-      if (createCarDto.mileage !== undefined && createCarDto.mileage < 0) {
-        throw new BadRequestException('Mileage cannot be negative');
-      }
-
-      // Validate insurance expiry date if provided
-      if (createCarDto.insuranceExpiryDate) {
-        const expiryDate = new Date(createCarDto.insuranceExpiryDate);
-        const today = new Date();
-
-        if (isNaN(expiryDate.getTime())) {
-          throw new BadRequestException(
-            'Please provide a valid insurance expiry date',
-          );
-        }
-
-        // Warn if insurance is expired or expires soon (optional business rule)
-        if (expiryDate < today) {
-          throw new BadRequestException(
-            'Insurance expiry date cannot be in the past. Please update the insurance first.',
-          );
-        }
-      }
-
-      const id = createId();
-
-      // Get user's organization
       const currentUserOrgId = await this.dbService.db
         .select({ id: organization.id })
         .from(organization)
         .where(eq(organization.userId, userId));
 
       if (!currentUserOrgId.length) {
-        throw new BadRequestException(
-          'No organization found for this user. Please contact support to set up your organization.',
-        );
+        throw new BadRequestException('No organization found for this user.');
       }
 
+      const id = createId();
       const orgId = currentUserOrgId[0].id;
 
-      // Prepare car data
       const carData = {
         id,
         orgId,
         ...createCarDto,
-        status: createCarDto.status || 'available', // Default status
+        status: createCarDto.status || 'available',
       };
 
-      const result = await this.dbService.db.insert(cars).values(carData);
+      await this.dbService.db.insert(cars).values(carData);
 
-      return {
+      return this.safeReturn({
         success: true,
         message: 'Car added successfully',
         data: { id, ...carData },
-      };
+      });
     } catch (error) {
-      // If it's already a BadRequestException, re-throw it
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      // Handle database constraint errors
-      if (error.code === '23505') {
-        throw new BadRequestException(
-          'A car with these details already exists in your fleet. Please check your input.',
-        );
-      }
-
-      if (error.code === '23503') {
-        throw new BadRequestException(
-          'Invalid organization reference. Please contact support.',
-        );
-      }
-
-      if (error.code === '23514') {
-        throw new BadRequestException(
-          'Some of the provided information is invalid. Please check your input and try again.',
-        );
-      }
-
-      if (error.code === '23502') {
-        throw new BadRequestException(
-          'Required information is missing. Please fill in all required fields.',
-        );
-      }
-
-      console.error('Error creating car:', error);
-      throw new BadRequestException(
-        'Unable to add car to your fleet. Please try again or contact support.',
-      );
+      this.handleDbError(error);
     }
   }
 
+  /** Update a car */
   async updateCar(
     id: string,
     updateData: Partial<CreateCarDto>,
     userId?: string,
   ) {
     try {
-      if (!id) {
-        throw new BadRequestException('Car ID is required');
-      }
+      if (!id) throw new BadRequestException('Car ID is required');
 
-      // Check if car exists and get current data
+      updateData = this.normalizeDates(updateData);
+
       const existingCar = await this.dbService.db
         .select()
         .from(cars)
         .where(and(eq(cars.id, id), ne(cars.status, 'deleted')));
 
       if (!existingCar.length) {
-        throw new NotFoundException('Car not found or has been deleted');
+        throw new NotFoundException('Car not found or deleted');
       }
 
-      const car = existingCar[0];
-
-      // If userId is provided, verify ownership
-      if (userId) {
-        const userOrg = await this.dbService.db
-          .select({ id: organization.id })
-          .from(organization)
-          .where(eq(organization.userId, userId));
-
-        if (!userOrg.length || userOrg[0].id !== car.orgId) {
-          throw new BadRequestException(
-            'You do not have permission to update this car',
-          );
-        }
-      }
-
-      // Check if car is currently rented (business rule)
-      const activeRentals = await this.dbService.db
-        .select({ id: rents.id })
-        .from(rents)
-        .where(
-          and(
-            eq(rents.carId, id),
-            eq(rents.isDeleted, false),
-            eq(rents.status, 'active'),
-          ),
-        );
-
-      // Restrict certain updates if car is actively rented
-      if (activeRentals.length > 0) {
-        const restrictedFields = ['status'];
-        const attemptedRestrictedFields = restrictedFields.filter(
-          (field) => updateData[field as keyof CreateCarDto] !== undefined,
-        );
-
-        if (
-          attemptedRestrictedFields.length > 0 &&
-          updateData.status === 'maintenance'
-        ) {
-          throw new BadRequestException(
-            'Cannot change car status to maintenance while it is actively rented. Please complete the rental first.',
-          );
-        }
-      }
-
-      // Create a copy of updateData to avoid mutating the original
-      const processedUpdateData = { ...updateData };
-
-      // Convert date strings to Date objects
-      if (processedUpdateData.insuranceExpiryDate) {
-        if (typeof processedUpdateData.insuranceExpiryDate === 'string') {
-          processedUpdateData.insuranceExpiryDate = new Date(
-            processedUpdateData.insuranceExpiryDate,
-          );
-        }
-      }
-
-      // Validate update data
-      if (processedUpdateData.year !== undefined) {
-        if (
-          processedUpdateData.year < 1900 ||
-          processedUpdateData.year > new Date().getFullYear() + 1
-        ) {
-          throw new BadRequestException(
-            `Please provide a valid year between 1900 and ${new Date().getFullYear() + 1}`,
-          );
-        }
-      }
-
-      if (
-        processedUpdateData.purchasePrice !== undefined &&
-        processedUpdateData.purchasePrice < 0
-      ) {
-        throw new BadRequestException('Purchase price cannot be negative');
-      }
-
-      if (
-        processedUpdateData.pricePerDay !== undefined &&
-        processedUpdateData.pricePerDay < 0
-      ) {
-        throw new BadRequestException('Daily rental price cannot be negative');
-      }
-
-      if (
-        processedUpdateData.monthlyLeasePrice !== undefined &&
-        processedUpdateData.monthlyLeasePrice < 0
-      ) {
-        throw new BadRequestException('Monthly lease price cannot be negative');
-      }
-
-      if (
-        processedUpdateData.mileage !== undefined &&
-        processedUpdateData.mileage < 0
-      ) {
-        throw new BadRequestException('Mileage cannot be negative');
-      }
-
-      if (processedUpdateData.insuranceExpiryDate) {
-        const expiryDate = processedUpdateData.insuranceExpiryDate;
-
-        if (!(expiryDate instanceof Date) || isNaN(expiryDate.getTime())) {
-          throw new BadRequestException(
-            'Please provide a valid insurance expiry date',
-          );
-        }
-
-        const today = new Date();
-        if (expiryDate < today) {
-          throw new BadRequestException(
-            'Insurance expiry date cannot be in the past',
-          );
-        }
-      }
-
-      // Add updatedAt timestamp
       const finalUpdateData = {
-        ...processedUpdateData,
+        ...updateData,
         updatedAt: new Date(),
       };
 
-      const result = await this.dbService.db
+      await this.dbService.db
         .update(cars)
         .set(finalUpdateData)
         .where(eq(cars.id, id));
 
-      return {
+      return this.safeReturn({
         success: true,
         message: 'Car updated successfully',
-        data: result,
-      };
+      });
     } catch (error) {
-      // If it's already a BadRequestException or NotFoundException, re-throw it
-      if (
-        error instanceof BadRequestException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
-      }
-
-      // Handle database constraint errors
-      if (error.code === '23505') {
-        throw new BadRequestException(
-          'A car with these details already exists. Please check your input.',
-        );
-      }
-
-      if (error.code === '23503') {
-        throw new BadRequestException(
-          'Invalid reference in the provided data.',
-        );
-      }
-
-      if (error.code === '23514') {
-        throw new BadRequestException(
-          'Some of the provided information is invalid. Please check your input.',
-        );
-      }
-
-      if (error.code === '23502') {
-        throw new BadRequestException(
-          'Required information is missing. Please fill in all required fields.',
-        );
-      }
-
-      console.error('Error updating car:', error);
-      throw new BadRequestException(
-        'Unable to update car. Please try again or contact support.',
-      );
+      this.handleDbError(error);
     }
   }
 
+  /** Delete a car (soft delete) */
   async deleteCar(id: string, userId?: string) {
     try {
-      if (!id) {
-        throw new BadRequestException('Car ID is required');
-      }
+      if (!id) throw new BadRequestException('Car ID is required');
 
-      // Check if car exists
       const existingCar = await this.dbService.db
         .select()
         .from(cars)
         .where(and(eq(cars.id, id), ne(cars.status, 'deleted')));
 
       if (!existingCar.length) {
-        throw new NotFoundException(
-          'Car not found or has already been deleted',
-        );
+        throw new NotFoundException('Car not found or already deleted');
       }
 
-      const car = existingCar[0];
-
-      // If userId is provided, verify ownership
-      if (userId) {
-        const userOrg = await this.dbService.db
-          .select({ id: organization.id })
-          .from(organization)
-          .where(eq(organization.userId, userId));
-
-        if (!userOrg.length || userOrg[0].id !== car.orgId) {
-          throw new BadRequestException(
-            'You do not have permission to delete this car',
-          );
-        }
-      }
-
-      // Fetch all non-deleted, non-canceled rents for this car
-      const activeOrReservedRents = await this.dbService.db
-        .select({
-          id: rents.id,
-          startDate: rents.startDate,
-          returnedAt: rents.returnedAt,
-          expectedEndDate: rents.expectedEndDate,
-          status: rents.status,
-        })
-        .from(rents)
-        .where(
-          and(
-            eq(rents.carId, id),
-            eq(rents.isDeleted, false),
-            ne(rents.status, 'canceled'),
-          ),
-        );
-
-      // Use the same logic as RentsService to determine real status
-      const now = new Date();
-      const getAutoStatus = (
-        startDate: Date,
-        returnedAt: Date | null,
-        expectedEndDate: Date | null,
-        currentStatus: string,
-      ): string => {
-        if (currentStatus === 'canceled') return 'canceled';
-        if (returnedAt && returnedAt <= now) return 'completed';
-        if (startDate > now) return 'reserved';
-        return 'active';
-      };
-
-      for (const rent of activeOrReservedRents) {
-        const realStatus = getAutoStatus(
-          rent.startDate,
-          rent.returnedAt,
-          rent.expectedEndDate,
-          rent.status,
-        );
-
-        if (realStatus === 'active') {
-          throw new BadRequestException(
-            'Cannot delete this car as it is currently rented. Please complete the rental first.',
-          );
-        }
-
-        if (realStatus === 'reserved') {
-          throw new BadRequestException(
-            'Cannot delete this car as it has upcoming reservations. Please cancel them first.',
-          );
-        }
-      }
-
-      // Soft delete the car
-      const result = await this.dbService.db
+      await this.dbService.db
         .update(cars)
         .set({
           [cars.status.name]: 'deleted',
@@ -667,30 +335,264 @@ export class CarsService {
         })
         .where(eq(cars.id, id));
 
-      return {
+      return this.safeReturn({
         success: true,
         message: 'Car deleted successfully',
-        data: result,
-      };
+      });
     } catch (error) {
-      if (
-        error instanceof BadRequestException ||
-        error instanceof NotFoundException
-      ) {
-        throw error;
+      this.handleDbError(error);
+    }
+  }
+
+  /** Get car details */
+  async getCarDetails(carId: string, userId?: string) {
+    try {
+      const car = await this.findOne(carId);
+
+      if (userId) {
+        const userOrg = await this.dbService.db
+          .select({ id: organization.id })
+          .from(organization)
+          .where(eq(organization.userId, userId));
+
+        if (!userOrg.length || userOrg[0].id !== car.orgId) {
+          throw new BadRequestException('Access denied');
+        }
       }
 
-      // Add this for debugging
-      console.error('Error updating car:', error);
+      const rentalHistory = await this.dbService.db
+        .select({
+          id: rents.id,
+          startDate: rents.startDate,
+          expectedEndDate: rents.expectedEndDate,
+          returnedAt: rents.returnedAt,
+          totalPrice: rents.totalPrice,
+          totalPaid: rents.totalPaid,
+          status: rents.status,
+          customerName: sql<string>`
+            (SELECT CONCAT(${customers.firstName}, ' ', ${customers.lastName}) 
+             FROM ${customers} WHERE ${customers.id} = ${rents.customerId})
+          `.as('customerName'),
+        })
+        .from(rents)
+        .where(and(eq(rents.carId, carId), eq(rents.isDeleted, false)))
+        .orderBy(sql`${rents.startDate} DESC`)
+        .limit(10);
 
-      // In development, return actual error
-      if (process.env.NODE_ENV === 'development') {
-        throw new BadRequestException(`Update failed: ${error.message}`);
+      const maintenanceLogsData = await this.dbService.db
+        .select()
+        .from(maintenanceLogs)
+        .where(eq(maintenanceLogs.carId, carId))
+        .orderBy(sql`${maintenanceLogs.createdAt} DESC`)
+        .limit(10);
+
+      const oilChangesData = await this.dbService.db
+        .select()
+        .from(carOilChanges)
+        .where(eq(carOilChanges.carId, carId))
+        .orderBy(sql`${carOilChanges.changedAt} DESC`)
+        .limit(5);
+
+      const targetsData = await this.dbService.db
+        .select()
+        .from(carMonthlyTargets)
+        .where(eq(carMonthlyTargets.carId, carId))
+        .orderBy(sql`${carMonthlyTargets.startDate} DESC`)
+        .limit(5);
+
+      const financialStats = await this.dbService.db
+        .select({
+          totalRevenue: sql<number>`COALESCE(SUM(${rents.totalPaid}), 0)`,
+          totalRents: sql<number>`COUNT(*)`,
+          avgRentPrice: sql<number>`COALESCE(AVG(${rents.totalPrice}), 0)`,
+        })
+        .from(rents)
+        .where(
+          and(
+            eq(rents.carId, carId),
+            eq(rents.isDeleted, false),
+            ne(rents.status, 'canceled'),
+          ),
+        );
+
+      return this.safeReturn({
+        car,
+        rentalHistory,
+        maintenanceLogs: maintenanceLogsData,
+        oilChanges: oilChangesData,
+        targets: targetsData,
+        financialStats: financialStats[0],
+      });
+    } catch (error) {
+      this.handleDbError(error);
+    }
+  }
+
+  /** Create monthly target */
+  async createMonthlyTarget(
+    carId: string,
+    targetDto: CreateMonthlyTargetDto,
+    userId?: string,
+  ) {
+    try {
+      targetDto = this.normalizeDates(targetDto);
+
+      const car = await this.findOne(carId);
+      if (userId) {
+        const userOrg = await this.dbService.db
+          .select({ id: organization.id })
+          .from(organization)
+          .where(eq(organization.userId, userId));
+
+        if (!userOrg.length || userOrg[0].id !== car.orgId) {
+          throw new BadRequestException('Access denied');
+        }
       }
 
-      throw new BadRequestException(
-        'Unable to update car. Please try again or contact support.',
-      );
+      const targetId = createId();
+      const orgId = car.orgId;
+
+      await this.dbService.db.insert(carMonthlyTargets).values({
+        id: targetId,
+        carId,
+        orgId,
+        startDate: new Date(targetDto.startDate),
+        endDate: new Date(targetDto.endDate),
+        targetRents: targetDto.targetRents,
+        revenueGoal: targetDto.revenueGoal,
+      });
+
+      return this.safeReturn({
+        success: true,
+        message: 'Target created successfully',
+        data: { id: targetId, carId, ...targetDto },
+      });
+    } catch (error) {
+      this.handleDbError(error);
+    }
+  }
+
+  /** Get car targets */
+  async getCarTargets(carId: string, userId?: string) {
+    try {
+      const car = await this.findOne(carId);
+      if (userId) {
+        const userOrg = await this.dbService.db
+          .select({ id: organization.id })
+          .from(organization)
+          .where(eq(organization.userId, userId));
+
+        if (!userOrg.length || userOrg[0].id !== car.orgId) {
+          throw new BadRequestException('Access denied');
+        }
+      }
+
+      const targets = await this.dbService.db
+        .select({
+          id: carMonthlyTargets.id,
+          startDate: carMonthlyTargets.startDate,
+          endDate: carMonthlyTargets.endDate,
+          targetRents: carMonthlyTargets.targetRents,
+          revenueGoal: carMonthlyTargets.revenueGoal,
+          createdAt: carMonthlyTargets.createdAt,
+          actualRents: sql<number>`
+            (SELECT COUNT(*) FROM ${rents} 
+             WHERE ${rents.carId} = ${carMonthlyTargets.carId}
+             AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
+             AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
+             AND ${rents.isDeleted} = false
+             AND ${rents.status} != 'canceled')
+          `,
+          actualRevenue: sql<number>`
+            (SELECT COALESCE(SUM(${rents.totalPaid}), 0) FROM ${rents}
+             WHERE ${rents.carId} = ${carMonthlyTargets.carId}
+             AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
+             AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
+             AND ${rents.isDeleted} = false
+             AND ${rents.status} != 'canceled')
+          `,
+        })
+        .from(carMonthlyTargets)
+        .where(eq(carMonthlyTargets.carId, carId))
+        .orderBy(sql`${carMonthlyTargets.startDate} DESC`);
+
+      return this.safeReturn(targets);
+    } catch (error) {
+      this.handleDbError(error);
+    }
+  }
+
+  /** Add maintenance log */
+  async addMaintenanceLog(
+    carId: string,
+    dto: CreateMaintenanceDto,
+    userId?: string,
+  ) {
+    try {
+      dto = this.normalizeDates(dto);
+
+      const car = await this.findOne(carId);
+      if (userId) {
+        const userOrg = await this.dbService.db
+          .select({ id: organization.id })
+          .from(organization)
+          .where(eq(organization.userId, userId));
+
+        if (!userOrg.length || userOrg[0].id !== car.orgId) {
+          throw new BadRequestException('Access denied');
+        }
+      }
+
+      const logId = createId();
+
+      await this.dbService.db.insert(maintenanceLogs).values({
+        id: logId,
+        carId,
+        orgId: car.orgId,
+        ...dto,
+      });
+
+      return this.safeReturn({
+        success: true,
+        message: 'Maintenance log added successfully',
+      });
+    } catch (error) {
+      this.handleDbError(error);
+    }
+  }
+
+  /** Add oil change */
+  async addOilChange(carId: string, dto: CreateOilChangeDto, userId?: string) {
+    try {
+      dto = this.normalizeDates(dto);
+
+      const car = await this.findOne(carId);
+      if (userId) {
+        const userOrg = await this.dbService.db
+          .select({ id: organization.id })
+          .from(organization)
+          .where(eq(organization.userId, userId));
+
+        if (!userOrg.length || userOrg[0].id !== car.orgId) {
+          throw new BadRequestException('Access denied');
+        }
+      }
+
+      const oilChangeId = createId();
+
+      await this.dbService.db.insert(carOilChanges).values({
+        id: oilChangeId,
+        carId,
+        orgId: car.orgId,
+        ...dto,
+      });
+
+      return this.safeReturn({
+        success: true,
+        message: 'Oil change recorded successfully',
+      });
+    } catch (error) {
+      this.handleDbError(error);
     }
   }
 }
