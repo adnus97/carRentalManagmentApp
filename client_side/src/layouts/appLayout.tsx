@@ -1,3 +1,4 @@
+import { useRef, useState, useEffect } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { DialogDemo } from '@/components/cars/car-form';
 import {
@@ -13,11 +14,14 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Outlet, useLocation } from '@tanstack/react-router';
 import { navigationConfig } from '@/config/navigation';
 import { ModeToggle } from '@/components/mode-toggle';
+import { LayoutContext } from '@/contexts/layout-context';
 
 const navData = navigationConfig;
 
 export function AppLayout() {
   const location = useLocation();
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   const search = location.search;
   const params = new URLSearchParams(search);
@@ -66,11 +70,26 @@ export function AppLayout() {
 
   const breadcrumbItems = getBreadcrumbItems();
 
+  useEffect(() => {
+    const updateHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    };
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
+
   return (
     <SidebarProvider>
       <AppSidebar />
-      <div className="w-full">
-        <header className="flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4 z-50">
+      <div className="w-full overflow-hidden">
+        {/* Sticky Header */}
+        <header
+          ref={headerRef}
+          className="flex bg-background h-16 shrink-0 items-center gap-2 border-b px-4 z-50"
+        >
           <SidebarTrigger />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="w-full">
@@ -93,16 +112,20 @@ export function AppLayout() {
                   </div>
                 ))}
               </BreadcrumbList>
-              {location.pathname === '/dashboard' && <DialogDemo />}
-              <ModeToggle />
+              <div className="flex space-x-3">
+                {location.pathname === '/dashboard' && <DialogDemo />}
+                <ModeToggle />
+              </div>
             </Breadcrumb>
           </div>
         </header>
 
-        {/* Responsive padding: pt-32 on small/medium, pt-4 on large+ */}
-        <main>
-          <Outlet />
-        </main>
+        {/* Provide headerHeight to all pages */}
+        <LayoutContext.Provider value={{ headerHeight }}>
+          <main className="h-[calc(100vh-64px)]">
+            <Outlet />
+          </main>
+        </LayoutContext.Provider>
       </div>
     </SidebarProvider>
   );

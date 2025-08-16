@@ -1,3 +1,9 @@
+import {
+  RentalRow,
+  MaintenanceLogRow,
+  OilChangeRow,
+  TargetRow,
+} from '@/types/car-tables';
 import { api } from './api';
 
 // Car type with new fields from backend
@@ -91,19 +97,10 @@ export const updateCar = async (
 // src/api/cars.ts
 export interface CarDetails {
   car: Car;
-  rentalHistory: {
-    id: string;
-    startDate: string;
-    expectedEndDate: string;
-    returnedAt: string | null;
-    totalPrice: number;
-    totalPaid: number;
-    status: string;
-    customerName: string;
-  }[];
-  maintenanceLogs: any[];
-  oilChanges: any[];
-  targets: any[];
+  rentalHistory: RentalRow[];
+  maintenanceLogs: MaintenanceLogRow[];
+  oilChanges: OilChangeRow[];
+  targets: TargetRow[];
   financialStats: {
     totalRevenue: number;
     totalRents: number;

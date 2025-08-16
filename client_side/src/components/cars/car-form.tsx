@@ -142,7 +142,7 @@ export function DialogDemo({
       <DialogTrigger asChild>
         <Button
           variant="default"
-          className="fixed bottom-5 right-5 text-white flex items-center gap-2 px-4 py-2 rounded-lg"
+          className=" text-white flex items-center gap-2 px-4 py-2 rounded-lg"
         >
           <Plus size={40} />
           Add car

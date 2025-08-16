@@ -52,49 +52,7 @@ function RouteComponent() {
   const { car } = data;
 
   return (
-    <div className="p-6 space-y-4">
-      {/* Back Button */}
-      <Button variant="ghost" onClick={() => router.history.back()}>
-        <ArrowLeft size={20} /> Back
-      </Button>
-
-      {/* Quick Actions */}
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={() => updateMutation.mutate({ status: 'maintenance' })}
-        >
-          Mark as Maintenance
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => updateMutation.mutate({ status: 'sold' })}
-        >
-          Mark as Sold
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => {
-            const mileage = prompt('Enter new mileage:', String(car.mileage)); // ✅ fixed
-            if (mileage) {
-              updateMutation.mutate({ mileage: Number(mileage) });
-            }
-          }}
-        >
-          Update Mileage
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            if (confirm('Are you sure you want to delete this car?')) {
-              deleteMutation.mutate();
-            }
-          }}
-        >
-          Delete Car
-        </Button>
-      </div>
-
+    <div>
       {/* Car Details Component */}
       <CarDetailsPage carId={id} />
     </div>

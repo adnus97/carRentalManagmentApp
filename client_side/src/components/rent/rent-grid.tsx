@@ -546,19 +546,41 @@ export const RentsGrid = () => {
       </p>
 
       <div className="flex justify-between mb-4 items-center">
-        <p>Manage your rent contracts below:</p>
+        <div className="flex  space-x-4 items-center mb-2">
+          <p>Manage your rent contracts below:</p>
+          {selectedRows.length > 0 && (
+            <div className="flex items-center gap-2 ">
+              <Button
+                variant="secondary"
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={selectedRows.length === 0}
+              >
+                <Trash size={20} />
+                Delete ({deletableCount}/{selectedRows.length})
+              </Button>
+
+              {activeCount > 0 && (
+                <span className="text-xs text-yellow-600">
+                  {activeCount} active rental(s) cannot be deleted
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-4 text-xs items-center">
           <div className="flex items-center gap-1">
             <span
               className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: '#22c55e' }}
+              style={{ backgroundColor: '#33B074' }}
             ></span>
             Fully Paid
           </div>
           <div className="flex items-center gap-1">
             <span
               className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: '#ef4444' }}
+              style={{ backgroundColor: '#EC6142' }}
             ></span>
             Not Fully Paid
           </div>
@@ -572,46 +594,29 @@ export const RentsGrid = () => {
         </div>
       </div>
 
-      {selectedRows.length > 0 && (
-        <div className="flex items-center gap-2 mb-2">
-          <Button
-            variant="secondary"
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={selectedRows.length === 0}
-          >
-            <Trash size={20} />
-            Delete ({deletableCount}/{selectedRows.length})
-          </Button>
-
-          {activeCount > 0 && (
-            <span className="text-xs text-yellow-600">
-              {activeCount} active rental(s) cannot be deleted
-            </span>
-          )}
-        </div>
-      )}
-
       {isLoading || isFetching ? (
         <p className="text-center">Loading rent contracts...</p>
       ) : (
         <>
-          <div style={gridStyle}>
-            <AgGridReact
-              rowHeight={60}
-              rowData={rowData}
-              columnDefs={colDefs}
-              rowSelection="multiple"
-              pagination={false}
-              domLayout="autoHeight"
-              rowClassRules={rowClassRules}
-              onSelectionChanged={(event) => {
-                const selectedNodes = event.api.getSelectedRows();
-                setSelectedRows(selectedNodes);
-              }}
-            />
+          {/* Match CarsGrid style: fixed height scrollable grid */}
+          <div className="flex flex-col h-[calc(100vh-265px)]">
+            <div className="flex-1 overflow-y-auto" style={gridStyle}>
+              <AgGridReact
+                rowHeight={60}
+                rowData={rowData}
+                columnDefs={colDefs}
+                rowSelection="multiple"
+                pagination={false}
+                rowClassRules={rowClassRules}
+                onSelectionChanged={(event) => {
+                  const selectedNodes = event.api.getSelectedRows();
+                  setSelectedRows(selectedNodes);
+                }}
+              />
+            </div>
           </div>
 
+          {/* Pagination outside scroll area */}
           <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
