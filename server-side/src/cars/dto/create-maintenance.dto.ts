@@ -13,7 +13,7 @@ import {
 } from 'class-validator';
 
 export class CreateMaintenanceDto {
-  @IsNotEmpty()
+  @IsString()
   type: string; // 'oil_change', 'tire_rotation', 'inspection', etc.
 
   @IsOptional()

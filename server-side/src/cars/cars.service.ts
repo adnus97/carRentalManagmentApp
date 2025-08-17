@@ -345,6 +345,33 @@ export class CarsService {
   }
 
   /** Get car details */
+  /** Utility: compute target KPIs */
+  private enrichTarget(target: any) {
+    const now = new Date();
+    const end = new Date(target.endDate);
+    const daysRemaining = Math.max(
+      0,
+      Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+    );
+
+    const revenueProgress = target.revenueGoal
+      ? (target.actualRevenue / target.revenueGoal) * 100
+      : 0;
+
+    const rentProgress = target.targetRents
+      ? (target.actualRents / target.targetRents) * 100
+      : 0;
+
+    return {
+      ...target,
+      daysRemaining,
+      revenueProgress,
+      rentProgress,
+      isExpired: end < now,
+    };
+  }
+  /** Get car details */
+  /** Get car details */
   async getCarDetails(carId: string, userId?: string) {
     try {
       const car = await this.findOne(carId);
@@ -360,6 +387,7 @@ export class CarsService {
         }
       }
 
+      // ✅ Rental history
       const rentalHistory = await this.dbService.db
         .select({
           id: rents.id,
@@ -370,15 +398,16 @@ export class CarsService {
           totalPaid: rents.totalPaid,
           status: rents.status,
           customerName: sql<string>`
-            (SELECT CONCAT(${customers.firstName}, ' ', ${customers.lastName}) 
-             FROM ${customers} WHERE ${customers.id} = ${rents.customerId})
-          `.as('customerName'),
+          (SELECT CONCAT(${customers.firstName}, ' ', ${customers.lastName}) 
+           FROM ${customers} WHERE ${customers.id} = ${rents.customerId})
+        `.as('customerName'),
         })
         .from(rents)
         .where(and(eq(rents.carId, carId), eq(rents.isDeleted, false)))
         .orderBy(sql`${rents.startDate} DESC`)
         .limit(10);
 
+      // ✅ Maintenance logs
       const maintenanceLogsData = await this.dbService.db
         .select()
         .from(maintenanceLogs)
@@ -386,6 +415,7 @@ export class CarsService {
         .orderBy(sql`${maintenanceLogs.createdAt} DESC`)
         .limit(10);
 
+      // ✅ Oil changes
       const oilChangesData = await this.dbService.db
         .select()
         .from(carOilChanges)
@@ -393,13 +423,41 @@ export class CarsService {
         .orderBy(sql`${carOilChanges.changedAt} DESC`)
         .limit(5);
 
+      // ✅ Targets (fixed to only count this car’s rents)
       const targetsData = await this.dbService.db
-        .select()
+        .select({
+          id: carMonthlyTargets.id,
+          startDate: carMonthlyTargets.startDate,
+          endDate: carMonthlyTargets.endDate,
+          targetRents: carMonthlyTargets.targetRents,
+          revenueGoal: carMonthlyTargets.revenueGoal,
+          createdAt: carMonthlyTargets.createdAt,
+          actualRents: sql<number>`(
+          SELECT COUNT(*) FROM ${rents} 
+          WHERE ${rents.carId} = ${carId} -- ✅ filter by this car
+          AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
+          AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
+          AND ${rents.isDeleted} = false
+          AND ${rents.status} != 'canceled'
+        )`,
+          actualRevenue: sql<number>`(
+          SELECT COALESCE(SUM(${rents.totalPaid}), 0) FROM ${rents}
+          WHERE ${rents.carId} = ${carId} -- ✅ filter by this car
+          AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
+          AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
+          AND ${rents.isDeleted} = false
+          AND ${rents.status} != 'canceled'
+        )`,
+        })
         .from(carMonthlyTargets)
         .where(eq(carMonthlyTargets.carId, carId))
         .orderBy(sql`${carMonthlyTargets.startDate} DESC`)
         .limit(5);
 
+      // ✅ Enrich targets with KPIs
+      const enrichedTargets = targetsData.map((t) => this.enrichTarget(t));
+
+      // ✅ Financial stats (still for the whole car, not per target)
       const financialStats = await this.dbService.db
         .select({
           totalRevenue: sql<number>`COALESCE(SUM(${rents.totalPaid}), 0)`,
@@ -420,14 +478,13 @@ export class CarsService {
         rentalHistory,
         maintenanceLogs: maintenanceLogsData,
         oilChanges: oilChangesData,
-        targets: targetsData,
+        targets: enrichedTargets, // ✅ now correct per car
         financialStats: financialStats[0],
       });
     } catch (error) {
       this.handleDbError(error);
     }
   }
-
   /** Create monthly target */
   async createMonthlyTarget(
     carId: string,
@@ -447,6 +504,26 @@ export class CarsService {
         if (!userOrg.length || userOrg[0].id !== car.orgId) {
           throw new BadRequestException('Access denied');
         }
+      }
+
+      // ✅ Check if there is already an active target
+      const now = new Date();
+      const [activeTarget] = await this.dbService.db
+        .select()
+        .from(carMonthlyTargets)
+        .where(
+          and(
+            eq(carMonthlyTargets.carId, carId),
+            sql`${carMonthlyTargets.startDate} <= ${now}`,
+            sql`${carMonthlyTargets.endDate} >= ${now}`,
+          ),
+        )
+        .limit(1);
+
+      if (activeTarget) {
+        throw new BadRequestException(
+          'This car already has an active target. Please wait until it ends.',
+        );
       }
 
       const targetId = createId();
@@ -471,128 +548,139 @@ export class CarsService {
       this.handleDbError(error);
     }
   }
-
   /** Get car targets */
-  async getCarTargets(carId: string, userId?: string) {
-    try {
-      const car = await this.findOne(carId);
-      if (userId) {
-        const userOrg = await this.dbService.db
-          .select({ id: organization.id })
-          .from(organization)
-          .where(eq(organization.userId, userId));
 
-        if (!userOrg.length || userOrg[0].id !== car.orgId) {
-          throw new BadRequestException('Access denied');
-        }
-      }
+  async getCarTargets(carId: string, page = 1, pageSize = 10, userId?: string) {
+    const offset = (page - 1) * pageSize;
 
-      const targets = await this.dbService.db
-        .select({
-          id: carMonthlyTargets.id,
-          startDate: carMonthlyTargets.startDate,
-          endDate: carMonthlyTargets.endDate,
-          targetRents: carMonthlyTargets.targetRents,
-          revenueGoal: carMonthlyTargets.revenueGoal,
-          createdAt: carMonthlyTargets.createdAt,
-          actualRents: sql<number>`
-            (SELECT COUNT(*) FROM ${rents} 
-             WHERE ${rents.carId} = ${carMonthlyTargets.carId}
-             AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
-             AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
-             AND ${rents.isDeleted} = false
-             AND ${rents.status} != 'canceled')
-          `,
-          actualRevenue: sql<number>`
-            (SELECT COALESCE(SUM(${rents.totalPaid}), 0) FROM ${rents}
-             WHERE ${rents.carId} = ${carMonthlyTargets.carId}
-             AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
-             AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
-             AND ${rents.isDeleted} = false
-             AND ${rents.status} != 'canceled')
-          `,
-        })
-        .from(carMonthlyTargets)
-        .where(eq(carMonthlyTargets.carId, carId))
-        .orderBy(sql`${carMonthlyTargets.startDate} DESC`);
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(carMonthlyTargets)
+      .where(eq(carMonthlyTargets.carId, carId));
 
-      return this.safeReturn(targets);
-    } catch (error) {
-      this.handleDbError(error);
-    }
+    const targets = await this.dbService.db
+      .select({
+        id: carMonthlyTargets.id,
+        startDate: carMonthlyTargets.startDate,
+        endDate: carMonthlyTargets.endDate,
+        targetRents: carMonthlyTargets.targetRents,
+        revenueGoal: carMonthlyTargets.revenueGoal,
+        createdAt: carMonthlyTargets.createdAt,
+        actualRents: sql<number>`(
+        SELECT COUNT(*) FROM ${rents} 
+        WHERE ${rents.carId} = ${carId} -- ✅ filter by this car
+        AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
+        AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
+        AND ${rents.isDeleted} = false
+        AND ${rents.status} != 'canceled'
+      )`,
+        actualRevenue: sql<number>`(
+        SELECT COALESCE(SUM(${rents.totalPaid}), 0) FROM ${rents}
+        WHERE ${rents.carId} = ${carId} -- ✅ filter by this car
+        AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
+        AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
+        AND ${rents.isDeleted} = false
+        AND ${rents.status} != 'canceled'
+      )`,
+      })
+      .from(carMonthlyTargets)
+      .where(eq(carMonthlyTargets.carId, carId))
+      .orderBy(sql`${carMonthlyTargets.startDate} DESC`)
+      .offset(offset)
+      .limit(pageSize);
+
+    const enrichedTargets = targets.map((t) => this.enrichTarget(t));
+
+    return {
+      data: enrichedTargets,
+      page,
+      pageSize,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / pageSize),
+    };
+  }
+  // ✅ Paginated Maintenance Logs
+  async getCarMaintenanceLogs(carId: string, page = 1, pageSize = 10) {
+    const offset = (page - 1) * pageSize;
+
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(maintenanceLogs)
+      .where(eq(maintenanceLogs.carId, carId));
+
+    const logs = await this.dbService.db
+      .select()
+      .from(maintenanceLogs)
+      .where(eq(maintenanceLogs.carId, carId))
+      .orderBy(sql`${maintenanceLogs.createdAt} DESC`)
+      .offset(offset)
+      .limit(pageSize);
+
+    return {
+      data: logs,
+      page,
+      pageSize,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / pageSize),
+    };
   }
 
-  /** Add maintenance log */
-  async addMaintenanceLog(
-    carId: string,
-    dto: CreateMaintenanceDto,
-    userId?: string,
-  ) {
-    try {
-      dto = this.normalizeDates(dto);
+  // ✅ Paginated Oil Changes
+  async getCarOilChanges(carId: string, page = 1, pageSize = 10) {
+    const offset = (page - 1) * pageSize;
 
-      const car = await this.findOne(carId);
-      if (userId) {
-        const userOrg = await this.dbService.db
-          .select({ id: organization.id })
-          .from(organization)
-          .where(eq(organization.userId, userId));
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(carOilChanges)
+      .where(eq(carOilChanges.carId, carId));
 
-        if (!userOrg.length || userOrg[0].id !== car.orgId) {
-          throw new BadRequestException('Access denied');
-        }
-      }
+    const oilChanges = await this.dbService.db
+      .select()
+      .from(carOilChanges)
+      .where(eq(carOilChanges.carId, carId))
+      .orderBy(sql`${carOilChanges.changedAt} DESC`)
+      .offset(offset)
+      .limit(pageSize);
 
-      const logId = createId();
-
-      await this.dbService.db.insert(maintenanceLogs).values({
-        id: logId,
-        carId,
-        orgId: car.orgId,
-        ...dto,
-      });
-
-      return this.safeReturn({
-        success: true,
-        message: 'Maintenance log added successfully',
-      });
-    } catch (error) {
-      this.handleDbError(error);
-    }
+    return {
+      data: oilChanges,
+      page,
+      pageSize,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / pageSize),
+    };
   }
 
-  /** Add oil change */
-  async addOilChange(carId: string, dto: CreateOilChangeDto, userId?: string) {
-    try {
-      dto = this.normalizeDates(dto);
+  // ✅ Paginated Rentals
+  async getCarRentals(carId: string, page = 1, pageSize = 10) {
+    const offset = (page - 1) * pageSize;
 
-      const car = await this.findOne(carId);
-      if (userId) {
-        const userOrg = await this.dbService.db
-          .select({ id: organization.id })
-          .from(organization)
-          .where(eq(organization.userId, userId));
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(rents)
+      .where(and(eq(rents.carId, carId), eq(rents.isDeleted, false)));
 
-        if (!userOrg.length || userOrg[0].id !== car.orgId) {
-          throw new BadRequestException('Access denied');
-        }
-      }
+    const rentalHistory = await this.dbService.db
+      .select({
+        id: rents.id,
+        startDate: rents.startDate,
+        endDate: rents.expectedEndDate,
+        returnedAt: rents.returnedAt,
+        totalPrice: rents.totalPrice,
+        status: rents.status,
+      })
+      .from(rents)
+      .where(and(eq(rents.carId, carId), eq(rents.isDeleted, false)))
+      .orderBy(sql`${rents.startDate} DESC`)
+      .offset(offset)
+      .limit(pageSize);
 
-      const oilChangeId = createId();
-
-      await this.dbService.db.insert(carOilChanges).values({
-        id: oilChangeId,
-        carId,
-        orgId: car.orgId,
-        ...dto,
-      });
-
-      return this.safeReturn({
-        success: true,
-        message: 'Oil change recorded successfully',
-      });
-    } catch (error) {
-      this.handleDbError(error);
-    }
+    return {
+      data: rentalHistory,
+      page,
+      pageSize,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / pageSize),
+    };
   }
 }

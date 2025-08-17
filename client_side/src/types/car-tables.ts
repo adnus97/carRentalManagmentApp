@@ -6,6 +6,10 @@ export interface TargetRow {
   revenueGoal: number;
   actualRents: number;
   actualRevenue: number;
+  daysRemaining: number;
+  revenueProgress: number; // %
+  rentProgress: number; //
+  isExpired: boolean;
 }
 
 export interface MaintenanceLogRow {
@@ -22,6 +26,7 @@ export interface OilChangeRow {
   notes?: string | undefined;
 }
 export interface RentalRow {
+  endDate: any;
   id: string;
   startDate: string;
   expectedEndDate: string;

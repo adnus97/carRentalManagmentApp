@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { successToast, errorToast } from '@/components/ui/toast';
 import CarDetailsPage from '@/components/cars/car-details-page';
 import { ArrowLeft } from '@phosphor-icons/react';
+import { Loader } from '@/components/loader';
 
 export const Route = createFileRoute('/_layout/carDetails/$id')({
   component: RouteComponent,
@@ -43,10 +44,18 @@ function RouteComponent() {
     },
   });
 
-  if (isLoading) return <p className="text-center">Loading car details...</p>;
+  if (isLoading)
+    return (
+      <p className="flex  w-fit h-full mx-auto items-center gap-2 text-gray-500">
+        <Loader />
+        Loading car details...
+      </p>
+    );
   if (isError || !data)
     return (
-      <p className="text-center text-red-500">Error loading car details.</p>
+      <p className="flex  w-full h-full justify-center  items-center  text-red-500">
+        Error loading car details.
+      </p>
     );
 
   const { car } = data;

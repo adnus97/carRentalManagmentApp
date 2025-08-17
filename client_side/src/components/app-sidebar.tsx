@@ -68,9 +68,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <>
       <Sidebar {...props} className="bg-gray-3 border-r-gray-4">
-        <SidebarHeader>
-          <SearchForm className="pt-5" />
-        </SidebarHeader>
+        <SidebarHeader></SidebarHeader>
 
         <SidebarContent className="gap-1 ml-4 h-full flex flex-col">
           <SidebarGroup className="flex-1">

@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Dialog,
   DialogContent,
@@ -16,6 +18,7 @@ import { DatePickerDemo } from '../../../components/date-picker';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { TargetRow } from '@/types/car-tables';
 
 const targetSchema = z
   .object({
@@ -31,11 +34,21 @@ const targetSchema = z
   .refine((data) => data.endDate > data.startDate, {
     message: 'End date must be after start date',
     path: ['endDate'],
+  })
+  .refine((data) => data.endDate > new Date(), {
+    message: 'End date cannot be in the past',
+    path: ['endDate'],
   });
 
 type TargetFormFields = z.infer<typeof targetSchema>;
 
-export default function AddTargetDialog({ carId }: { carId: string }) {
+export default function AddTargetDialog({
+  carId,
+  targets,
+}: {
+  carId: string;
+  targets: TargetRow[];
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -72,10 +85,35 @@ export default function AddTargetDialog({ carId }: { carId: string }) {
     mutation.mutate(data);
   };
 
+  // ✅ Check if there is already an active target
+  const hasActiveTarget = () => {
+    const now = new Date();
+    return targets.some(
+      (t) =>
+        new Date(t.startDate) <= now &&
+        new Date(t.endDate) >= now &&
+        !t.isExpired,
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">+ Add Target</Button>
+        <Button
+          variant="outline"
+          onClick={(e) => {
+            if (hasActiveTarget()) {
+              e.preventDefault();
+              errorToast(
+                'You already have an active target. Please wait until it ends.',
+              );
+              return;
+            }
+            setIsOpen(true);
+          }}
+        >
+          + Add Target
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>

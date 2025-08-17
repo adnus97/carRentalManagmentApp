@@ -81,7 +81,16 @@ export class CarsController {
       this.handleControllerError(error);
     }
   }
-
+  @Get(':id/details')
+  async getCarDetails(@Param('id') id: string, @Req() req: any) {
+    try {
+      return this.safeReturn(
+        await this.carsService.getCarDetails(id, req.user?.sub),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
   @Post()
   async createCar(
     @Body(ValidationPipe) createCarDto: CreateCarDto,
@@ -108,17 +117,7 @@ export class CarsController {
     }
   }
 
-  @Get(':id/details')
-  async getCarDetails(@Param('id') id: string, @Req() req: any) {
-    try {
-      return this.safeReturn(
-        await this.carsService.getCarDetails(id, req.user?.sub),
-      );
-    } catch (error) {
-      this.handleControllerError(error);
-    }
-  }
-
+  // ✅ Targets
   @Post(':id/targets')
   async createMonthlyTarget(
     @Param('id') carId: string,
@@ -137,49 +136,61 @@ export class CarsController {
       this.handleControllerError(error);
     }
   }
-
   @Get(':id/targets')
-  async getCarTargets(@Param('id') carId: string, @Req() req: any) {
-    try {
-      return this.safeReturn(
-        await this.carsService.getCarTargets(carId, req.user?.sub),
-      );
-    } catch (error) {
-      this.handleControllerError(error);
-    }
-  }
-
-  @Post(':id/maintenance')
-  async addMaintenanceLog(
+  async getCarTargets(
     @Param('id') carId: string,
-    @Body() maintenanceDto: CreateMaintenanceDto,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
     @Req() req: any,
   ) {
-    try {
-      return this.safeReturn(
-        await this.carsService.addMaintenanceLog(
-          carId,
-          maintenanceDto,
-          req.user?.sub,
-        ),
-      );
-    } catch (error) {
-      this.handleControllerError(error);
-    }
+    const pageNum = Math.max(1, parseInt(page || '1', 10));
+    const pageSizeNum = Math.max(1, parseInt(pageSize || '10', 10));
+    return this.safeReturn(
+      await this.carsService.getCarTargets(
+        carId,
+        pageNum,
+        pageSizeNum,
+        req.user?.sub,
+      ),
+    );
   }
 
-  @Post(':id/oil-change')
-  async addOilChange(
+  @Get(':id/maintenance')
+  async getCarMaintenanceLogs(
     @Param('id') carId: string,
-    @Body() oilChangeDto: CreateOilChangeDto,
-    @Req() req: any,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
   ) {
-    try {
-      return this.safeReturn(
-        await this.carsService.addOilChange(carId, oilChangeDto, req.user?.sub),
-      );
-    } catch (error) {
-      this.handleControllerError(error);
-    }
+    const pageNum = Math.max(1, parseInt(page || '1', 10));
+    const pageSizeNum = Math.max(1, parseInt(pageSize || '10', 10));
+    return this.safeReturn(
+      await this.carsService.getCarMaintenanceLogs(carId, pageNum, pageSizeNum),
+    );
+  }
+
+  @Get(':id/oil-changes')
+  async getCarOilChanges(
+    @Param('id') carId: string,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    const pageNum = Math.max(1, parseInt(page || '1', 10));
+    const pageSizeNum = Math.max(1, parseInt(pageSize || '10', 10));
+    return this.safeReturn(
+      await this.carsService.getCarOilChanges(carId, pageNum, pageSizeNum),
+    );
+  }
+
+  @Get(':id/rentals')
+  async getCarRentals(
+    @Param('id') carId: string,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    const pageNum = Math.max(1, parseInt(page || '1', 10));
+    const pageSizeNum = Math.max(1, parseInt(pageSize || '10', 10));
+    return this.safeReturn(
+      await this.carsService.getCarRentals(carId, pageNum, pageSizeNum),
+    );
   }
 }

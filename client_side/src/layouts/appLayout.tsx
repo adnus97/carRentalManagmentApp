@@ -15,6 +15,7 @@ import { Outlet, useLocation } from '@tanstack/react-router';
 import { navigationConfig } from '@/config/navigation';
 import { ModeToggle } from '@/components/mode-toggle';
 import { LayoutContext } from '@/contexts/layout-context';
+import { cn } from '@/lib/utils';
 
 const navData = navigationConfig;
 
@@ -80,11 +81,18 @@ export function AppLayout() {
     window.addEventListener('resize', updateHeight);
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
-
+  //w-full overflow-hidden
   return (
     <SidebarProvider>
       <AppSidebar />
-      <div className="w-full overflow-hidden">
+      <div
+        className={cn(
+          'w-full',
+          (location.pathname === '/dashboard' ||
+            location.pathname === '/rents') &&
+            'overflow-hidden',
+        )}
+      >
         {/* Sticky Header */}
         <header
           ref={headerRef}
@@ -92,8 +100,8 @@ export function AppLayout() {
         >
           <SidebarTrigger />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <div className="w-full">
-            <Breadcrumb className="flex w-full justify-between h-full items-center">
+          <div className="w-full ">
+            <Breadcrumb className="flex w-full justify-between h-full items-center ">
               <BreadcrumbList>
                 {breadcrumbItems.map((item, index) => (
                   <div key={item.title} className="flex items-center">
