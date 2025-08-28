@@ -25,22 +25,25 @@ export default function CarRevenueChart({
   }));
 
   return (
-    <div className="bg-card rounded-lg p-4">
+    <div className="bg-card rounded-lg p-4 h-full flex flex-col">
       <h3 className="text-lg font-semibold mb-4">Revenue Over Time</h3>
-      <ResponsiveContainer width="100%" height={250}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-          <XAxis dataKey="date" stroke="#888" />
-          <YAxis stroke="#888" />
-          <Tooltip />
-          <Line
-            type="monotone"
-            dataKey="revenue"
-            stroke="#4ade80"
-            strokeWidth={2}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+
+      <div className="flex-1 min-h-[350px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+            <XAxis dataKey="date" stroke="#888" />
+            <YAxis stroke="#888" />
+            <Tooltip />
+            <Line
+              type="monotone"
+              dataKey="revenue"
+              stroke="#4ade80"
+              strokeWidth={2}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

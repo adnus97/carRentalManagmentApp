@@ -8,13 +8,11 @@ import { eq, ne, and, sql } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 import { CreateCarDto } from './dto/create-car.dto';
 import { rents } from 'src/db/schema/rents';
-import { carOilChanges } from 'src/db/schema/car_oil_changes';
 import { carMonthlyTargets } from 'src/db/schema/carMonthlyTargets';
 import { customers } from 'src/db/schema/customers';
 import { maintenanceLogs } from 'src/db/schema/maintenanceLogs';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
 import { CreateMonthlyTargetDto } from './dto/create-monthly-target.dto';
-import { CreateOilChangeDto } from './dto/create-oil-change.dto';
 
 @Injectable()
 export class CarsService {
@@ -415,14 +413,6 @@ export class CarsService {
         .orderBy(sql`${maintenanceLogs.createdAt} DESC`)
         .limit(10);
 
-      // ✅ Oil changes
-      const oilChangesData = await this.dbService.db
-        .select()
-        .from(carOilChanges)
-        .where(eq(carOilChanges.carId, carId))
-        .orderBy(sql`${carOilChanges.changedAt} DESC`)
-        .limit(5);
-
       // ✅ Targets (fixed to only count this car’s rents)
       const targetsData = await this.dbService.db
         .select({
@@ -477,7 +467,7 @@ export class CarsService {
         car,
         rentalHistory,
         maintenanceLogs: maintenanceLogsData,
-        oilChanges: oilChangesData,
+
         targets: enrichedTargets, // ✅ now correct per car
         financialStats: financialStats[0],
       });
@@ -625,32 +615,6 @@ export class CarsService {
     };
   }
 
-  // ✅ Paginated Oil Changes
-  async getCarOilChanges(carId: string, page = 1, pageSize = 10) {
-    const offset = (page - 1) * pageSize;
-
-    const [{ count }] = await this.dbService.db
-      .select({ count: sql<number>`count(*)` })
-      .from(carOilChanges)
-      .where(eq(carOilChanges.carId, carId));
-
-    const oilChanges = await this.dbService.db
-      .select()
-      .from(carOilChanges)
-      .where(eq(carOilChanges.carId, carId))
-      .orderBy(sql`${carOilChanges.changedAt} DESC`)
-      .offset(offset)
-      .limit(pageSize);
-
-    return {
-      data: oilChanges,
-      page,
-      pageSize,
-      total: Number(count),
-      totalPages: Math.ceil(Number(count) / pageSize),
-    };
-  }
-
   // ✅ Paginated Rentals
   async getCarRentals(carId: string, page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
@@ -667,6 +631,7 @@ export class CarsService {
         endDate: rents.expectedEndDate,
         returnedAt: rents.returnedAt,
         totalPrice: rents.totalPrice,
+        totalPaid: rents.totalPaid,
         status: rents.status,
       })
       .from(rents)
@@ -682,5 +647,35 @@ export class CarsService {
       total: Number(count),
       totalPages: Math.ceil(Number(count) / pageSize),
     };
+  }
+  // cars.service.ts
+  async addMaintenanceLog(
+    carId: string,
+    dto: CreateMaintenanceDto,
+    userId?: string,
+  ) {
+    try {
+      // Ensure car exists
+      const car = await this.findOne(carId);
+      if (!car) throw new NotFoundException('Car not found');
+
+      const id = createId();
+      const orgId = car.orgId;
+
+      await this.dbService.db.insert(maintenanceLogs).values({
+        id,
+        carId,
+        orgId,
+        ...dto,
+      });
+
+      return this.safeReturn({
+        success: true,
+        message: 'Maintenance log added successfully',
+        data: { id, carId, ...dto },
+      });
+    } catch (error) {
+      this.handleDbError(error);
+    }
   }
 }

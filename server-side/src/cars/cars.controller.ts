@@ -168,19 +168,6 @@ export class CarsController {
     );
   }
 
-  @Get(':id/oil-changes')
-  async getCarOilChanges(
-    @Param('id') carId: string,
-    @Query('page') page: string,
-    @Query('pageSize') pageSize: string,
-  ) {
-    const pageNum = Math.max(1, parseInt(page || '1', 10));
-    const pageSizeNum = Math.max(1, parseInt(pageSize || '10', 10));
-    return this.safeReturn(
-      await this.carsService.getCarOilChanges(carId, pageNum, pageSizeNum),
-    );
-  }
-
   @Get(':id/rentals')
   async getCarRentals(
     @Param('id') carId: string,
@@ -192,5 +179,20 @@ export class CarsController {
     return this.safeReturn(
       await this.carsService.getCarRentals(carId, pageNum, pageSizeNum),
     );
+  }
+
+  @Post(':id/maintenance')
+  async addMaintenanceLog(
+    @Param('id') carId: string,
+    @Body(ValidationPipe) dto: CreateMaintenanceDto,
+    @CurrentUser() user: CustomUser,
+  ) {
+    try {
+      return this.safeReturn(
+        await this.carsService.addMaintenanceLog(carId, dto, user.id),
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
   }
 }

@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Dialog,
   DialogContent,
@@ -9,20 +11,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { addMaintenanceLog } from '@/api/cars';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { addMaintenanceLog, getCarDetails } from '@/api/cars';
 import { successToast, errorToast } from '@/components/ui/toast';
-import { DatePickerDemo } from '../../../components/date-picker';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from '@/components/ui/select';
+
 const maintenanceSchema = z.object({
+  type: z.string().nonempty('Type is required'),
   description: z.string().nonempty('Description is required'),
   cost: z
     .number({ invalid_type_error: 'Cost must be a number' })
-    .min(1, 'Cost is required'),
-  date: z.date({ required_error: 'Date is required' }),
+    .min(0, 'Cost is required'),
+  mileage: z.number().optional(),
 });
 
 type MaintenanceFormFields = z.infer<typeof maintenanceSchema>;
@@ -31,11 +41,31 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
+  // ✅ Fetch car details (to check rental status)
+  const { data: carDetails, isLoading: carLoading } = useQuery({
+    queryKey: ['carDetails', carId],
+    queryFn: () => getCarDetails(carId),
+  });
+
+  const car = carDetails?.car;
+  const rentalHistory = carDetails?.rentalHistory || [];
+
+  // ✅ Reuse the same "active rent" logic from CarDetailsPage
+  const activeRent = rentalHistory.find(
+    (r: any) =>
+      r.status === 'active' &&
+      (!r.returnedAt || new Date(r.returnedAt) > new Date()),
+  );
+  const isRented = Boolean(activeRent);
+
   const mutation = useMutation({
     mutationFn: (payload: MaintenanceFormFields) =>
       addMaintenanceLog(carId, payload),
     onSuccess: () => {
       successToast('Maintenance log added');
+      queryClient.invalidateQueries({
+        queryKey: ['carMaintenanceLogs', carId],
+      });
       queryClient.invalidateQueries({ queryKey: ['carDetails', carId] });
       setIsOpen(false);
       reset();
@@ -56,26 +86,75 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
   } = useForm<MaintenanceFormFields>({
     resolver: zodResolver(maintenanceSchema),
     defaultValues: {
+      type: 'other',
       description: '',
-      cost: undefined,
-      date: undefined,
+      cost: 0,
+      mileage: 0,
     },
   });
 
   const onSubmit = (data: MaintenanceFormFields) => {
+    if (isRented) {
+      errorToast('This car is currently rented. Maintenance not allowed.');
+      return;
+    }
     mutation.mutate(data);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">+ Add Maintenance</Button>
+        <Button
+          variant="outline"
+          disabled={isRented || carLoading}
+          onClick={() => {
+            if (isRented) {
+              errorToast(
+                'This car is currently rented. Maintenance cannot be added.',
+              );
+              return;
+            }
+            setIsOpen(true);
+          }}
+        >
+          + Add Maintenance
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Add Maintenance Log</DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Type */}
+          <div>
+            <Label>Type</Label>
+            <Controller
+              control={control}
+              name="type"
+              render={({ field }) => (
+                <Select
+                  value={field.value || 'other'}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="oil_change">Oil Change</SelectItem>
+                    <SelectItem value="tire_rotation">Tire Rotation</SelectItem>
+                    <SelectItem value="inspection">Inspection</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.type && (
+              <p className="text-red-500 text-xs">{errors.type.message}</p>
+            )}
+          </div>
+
+          {/* Description */}
           <div>
             <Label>Description</Label>
             <Input {...register('description')} />
@@ -85,6 +164,8 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
               </p>
             )}
           </div>
+
+          {/* Cost */}
           <div>
             <Label>Cost</Label>
             <Input
@@ -95,19 +176,19 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
               <p className="text-red-500 text-xs">{errors.cost.message}</p>
             )}
           </div>
+
+          {/* Mileage */}
           <div>
-            <Label>Date</Label>
-            <Controller
-              control={control}
-              name="date"
-              render={({ field }) => (
-                <DatePickerDemo value={field.value} onChange={field.onChange} />
-              )}
+            <Label>Mileage (optional)</Label>
+            <Input
+              type="number"
+              {...register('mileage', { valueAsNumber: true })}
             />
-            {errors.date && (
-              <p className="text-red-500 text-xs">{errors.date.message}</p>
+            {errors.mileage && (
+              <p className="text-red-500 text-xs">{errors.mileage.message}</p>
             )}
           </div>
+
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : 'Save'}
           </Button>

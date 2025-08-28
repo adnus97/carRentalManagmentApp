@@ -272,11 +272,10 @@ export const getCarDetails = async (id: string): Promise<CarDetails> => {
 // ✅ Add maintenance log
 export const addMaintenanceLog = async (
   carId: string,
-  data: { description: string; cost: number; date: Date },
+  data: { type: string; description: string; cost: number; mileage?: number },
 ) => {
-  const response = await api.post(`/cars/${carId}/maintenance`, {
-    ...data,
-    date: data.date.toISOString(),
+  const response = await api.post(`/cars/${carId}/maintenance`, data, {
+    headers: { 'Content-Type': 'application/json' },
   });
   return response.data;
 };
@@ -348,24 +347,6 @@ export const getCarMaintenanceLogs = async (
   totalPages: number;
 }> => {
   const response = await api.get(`/cars/${carId}/maintenance`, {
-    params: { page, pageSize },
-  });
-  return response.data;
-};
-
-// ✅ Paginated Oil Changes (history)
-export const getCarOilChanges = async (
-  carId: string,
-  page: number = 1,
-  pageSize: number = 10,
-): Promise<{
-  data: OilChangeRow[];
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}> => {
-  const response = await api.get(`/cars/${carId}/oil-changes`, {
     params: { page, pageSize },
   });
   return response.data;

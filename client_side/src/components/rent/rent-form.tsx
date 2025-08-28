@@ -34,7 +34,11 @@ const rentSchema = z
     carId: z.string().min(1, 'Car is required'),
     customerId: z.string().min(1, 'Customer is required'),
     startDate: z.date({ required_error: 'Start date is required' }),
-    expectedEndDate: z.coerce.date().nullable().optional(),
+    expectedEndDate: z.preprocess(
+      (val) =>
+        val instanceof Date ? val : val ? new Date(val as string) : null,
+      z.date().nullable().optional(),
+    ),
     returnedAt: z.coerce.date().nullable().optional(),
     isOpenContract: z.boolean().default(false),
     totalPrice: z
@@ -57,29 +61,26 @@ const rentSchema = z
     isFullyPaid: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
-    // Validate that either expectedEndDate or isOpenContract is set
-    if (!data.isOpenContract && !data.expectedEndDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Expected end date is required for fixed contracts',
-        path: ['expectedEndDate'],
-      });
+    // ✅ Only validate expectedEndDate if NOT open contract
+    if (!data.isOpenContract) {
+      if (!data.expectedEndDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Expected end date is required for fixed contracts',
+          path: ['expectedEndDate'],
+        });
+      } else {
+        if (data.expectedEndDate <= data.startDate) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'End date must be after start date',
+            path: ['expectedEndDate'],
+          });
+        }
+      }
     }
 
-    // Validate end date is after start date
-    if (
-      data.expectedEndDate &&
-      data.startDate &&
-      data.expectedEndDate <= data.startDate
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'End date must be after start date',
-        path: ['expectedEndDate'],
-      });
-    }
-
-    // Validate start date is not too far in the past (1 year)
+    // ✅ Start date not too far in the past
     if (data.startDate) {
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -93,13 +94,11 @@ const rentSchema = z
       }
     }
 
-    // Only validate total paid vs total price for fixed contracts
+    // ✅ Total paid vs total price (only for fixed contracts)
     if (
       !data.isOpenContract &&
-      data.totalPrice !== undefined &&
-      data.totalPrice !== null &&
-      data.totalPaid !== undefined &&
-      data.totalPaid !== null &&
+      data.totalPrice != null &&
+      data.totalPaid != null &&
       data.totalPaid > data.totalPrice
     ) {
       ctx.addIssue({
@@ -109,12 +108,11 @@ const rentSchema = z
       });
     }
 
-    // Only validate fully paid logic for fixed contracts
+    // ✅ Fully paid logic (only for fixed contracts)
     if (
       !data.isOpenContract &&
       data.isFullyPaid &&
-      data.totalPrice !== undefined &&
-      data.totalPrice !== null &&
+      data.totalPrice != null &&
       data.totalPaid !== data.totalPrice
     ) {
       ctx.addIssue({
@@ -125,7 +123,6 @@ const rentSchema = z
       });
     }
   });
-
 type RentFormFields = z.infer<typeof rentSchema>;
 
 type RentFormDialogProps = {
@@ -154,6 +151,7 @@ export function RentFormDialog({
     mutationFn: createRent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rents'] });
+      queryClient.invalidateQueries({ queryKey: ['cars'] });
       onOpenChange(false);
       reset();
       toast({
@@ -185,6 +183,7 @@ export function RentFormDialog({
     watch,
     setValue,
     trigger,
+    clearErrors,
   } = useForm<RentFormFields>({
     resolver: zodResolver(rentSchema),
     defaultValues: {
@@ -220,11 +219,11 @@ export function RentFormDialog({
   useEffect(() => {
     if (isOpenContract) {
       setValue('totalPrice', 0);
-      setValue('expectedEndDate', null);
-      setValue('returnedAt', null);
+      setValue('expectedEndDate', null, { shouldValidate: false });
+      setValue('returnedAt', null, { shouldValidate: false });
+      clearErrors('expectedEndDate'); // ✅ clear lingering error
     }
-    trigger(['expectedEndDate', 'totalPrice']);
-  }, [isOpenContract, setValue, trigger]);
+  }, [isOpenContract, setValue, clearErrors]);
 
   // Calculate total price based on dates and price per day
   useEffect(() => {
@@ -415,13 +414,14 @@ export function RentFormDialog({
                 control={control}
                 name="expectedEndDate"
                 render={({ field }) => (
-                  <div className="w-full">
-                    <DatePickerDemo
-                      value={field.value ?? undefined}
-                      onChange={field.onChange}
-                      disabled={isOpenContract}
-                    />
-                  </div>
+                  <DatePickerDemo
+                    value={field.value ?? undefined}
+                    onChange={(date) => {
+                      field.onChange(date ?? null);
+                      trigger('expectedEndDate'); // ✅ revalidate immediately when user picks a date
+                    }}
+                    disabled={isOpenContract}
+                  />
                 )}
               />
               {errors.expectedEndDate && (

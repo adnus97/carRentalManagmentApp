@@ -14,9 +14,14 @@ export interface TargetRow {
 
 export interface MaintenanceLogRow {
   id: string;
+  carId: string;
+  orgId: string;
+  type: 'general' | 'oil_change' | 'tire_rotation' | 'inspection' | 'other'; // ✅ add type
   description: string;
-  cost: number;
-  date: string;
+  cost?: number;
+  mileage?: number;
+  createdAt: string; // ✅ add createdAt
+  updatedAt: string; // ✅ add updatedAt
 }
 
 export interface OilChangeRow {

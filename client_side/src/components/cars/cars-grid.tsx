@@ -37,6 +37,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../ui/tooltip';
+import { useNavigationContext } from '@/contexts/navigation-context';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -57,7 +58,7 @@ export const CarsGrid = () => {
   const [selectedCarForEdit, setSelectedCarForEdit] = useState<Car | null>(
     null,
   );
-
+  const { setEntity } = useNavigationContext();
   const router = useRouter();
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
@@ -69,6 +70,10 @@ export const CarsGrid = () => {
     typeof window !== 'undefined' && window.innerWidth < 1700 ? 7 : 12,
   );
 
+  useEffect(() => {
+    setEntity(null); // root breadcrumb = "Cars"
+    return () => setEntity(null);
+  }, [setEntity]);
   useEffect(() => {
     const handleResize = () => {
       setPageSize(window.innerWidth < 1700 ? 7 : 12);
@@ -242,8 +247,27 @@ export const CarsGrid = () => {
       headerName: 'Next Available',
       field: 'nextAvailableDate',
       width: 160,
-      valueFormatter: (params) =>
-        params.value ? formatDate(params.value) : 'Available now',
+      cellRenderer: (params: { value: string }) => {
+        if (!params.value) {
+          return <span>Available now</span>;
+        }
+        const parsed = new Date(params.value);
+        const shortDate = format(parsed, 'dd/MM/yyyy');
+        const fullDate = format(parsed, 'dd/MM/yyyy HH:mm:ss');
+
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help underline decoration-dotted">
+                  {shortDate}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">{fullDate}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      },
     },
     {
       headerName: 'Insurance Expiry',
@@ -264,7 +288,7 @@ export const CarsGrid = () => {
           tooltipMessage = 'Insurance has expired';
         } else if (isBefore(expiry, soon)) {
           color = '#FFCA16'; // yellow
-          tooltipMessage = 'Insurance will soon be expired (less then 30 days)';
+          tooltipMessage = 'Insurance will soon be expired (less than 30 days)';
         }
 
         return (
@@ -272,10 +296,10 @@ export const CarsGrid = () => {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span style={{ color, fontWeight: 'bold', cursor: 'help' }}>
-                  {formatDate(params.value)}
+                  {format(expiry, 'dd/MM/yyyy')}
                 </span>
               </TooltipTrigger>
-              <TooltipContent>{tooltipMessage}</TooltipContent>
+              <TooltipContent side="top">{tooltipMessage}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         );

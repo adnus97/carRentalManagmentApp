@@ -1,27 +1,22 @@
-import { Type } from 'class-transformer';
-import {
-  isEnum,
-  IsString,
-  IsEmpty,
-  IsUrl,
-  Min,
-  IsNotEmpty,
-  IsDate,
-  IsNumber,
-  Max,
-  IsOptional,
-} from 'class-validator';
+// dto/create-oil-change.dto.ts
+import { IsDateString, IsInt, IsOptional, Min } from 'class-validator';
 
 export class CreateOilChangeDto {
-  @IsNumber()
-  @IsNotEmpty()
+  @IsDateString()
+  changedAt: string;
+
+  @IsInt()
+  @Min(1)
   mileageAtChange: number;
 
-  @IsNumber()
   @IsOptional()
+  @IsInt()
   nextDueAtKm?: number;
 
-  @IsNumber()
   @IsOptional()
+  @IsInt()
   cost?: number;
+
+  @IsOptional()
+  notes?: string;
 }

@@ -360,16 +360,18 @@ export const RentsGrid = () => {
       width: 141,
       sortable: true,
       filter: 'agDateColumnFilter',
-      valueFormatter: (params) =>
-        params.data?.returnedAt
-          ? formatDateToDDMMYYYY({ value: params.data.returnedAt })
-          : 'Open',
+      valueFormatter: (params) => {
+        if (!params.data?.returnedAt) return 'Open';
+        const date = new Date(params.data.returnedAt);
+        if (date.getFullYear() === 9999) return 'Open';
+        return formatDateToDDMMYYYY({ value: params.data.returnedAt });
+      },
     },
     {
       field: 'totalPrice',
       headerName: 'Total Price',
       width: 140,
-      cellStyle: { textAlign: 'right' },
+
       valueGetter: (params) => {
         const {
           isOpenContract,
@@ -378,6 +380,14 @@ export const RentsGrid = () => {
           returnedAt,
           pricePerDay,
         } = params.data || {};
+
+        // 🚨 Skip if returnedAt is null or 9999
+        if (
+          isOpenContract &&
+          (!returnedAt || new Date(returnedAt).getFullYear() === 9999)
+        ) {
+          return null;
+        }
 
         if (isOpenContract && returnedAt && startDate && pricePerDay) {
           const start = new Date(startDate);
@@ -388,10 +398,6 @@ export const RentsGrid = () => {
             );
             return days * pricePerDay;
           }
-        }
-
-        if (isOpenContract && !returnedAt) {
-          return null;
         }
 
         return totalPrice || 0;
@@ -426,9 +432,27 @@ export const RentsGrid = () => {
           startDate,
           pricePerDay,
         } = params.data;
+
         const paid = totalPaid || 0;
         let total = totalPrice || 0;
 
+        // 🚨 Detect placeholder 9999-12-31
+        const isReturnedAtPlaceholder =
+          returnedAt && new Date(returnedAt).getFullYear() === 9999;
+
+        // If open contract (no return date or placeholder)
+        if (isOpenContract && (!returnedAt || isReturnedAtPlaceholder)) {
+          return (
+            <div className="flex flex-col items-center justify-center w-full h-full">
+              <span className="text-xs text-muted-foreground">
+                Open Contract
+              </span>
+              <span className="text-xs">Paid: {paid.toLocaleString()} DHS</span>
+            </div>
+          );
+        }
+
+        // If open contract but has a real return date → calculate normally
         if (isOpenContract && returnedAt && startDate && pricePerDay) {
           const start = new Date(startDate);
           const end = new Date(returnedAt);
@@ -440,19 +464,9 @@ export const RentsGrid = () => {
           }
         }
 
-        if (isOpenContract && !returnedAt) {
-          return (
-            <div className="flex flex-col items-center justify-center w-full h-full">
-              <span className="text-xs text-muted-foreground">
-                Open Contract
-              </span>
-              <span className="text-xs">Paid: {paid.toLocaleString()} DHS</span>
-            </div>
-          );
-        }
-
         const percent = total > 0 ? Math.round((paid / total) * 100) : 0;
         const displayPercent = percent > 100 ? 100 : percent;
+
         return (
           <div className="flex flex-col items-center justify-center w-full h-full">
             <div className="w-4/5 bg-gray-200 dark:bg-gray-700 rounded h-3 mb-1">

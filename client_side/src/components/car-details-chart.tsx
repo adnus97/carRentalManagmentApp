@@ -136,7 +136,7 @@ export function ChartAreaInteractive({
   }, [chartData, timeRange]);
 
   return (
-    <Card className="pt-0">
+    <Card className="pt-0 h-full">
       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b py-5">
         <div className="grid flex-1 gap-1">
           <CardTitle>Revenue & Rents Over Time</CardTitle>

@@ -147,7 +147,7 @@ export function DatePickerDemo({
           </Button>
         </Popover.Trigger>
         <Popover.Content
-          className="w-auto p-0 overflow-hidden bg-background border rounded-lg shadow-lg"
+          className="z-50 w-auto p-0 overflow-hidden bg-background border rounded-lg shadow-lg"
           side="bottom"
           align="end"
           sideOffset={4}
@@ -157,6 +157,8 @@ export function DatePickerDemo({
               mode="single"
               selected={currentValue}
               month={month}
+              fromYear={1970}
+              toYear={2100}
               captionLayout="dropdown"
               onMonthChange={setMonth}
               onSelect={handleDateSelect}

@@ -12,39 +12,19 @@ import {
   PaginationLink,
   PaginationPrevious,
   PaginationNext,
+  PaginationEllipsis,
 } from '@/components/ui/pagination';
 import { getCarRentals } from '@/api/cars';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { DollarSign } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import React from 'react';
 
-function RentalsSummaryCard({
-  financialStats,
-}: {
-  financialStats: {
-    totalRevenue: number;
-    totalRents: number;
-    avgRentPrice: number;
-  };
-}) {
-  return (
-    <Card className="shadow-lg border border-border hover:shadow-xl transition-shadow">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          Rental Summary
-        </CardTitle>
-        <DollarSign className="h-5 w-5 text-green-500" />
-      </CardHeader>
-      <CardContent>
-        <p>Total Revenue: {financialStats.totalRevenue.toLocaleString()} MAD</p>
-        <p>Total Rentals: {financialStats.totalRents}</p>
-        <p>
-          Avg Rent Price:{' '}
-          {Number(financialStats.avgRentPrice).toFixed(2).toLocaleString()} MAD
-        </p>
-      </CardContent>
-    </Card>
-  );
+// ✅ Safe number helper
+function safeNumber(value: number | null | undefined): number {
+  return typeof value === 'number' && !isNaN(value) ? value : 0;
 }
+const currencyFormatter = (params: any) =>
+  params.value ? `${params.value.toLocaleString()} DHS` : '';
 
 export default function CarRentalsGrid({
   carId,
@@ -57,6 +37,7 @@ export default function CarRentalsGrid({
     avgRentPrice: number;
   };
 }) {
+  console.log('CarRentalsGrid mounted with carId:', carId);
   const [page, setPage] = useState(1);
   const pageSize = 5;
 
@@ -72,7 +53,30 @@ export default function CarRentalsGrid({
       totalPages: 1,
     },
   });
+  console.log('Total Pages:', data?.totalPages);
+  if (isLoading) return <p>Loading rentals...</p>;
 
+  const totalPages = data?.totalPages || 1;
+
+  // ✅ Find current active rent
+  const currentRent = data.data.find(
+    (r) =>
+      r.status === 'active' &&
+      (!r.returnedAt || new Date(r.returnedAt) > new Date()),
+  );
+
+  // ✅ Pagination logic (copied from CarTargetsGrid)
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    for (let p = 1; p <= totalPages; p++) {
+      if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
+        pages.push(p);
+      }
+    }
+    return pages;
+  };
+
+  // ✅ Grid columns
   const columnDefs = [
     {
       headerName: 'Start Date',
@@ -82,64 +86,166 @@ export default function CarRentalsGrid({
         const parsed = parseISO(p.value);
         return isValid(parsed) ? format(parsed, 'dd/MM/yyyy') : '';
       },
+      flex: 1,
     },
     {
       headerName: 'End Date',
       field: 'endDate',
-      valueFormatter: (p: { value: string }) => {
-        if (!p.value) return '';
+      valueFormatter: (p: { value: string | null }) => {
+        if (!p.value) return 'Ongoing'; // ✅ Fix: show "Ongoing" if null
         const parsed = parseISO(p.value);
-        return isValid(parsed) ? format(parsed, 'dd/MM/yyyy') : '';
+        return isValid(parsed) ? format(parsed, 'dd/MM/yyyy') : 'Invalid';
       },
+      flex: 1,
     },
-    { headerName: 'Revenue', field: 'totalPrice' },
-    { headerName: 'Status', field: 'status' },
+    {
+      headerName: 'Revenue',
+      field: 'totalPrice',
+      valueFormatter: currencyFormatter,
+      flex: 1,
+    },
+    { headerName: 'Status', field: 'status', flex: 1 },
   ];
 
-  if (isLoading) return <p>Loading rentals...</p>;
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
       {/* ✅ Summary Card */}
-      <div className="lg:col-span-1">
-        <RentalsSummaryCard financialStats={financialStats} />
-      </div>
+      <Card className="p-4 border border-border shadow-md rounded-lg bg-white dark:bg-gray-900">
+        {currentRent ? (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-base">
+                Current Rent:{' '}
+                {format(parseISO(currentRent.startDate), 'dd MMM')} -{' '}
+                {currentRent.endDate
+                  ? format(parseISO(currentRent.endDate), 'dd MMM')
+                  : 'Ongoing'}
+              </h3>
+              <Badge variant="warning" className="px-2 py-0.5 text-xs">
+                🚗 Active
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs mb-4">
+              <div>
+                <p className="text-muted-foreground">Total Price</p>
+                <p className="font-bold text-sm">
+                  {safeNumber(currentRent.totalPrice).toLocaleString()} MAD
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Total Paid</p>
+                <p className="font-bold text-sm">
+                  {safeNumber(currentRent.totalPaid).toLocaleString()} MAD
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Status</p>
+                <p className="font-bold text-sm">{currentRent.status}</p>
+              </div>
+            </div>
+
+            {/* ✅ Progress Bar */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">
+                Payment Progress
+              </p>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div
+                  className="bg-green-500 h-2 rounded-full"
+                  style={{
+                    width: `${
+                      Math.min(
+                        (safeNumber(currentRent.totalPaid) /
+                          safeNumber(currentRent.totalPrice)) *
+                          100,
+                        100,
+                      ) || 0
+                    }%`,
+                  }}
+                />
+              </div>
+              <p className="text-xs mt-1">
+                {safeNumber(currentRent.totalPaid).toLocaleString()} /{' '}
+                {safeNumber(currentRent.totalPrice).toLocaleString()} MAD
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="font-semibold text-base mb-2">Rental Summary</h3>
+            <div className="grid grid-cols-2 gap-4 text-xs mb-4">
+              <div>
+                <p className="text-muted-foreground">Total Revenue</p>
+                <p className="font-bold text-sm">
+                  {safeNumber(financialStats.totalRevenue).toLocaleString()} MAD
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Total Rentals</p>
+                <p className="font-bold text-sm">{financialStats.totalRents}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Avg Rent Price</p>
+                <p className="font-bold text-sm">
+                  {safeNumber(financialStats.avgRentPrice).toLocaleString()} MAD
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+      </Card>
 
       {/* ✅ History Grid */}
       <div className="lg:col-span-2">
-        <CarDataGrid<RentalRow> rowData={data.data} columnDefs={columnDefs} />
-        {data.totalPages > 1 && (
-          <Pagination className="mt-4">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  aria-disabled={page === 1}
-                />
-              </PaginationItem>
-              {Array.from({ length: data.totalPages }, (_, i) => i + 1).map(
-                (p) => (
-                  <PaginationItem key={p}>
-                    <PaginationLink
-                      isActive={p === page}
-                      onClick={() => setPage(p)}
-                    >
-                      {p}
-                    </PaginationLink>
-                  </PaginationItem>
-                ),
-              )}
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() =>
-                    setPage((p) => Math.min(data.totalPages, p + 1))
-                  }
-                  aria-disabled={page === data.totalPages}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
+        <h3 className="text-md font-semibold mb-2">Rentals History</h3>
+        <div className="flex flex-col h-full">
+          {/* 🔹 Smaller height grid */}
+          <div className="flex-1 max-h-[300px] overflow-hidden">
+            <CarDataGrid<RentalRow>
+              rowData={data.data}
+              columnDefs={columnDefs}
+              autoHeight={true}
+            />
+          </div>
+
+          {/* 🔹 Pagination always visible (like CarTargetsGrid) */}
+          {totalPages >= 1 && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    aria-disabled={page === 1}
+                  />
+                </PaginationItem>
+                {getPageNumbers().map((p, idx, arr) => (
+                  <React.Fragment key={p}>
+                    {idx > 0 && p - arr[idx - 1] > 1 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    <PaginationItem>
+                      <PaginationLink
+                        isActive={p === page}
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  </React.Fragment>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    aria-disabled={page === totalPages}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
       </div>
     </div>
   );

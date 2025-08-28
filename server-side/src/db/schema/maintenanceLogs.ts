@@ -18,10 +18,12 @@ export const maintenanceLogs = pgTable('maintenance_logs', {
   orgId: varchar('org_id', { length: 255 })
     .notNull()
     .references(() => organization.id, { onDelete: 'cascade' }),
-  type: text('type').default('oil change'), // e.g., 'oil_change', 'tire_rotation', etc.
-  description: text('description'),
+  type: text('type').$type<
+    'general' | 'oil_change' | 'tire_rotation' | 'inspection' | 'other'
+  >(),
   mileage: integer('mileage'), // optional
   cost: integer('cost'), // optional,
+  description: text('description'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

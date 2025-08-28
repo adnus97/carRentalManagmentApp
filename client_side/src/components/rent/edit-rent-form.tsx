@@ -52,7 +52,10 @@ const MADIcon = ({ className = 'h-3 w-3' }: { className?: string }) => (
 
 // Schema - Removed status field
 const editRentSchema = z.object({
-  returnedAt: z.date({ required_error: 'Return date is required' }),
+  returnedAt: z
+    .date({ required_error: 'Return date is required' })
+    .nullable()
+    .optional(),
   lateFee: z.number({ required_error: 'Late fee is required' }).min(0),
   deposit: z.number().min(0).default(0),
   guarantee: z.number().min(0).default(0),
@@ -247,7 +250,7 @@ export function EditRentFormDialog({
   onRentUpdated,
 }: Props) {
   const queryClient = useQueryClient();
-  const originalTotalPriceRef = useRef<number>(initialTotalPrice ?? 0);
+  const originalTotalPriceRef = useRef<number>(initialTotalPrice ?? null);
 
   const { data: rentArray, isLoading: rentLoading } = useQuery({
     queryKey: ['rent', rentId],
@@ -285,7 +288,9 @@ export function EditRentFormDialog({
   const returnedAt = watch('returnedAt');
   const deposit = watch('deposit');
   const lateFee = watch('lateFee');
-  const [totalPrice, setTotalPrice] = useState<number>(initialTotalPrice ?? 0);
+  const [totalPrice, setTotalPrice] = useState<number | null>(
+    initialTotalPrice ?? null,
+  );
 
   const currentStatus = initialStatus || 'reserved';
 
@@ -359,9 +364,11 @@ export function EditRentFormDialog({
         carModel: rentData.carModel ?? carModel ?? '',
         customerName: rentData.customerName ?? customerName ?? '',
         startDate: rentData.startDate ?? startDate ?? '',
-        returnedAt: rentData.returnedAt
-          ? new Date(rentData.returnedAt)
-          : new Date(),
+        returnedAt:
+          rentData.returnedAt &&
+          new Date(rentData.returnedAt).getFullYear() !== 9999
+            ? new Date(rentData.returnedAt)
+            : null,
         lateFee: rentData.lateFee ?? initialLateFee ?? 0,
         deposit: rentData.deposit ?? initialDeposit ?? 0,
         guarantee: rentData.guarantee ?? initialGuarantee ?? 0,
@@ -383,6 +390,7 @@ export function EditRentFormDialog({
       isOpenContract &&
       startDate &&
       returnedAt &&
+      new Date(returnedAt).getFullYear() !== 9999 &&
       typeof pricePerDay === 'number'
     ) {
       const start = new Date(startDate);
@@ -398,8 +406,8 @@ export function EditRentFormDialog({
         return;
       }
     }
-    setTotalPrice(originalTotalPriceRef.current);
-    setValue('totalPrice', originalTotalPriceRef.current);
+    setTotalPrice(originalTotalPriceRef.current || null);
+    setValue('totalPrice', originalTotalPriceRef.current || undefined);
   }, [isOpenContract, startDate, returnedAt, pricePerDay, setValue]);
 
   useEffect(() => {
@@ -578,9 +586,10 @@ export function EditRentFormDialog({
                     name="returnedAt"
                     render={({ field }) => (
                       <DatePickerDemo
-                        value={field.value}
+                        value={field.value ?? undefined}
                         onChange={field.onChange}
                         disabled={!permissions.editable.includes('returnedAt')}
+                        placeholder="Open"
                       />
                     )}
                   />
@@ -691,9 +700,9 @@ export function EditRentFormDialog({
                     )}
                   </div>
                   <span className="text-lg font-bold text-blue-600">
-                    {Number.isFinite(totalPrice)
+                    {totalPrice !== null && Number.isFinite(totalPrice)
                       ? totalPrice.toLocaleString()
-                      : 0}
+                      : 'Open'}
                   </span>
                 </div>
                 {isOpenContract && (
