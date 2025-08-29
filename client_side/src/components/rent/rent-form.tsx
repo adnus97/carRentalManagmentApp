@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,6 +28,8 @@ import {
 import { getCustomers } from '@/api/customers';
 import { Separator } from '../ui/separator';
 import { RentStatus } from '@/types/rent-status.type';
+import { AddClientDialog } from '../customers/add-client-form';
+import { Plus } from '@phosphor-icons/react';
 
 const rentSchema = z
   .object({
@@ -141,10 +143,10 @@ export function RentFormDialog({
   pricePerDay,
 }: RentFormDialogProps) {
   const queryClient = useQueryClient();
-
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const { data: customers, isLoading: customersLoading } = useQuery({
     queryKey: ['customers'],
-    queryFn: getCustomers,
+    queryFn: () => getCustomers(1, 100),
   });
 
   const mutation = useMutation({
@@ -353,7 +355,7 @@ export function RentFormDialog({
                 control={control}
                 name="customerId"
                 render={({ field }) => (
-                  <div className="mt-1 w-full">
+                  <div className="flex items-center gap-2 pt-1">
                     <Select
                       onValueChange={field.onChange}
                       value={field.value || ''}
@@ -365,16 +367,28 @@ export function RentFormDialog({
                         <SelectValue placeholder="Select a customer" />
                       </SelectTrigger>
                       <SelectContent>
-                        {customers?.map((customer: any) => (
+                        {customers?.data?.map((customer: any) => (
                           <SelectItem key={customer.id} value={customer.id}>
                             {`${customer.firstName || ''} ${customer.lastName || ''}`.trim() ||
-                              customer.name ||
                               customer.email ||
                               customer.id}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+
+                    <AddClientDialog
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="hover:bg-accent-4"
+                          onClick={() => setShowAddDialog(true)}
+                        >
+                          <Plus size={40} />
+                        </Button>
+                      }
+                    />
                   </div>
                 )}
               />
@@ -567,7 +581,7 @@ export function RentFormDialog({
               {isSubmitting ? (
                 <Loader className="animate-spin mr-2 inline-block" />
               ) : null}
-              Create Rent Contract
+              Create Rent
             </Button>
           </div>
         </form>

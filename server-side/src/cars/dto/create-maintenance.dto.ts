@@ -12,9 +12,16 @@ import {
   IsOptional,
 } from 'class-validator';
 
+export type MaintenanceType =
+  | 'general'
+  | 'oil_change'
+  | 'tire_rotation'
+  | 'inspection'
+  | 'other';
+
 export class CreateMaintenanceDto {
   @IsString()
-  type: string; // 'oil_change', 'tire_rotation', 'inspection', etc.
+  type: MaintenanceType;
 
   @IsOptional()
   description: string;

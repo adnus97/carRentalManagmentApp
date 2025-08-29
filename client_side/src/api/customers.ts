@@ -1,6 +1,119 @@
 import { api } from './api';
 
-export const getCustomers = async () => {
-  const response = await api.get('/customers/org');
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone: string;
+  documentId?: string;
+  documentType?: 'passport' | 'driver_license' | 'id_card';
+  rating: number;
+  ratingCount: number;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+}
+
+export interface CustomerRating {
+  id: string;
+  customerId: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+}
+
+export interface BlacklistEntry {
+  id: string;
+  customerId: string;
+  reason: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+/** ✅ Create customer (orgId resolved from backend) */
+export const createCustomer = async (data: Partial<Customer>) => {
+  const response = await api.post('/customers', data, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+};
+
+/** ✅ Get all customers (backend resolves orgId from auth/session) */
+export const getCustomers = async (page: number = 1, pageSize: number = 20) => {
+  const response = await api.get('/customers/org', {
+    params: { page, pageSize },
+  });
+  return response.data;
+};
+
+/** ✅ Get one customer */
+export const getCustomerById = async (id: string) => {
+  const response = await api.get(`/customers/${id}`);
+  return response.data;
+};
+
+/** ✅ Update customer */
+export const updateCustomer = async (
+  id: string,
+  updateData: Partial<Customer>,
+) => {
+  const response = await api.put(`/customers/${id}`, updateData, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+};
+
+/** ✅ Soft delete customer */
+export const deleteCustomer = async (id: string) => {
+  const response = await api.delete(`/customers/${id}`);
+  return response.data;
+};
+
+/** ✅ Restore customer */
+export const restoreCustomer = async (id: string) => {
+  const response = await api.put(`/customers/${id}/restore`);
+  return response.data;
+};
+
+/** ✅ Blacklist customer */
+export const blacklistCustomer = async (
+  id: string,
+  data: { reason: string },
+) => {
+  const response = await api.post(`/customers/${id}/blacklist`, data, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+};
+
+/** ✅ Get blacklist */
+export const getBlacklist = async (page: number = 1, pageSize: number = 20) => {
+  const response = await api.get('/customers/blacklist/all', {
+    params: { page, pageSize },
+  });
+  return response.data;
+};
+
+/** ✅ Rate customer */
+export const rateCustomer = async (
+  id: string,
+  data: { rating: number; comment?: string },
+) => {
+  const response = await api.post(`/customers/${id}/rate`, data, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return response.data;
+};
+
+/** ✅ Get customer ratings */
+export const getCustomerRatings = async (
+  id: string,
+  page: number = 1,
+  pageSize: number = 10,
+) => {
+  const response = await api.get(`/customers/${id}/ratings`, {
+    params: { page, pageSize },
+  });
   return response.data;
 };

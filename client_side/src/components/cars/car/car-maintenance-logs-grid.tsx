@@ -23,11 +23,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
   ChartLegend,
-  ChartLegendContent,
 } from '@/components/ui/chart';
-import { PieChart, Pie, Cell } from 'recharts';
+import { PieChart, Pie, Cell, TooltipProps } from 'recharts';
 import {
   Tooltip,
   TooltipProvider,
@@ -51,22 +49,65 @@ const COLORS = {
   tire_rotation: '#9ca3af', // gray
 };
 
+// ✅ Friendly labels
+const TYPE_LABELS: Record<string, string> = {
+  inspection: 'Inspection',
+  oil_change: 'Oil Change',
+  other: 'Other',
+  tire_rotation: 'Tire Rotation',
+};
+
 // ✅ Badge renderer
 function TypeBadge({ type }: { type: string }) {
+  const label = TYPE_LABELS[type] || type;
   switch (type) {
     case 'inspection':
-      return <Badge className="bg-[#34d399] text-white">🔍 Inspection</Badge>;
+      return <Badge className="bg-[#34d399] text-white">🔍 {label}</Badge>;
     case 'oil_change':
-      return <Badge className="bg-[#6366f1] text-white">🛢 Oil Change</Badge>;
+      return <Badge className="bg-[#6366f1] text-white">🛢 {label}</Badge>;
     case 'other':
-      return <Badge className="bg-[#f59e0b] text-white">❓ Other</Badge>;
+      return <Badge className="bg-[#f59e0b] text-white">❓ {label}</Badge>;
     case 'tire_rotation':
-      return (
-        <Badge className="bg-[#9ca3af] text-white">🔄 Tire Rotation</Badge>
-      );
+      return <Badge className="bg-[#9ca3af] text-white">🔄 {label}</Badge>;
     default:
-      return <Badge variant="secondary">{type}</Badge>;
+      return <Badge variant="secondary">{label}</Badge>;
   }
+}
+
+// ✅ Custom Pie Tooltip (theme-aware, same style as line chart tooltip)
+function CustomPieTooltip({ active, payload }: TooltipProps<number, string>) {
+  if (active && payload && payload.length) {
+    const entry = payload[0];
+
+    const label = entry?.name
+      ? TYPE_LABELS[String(entry.name).toLowerCase()] || entry.name
+      : '';
+
+    return (
+      <div
+        className="
+          rounded-md border shadow-md px-3 py-2 text-xs
+          bg-white text-gray-12 border-gray-200
+          dark:bg-gray-1 dark:text-white dark:border-gray-700
+          space-y-1 min-w-[140px]
+        "
+      >
+        {/* Label row */}
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{label}</span>
+        </div>
+
+        {/* Value row */}
+        <div className="flex justify-between text-sm">
+          <span>Cost:</span>
+          <span className="font-semibold">
+            {entry.value?.toLocaleString()} MAD
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
 
 // ✅ Summary card with Pie Chart
@@ -145,7 +186,7 @@ function MaintenanceSummaryCard({ logs }: { logs: MaintenanceLogRow[] }) {
                 cx="50%"
                 cy="50%"
                 outerRadius={80}
-                label
+                label={({ value }) => `${value.toLocaleString()} MAD`} // ✅ show price
               >
                 {chartData.map((entry, index) => (
                   <Cell
@@ -156,10 +197,24 @@ function MaintenanceSummaryCard({ logs }: { logs: MaintenanceLogRow[] }) {
                   />
                 ))}
               </Pie>
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip content={<CustomPieTooltip />} />
               <ChartLegend
-                content={<ChartLegendContent />}
-                className="text-[10px] space-x-2"
+                content={({ payload }) => (
+                  <ul className="flex flex-wrap justify-center gap-3 text-xs mt-2 !text-[10px]">
+                    {payload?.map((entry, index) => (
+                      <li
+                        key={`legend-${index}`}
+                        className="flex items-center gap-1"
+                      >
+                        <span
+                          className="inline-block h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: entry.color }}
+                        />
+                        <span>{TYPE_LABELS[entry.value] || entry.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               />
             </PieChart>
           </ChartContainer>
@@ -189,7 +244,6 @@ export default function CarMaintenanceLogsGrid({ carId }: { carId: string }) {
 
   const totalPages = data?.totalPages || 1;
 
-  // ✅ Pagination numbers with ellipsis (like CarTargetsGrid)
   const getPageNumbers = () => {
     const pages: number[] = [];
     for (let p = 1; p <= totalPages; p++) {
@@ -238,7 +292,12 @@ export default function CarMaintenanceLogsGrid({ carId }: { carId: string }) {
                   {shortDate}
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="top">{fullDate}</TooltipContent>
+              <TooltipContent
+                side="top"
+                className="bg-gray-900 text-white text-xs px-3 py-1.5 rounded-md shadow-lg border border-gray-700 dark:bg-gray-900 dark:text-white"
+              >
+                {fullDate}
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         );

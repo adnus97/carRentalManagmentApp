@@ -1,13 +1,27 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Logger } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common';
 import { createRouteHandler } from 'uploadthing/express';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 const whitelist = ['http://localhost:5173'];
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      exceptionFactory: (errors) => {
+        const messages = errors.map(
+          (err) =>
+            `${err.property} - ${Object.values(err.constraints).join(', ')}`,
+        );
+        return new BadRequestException(messages);
+      },
+    }),
+  );
+  app.useGlobalFilters(new AllExceptionsFilter());
   app.use((req, res, next) => {
     console.log(`Request received: ${req.method} ${req.url}`);
     next();

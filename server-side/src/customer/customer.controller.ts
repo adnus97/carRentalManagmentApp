@@ -2,48 +2,156 @@ import {
   Controller,
   Get,
   Post,
-  Body,
-  Patch,
-  Param,
+  Put,
   Delete,
+  Param,
+  Body,
+  Query,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
-import { C } from 'drizzle-kit/index-Z-1TKnbX';
+import { BlacklistCustomerDto } from './dto/blacklist.dto';
+import { RateCustomerDto } from './dto/rating.dto';
+import { Auth, CurrentUser } from 'src/auth/auth.guard';
+import { CustomUser } from 'src/auth/auth.guard';
+import { BaseController } from 'src/common/base.controller';
 
 @Auth()
 @Controller('customers')
-export class CustomerController {
-  constructor(private readonly customerService: CustomerService) {}
+export class CustomerController extends BaseController {
+  constructor(private readonly customerService: CustomerService) {
+    super();
+  }
 
+  /* Create a new customer (orgId resolved from userId) */
   @Post()
-  create(@Body() createCustomerDto: CreateCustomerDto) {
-    return this.customerService.create(createCustomerDto);
-  }
-
-  @Get('/org')
-  findAllCustomersByOrg(@CurrentUser() user: CustomUser) {
-    const userId = user.id;
-    return this.customerService.findAllCustomersByOrg(userId);
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.customerService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateCustomerDto: UpdateCustomerDto,
+  async create(
+    @CurrentUser() user: CustomUser,
+    @Body() dto: CreateCustomerDto,
   ) {
-    return this.customerService.update(+id, updateCustomerDto);
+    try {
+      return await this.customerService.create(user.id, dto);
+    } catch (error) {
+      this.handleControllerError(error);
+    }
   }
 
+  /*Get all customers by org (orgId resolved from userId) */
+  @Get('/org')
+  async findCustomersByOrgId(
+    @CurrentUser() user: CustomUser,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    try {
+      const pageNum = Math.max(1, parseInt(page || '1', 10));
+      const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
+
+      return await this.customerService.findAllCustomersByOrg(
+        user.id,
+        pageNum,
+        pageSizeNum,
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  /** Get one customer */
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    try {
+      return await this.customerService.findOne(id);
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  /** Update customer */
+  @Put(':id')
+  async update(@Param('id') id: string, @Body() dto: UpdateCustomerDto) {
+    try {
+      return await this.customerService.update(id, dto);
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  /** Soft delete customer */
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.customerService.remove(+id);
+  async remove(@Param('id') id: string) {
+    try {
+      return await this.customerService.remove(id);
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  /** Restore a soft-deleted customer */
+  @Put(':id/restore')
+  async restore(@Param('id') id: string) {
+    try {
+      return await this.customerService.restore(id);
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  /** Blacklist a customer */
+  @Post(':id/blacklist')
+  async blacklist(@Param('id') id: string, @Body() dto: BlacklistCustomerDto) {
+    try {
+      return await this.customerService.blacklistCustomer(id, dto);
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  /** Get blacklist with pagination */
+  @Get('blacklist/all')
+  async getBlacklist(
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    try {
+      const pageNum = Math.max(1, parseInt(page || '1', 10));
+      const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
+
+      return await this.customerService.getBlacklist(pageNum, pageSizeNum);
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  /** Rate a customer */
+  @Post(':id/rate')
+  async rateCustomer(@Param('id') id: string, @Body() dto: RateCustomerDto) {
+    try {
+      return await this.customerService.rateCustomer(id, dto);
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  /** Get customer ratings with pagination */
+  @Get(':id/ratings')
+  async getRatings(
+    @Param('id') id: string,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    try {
+      const pageNum = Math.max(1, parseInt(page || '1', 10));
+      const pageSizeNum = Math.max(1, parseInt(pageSize || '10', 10));
+
+      return await this.customerService.getCustomerRatings(
+        id,
+        pageNum,
+        pageSizeNum,
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
   }
 }

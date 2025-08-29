@@ -18,7 +18,9 @@ CREATE TABLE "car_monthly_targets" (
 	"id" varchar(255) PRIMARY KEY NOT NULL,
 	"car_id" varchar(255) NOT NULL,
 	"org_id" varchar(255) NOT NULL,
-	"month" text NOT NULL,
+	"start_date" timestamp NOT NULL,
+	"end_date" timestamp NOT NULL,
+	"target_rents" integer NOT NULL,
 	"revenue_goal" integer NOT NULL,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now()
@@ -40,26 +42,36 @@ CREATE TABLE "cars" (
 	"updatedAt" timestamp
 );
 --> statement-breakpoint
-CREATE TABLE "car_oil_changes" (
+CREATE TABLE "customer_blacklist" (
 	"id" varchar(255) PRIMARY KEY NOT NULL,
-	"car_id" varchar(255) NOT NULL,
-	"org_id" varchar(255) NOT NULL,
-	"changed_at" timestamp DEFAULT now(),
-	"mileage_at_change" integer NOT NULL,
-	"next_due_at_km" integer,
-	"cost" integer
+	"customer_id" varchar(255) NOT NULL,
+	"reason" text NOT NULL,
+	"is_active" boolean DEFAULT true,
+	"createdAt" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE "customer_ratings" (
+	"id" varchar(255) PRIMARY KEY NOT NULL,
+	"customer_id" varchar(255) NOT NULL,
+	"rating" integer NOT NULL,
+	"comment" text,
+	"createdAt" timestamp DEFAULT now()
 );
 --> statement-breakpoint
 CREATE TABLE "customers" (
 	"id" varchar(255) PRIMARY KEY NOT NULL,
 	"org_id" varchar(255) NOT NULL,
-	"name" text NOT NULL,
-	"last name" text NOT NULL,
+	"first_name" text NOT NULL,
+	"last_name" text NOT NULL,
 	"email" varchar(255),
 	"phone" varchar(20) NOT NULL,
 	"document_id" varchar(255),
-	"createdAt" timestamp,
-	"updatedAt" timestamp,
+	"document_type" text,
+	"test_var" varchar(255),
+	"rating" real DEFAULT 0,
+	"rating_count" integer DEFAULT 0,
+	"createdAt" timestamp DEFAULT now(),
+	"updatedAt" timestamp DEFAULT now(),
 	CONSTRAINT "customers_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
@@ -104,18 +116,6 @@ CREATE TABLE "organization" (
 	CONSTRAINT "organization_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
-CREATE TABLE "maintenance_logs" (
-	"id" varchar(255) PRIMARY KEY NOT NULL,
-	"car_id" varchar(255) NOT NULL,
-	"org_id" varchar(255) NOT NULL,
-	"type" text NOT NULL,
-	"description" text NOT NULL,
-	"mileage" integer NOT NULL,
-	"cost" integer NOT NULL,
-	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp DEFAULT now()
-);
---> statement-breakpoint
 CREATE TABLE "rents" (
 	"id" varchar(255) PRIMARY KEY NOT NULL,
 	"car_id" varchar(255) NOT NULL,
@@ -136,17 +136,47 @@ CREATE TABLE "rents" (
 	"is_deleted" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "test" (
+	"id" varchar(255) PRIMARY KEY NOT NULL,
+	"org_id" varchar(255) NOT NULL,
+	"first_name" text NOT NULL,
+	"last_name" text NOT NULL,
+	"email" varchar(255),
+	"phone" varchar(20) NOT NULL,
+	"document_id" varchar(255),
+	"document_type" text,
+	"test_var" varchar(255),
+	"rating" real DEFAULT 0,
+	"rating_count" integer DEFAULT 0,
+	"createdAt" timestamp DEFAULT now(),
+	"updatedAt" timestamp DEFAULT now(),
+	CONSTRAINT "test_email_unique" UNIQUE("email")
+);
+--> statement-breakpoint
+CREATE TABLE "maintenance_logs" (
+	"id" varchar(255) PRIMARY KEY NOT NULL,
+	"car_id" varchar(255) NOT NULL,
+	"org_id" varchar(255) NOT NULL,
+	"type" text,
+	"mileage" integer,
+	"cost" integer,
+	"description" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "car_monthly_targets" ADD CONSTRAINT "car_monthly_targets_car_id_cars_id_fk" FOREIGN KEY ("car_id") REFERENCES "public"."cars"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "car_monthly_targets" ADD CONSTRAINT "car_monthly_targets_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "cars" ADD CONSTRAINT "cars_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "car_oil_changes" ADD CONSTRAINT "car_oil_changes_car_id_cars_id_fk" FOREIGN KEY ("car_id") REFERENCES "public"."cars"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "car_oil_changes" ADD CONSTRAINT "car_oil_changes_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "customer_blacklist" ADD CONSTRAINT "customer_blacklist_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "customer_ratings" ADD CONSTRAINT "customer_ratings_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "customers" ADD CONSTRAINT "customers_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_userId_user_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organization" ADD CONSTRAINT "organization_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "maintenance_logs" ADD CONSTRAINT "maintenance_logs_car_id_cars_id_fk" FOREIGN KEY ("car_id") REFERENCES "public"."cars"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "maintenance_logs" ADD CONSTRAINT "maintenance_logs_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rents" ADD CONSTRAINT "rents_car_id_cars_id_fk" FOREIGN KEY ("car_id") REFERENCES "public"."cars"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rents" ADD CONSTRAINT "rents_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "rents" ADD CONSTRAINT "rents_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "rents" ADD CONSTRAINT "rents_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "test" ADD CONSTRAINT "test_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "maintenance_logs" ADD CONSTRAINT "maintenance_logs_car_id_cars_id_fk" FOREIGN KEY ("car_id") REFERENCES "public"."cars"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "maintenance_logs" ADD CONSTRAINT "maintenance_logs_org_id_organization_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;

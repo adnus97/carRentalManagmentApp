@@ -21,6 +21,7 @@ import {
 } from '@/contexts/navigation-context';
 import { cn } from '@/lib/utils';
 import { DialogDemo } from '@/components/cars/car-form';
+import { AddClientDialog } from '@/components/customers/add-client-form';
 
 function Breadcrumbs() {
   const location = useLocation();
@@ -109,6 +110,7 @@ function Breadcrumbs() {
       </BreadcrumbList>
       <div className="flex space-x-3">
         {location.pathname.startsWith('/dashboard') && <DialogDemo />}
+        {location.pathname.startsWith('/clients') && <AddClientDialog />}
         <ModeToggle />
       </div>
     </Breadcrumb>
