@@ -3,7 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { DatabaseService, organization } from 'src/db';
+import { cars, DatabaseService, organization, rents } from 'src/db';
 import {
   customers,
   customerBlacklist,
@@ -21,16 +21,14 @@ import { createId } from '@paralleldrive/cuid2';
 export class CustomerService {
   constructor(private readonly dbService: DatabaseService) {}
 
-  /** Helper: safe JSON return */
   private safeReturn<T>(data: T): T {
     return JSON.parse(JSON.stringify(data));
   }
 
-  /** ✅ Create customer (orgId resolved from userId) */
+  /** ✅ Create customer */
   async create(userId: string, dto: CreateCustomerDto) {
     if (!userId) throw new BadRequestException('User ID is required');
 
-    // Find org for this user
     const userOrg = await this.dbService.db
       .select({ id: organization.id })
       .from(organization)
@@ -42,7 +40,6 @@ export class CustomerService {
 
     const orgId = userOrg[0].id;
 
-    // ✅ Check uniqueness of documentId within org
     const existing = await this.dbService.db
       .select()
       .from(customers)
@@ -68,12 +65,15 @@ export class CustomerService {
       createdAt: new Date(),
       updatedAt: new Date(),
       isDeleted: false,
+      isBlacklisted: false,
+      blacklistReason: null,
     };
 
     await this.dbService.db.insert(customers).values(newCustomer);
     return this.safeReturn(newCustomer);
   }
-  /** ✅ Get all customers by org (orgId resolved from userId) */
+
+  /** ✅ Get all customers by org */
   async findAllCustomersByOrg(userId: string, page = 1, pageSize = 20) {
     if (!userId) throw new BadRequestException('User ID is required');
 
@@ -85,14 +85,7 @@ export class CustomerService {
       .where(eq(organization.userId, userId));
 
     if (!userOrg.length || !userOrg[0]?.id) {
-      // ✅ return empty result instead of crashing
-      return {
-        data: [],
-        page,
-        pageSize,
-        total: 0,
-        totalPages: 0,
-      };
+      return { data: [], page, pageSize, total: 0, totalPages: 0 };
     }
 
     const orgId = userOrg[0].id;
@@ -118,7 +111,8 @@ export class CustomerService {
       totalPages: Math.ceil(Number(count) / pageSize),
     });
   }
-  /** Get one customer (excluding deleted) */
+
+  /** ✅ Get one customer */
   async findOne(id: string) {
     const [customer] = await this.dbService.db
       .select()
@@ -129,8 +123,7 @@ export class CustomerService {
     return this.safeReturn(customer);
   }
 
-  /** Update customer */
-
+  /** ✅ Update customer */
   async update(id: string, dto: UpdateCustomerDto) {
     const [customer] = await this.dbService.db
       .select()
@@ -139,7 +132,6 @@ export class CustomerService {
 
     if (!customer) throw new NotFoundException('Customer not found');
 
-    // ✅ If updating documentId, check uniqueness within org
     if (dto.documentId && dto.documentId !== customer.documentId) {
       const existing = await this.dbService.db
         .select()
@@ -166,7 +158,7 @@ export class CustomerService {
     return this.safeReturn({ ...customer, ...dto });
   }
 
-  /** Soft delete customer */
+  /** ✅ Soft delete customer */
   async remove(id: string) {
     const [customer] = await this.dbService.db
       .select()
@@ -177,16 +169,13 @@ export class CustomerService {
 
     await this.dbService.db
       .update(customers)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
+      .set({ isDeleted: true, updatedAt: new Date() })
       .where(eq(customers.id, id));
 
     return { success: true, message: 'Customer soft-deleted' };
   }
 
-  /** Restore soft-deleted customer */
+  /** ✅ Restore soft-deleted customer */
   async restore(id: string) {
     const [customer] = await this.dbService.db
       .select()
@@ -197,17 +186,33 @@ export class CustomerService {
 
     await this.dbService.db
       .update(customers)
-      .set({
-        isDeleted: false,
-        updatedAt: new Date(),
-      })
+      .set({ isDeleted: false, updatedAt: new Date() })
       .where(eq(customers.id, id));
 
     return { success: true, message: 'Customer restored' };
   }
 
-  /** Blacklist a customer */
+  /** ✅ Blacklist a customer (persist + history) */
   async blacklistCustomer(id: string, dto: BlacklistCustomerDto) {
+    const [customer] = await this.dbService.db
+      .select()
+      .from(customers)
+      .where(eq(customers.id, id));
+
+    if (!customer) throw new NotFoundException('Customer not found');
+
+    // deactivate old blacklist entries
+    await this.dbService.db
+      .update(customerBlacklist)
+      .set({ isActive: false })
+      .where(
+        and(
+          eq(customerBlacklist.customerId, id),
+          eq(customerBlacklist.isActive, true),
+        ),
+      );
+
+    // insert new blacklist entry (history)
     const entry = {
       id: createId(),
       customerId: id,
@@ -216,22 +221,64 @@ export class CustomerService {
       createdAt: new Date(),
     };
     await this.dbService.db.insert(customerBlacklist).values(entry);
+
+    // update customer flag
+    await this.dbService.db
+      .update(customers)
+      .set({
+        isBlacklisted: true,
+        blacklistReason: dto.reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(customers.id, id));
+
     return this.safeReturn(entry);
   }
 
-  /** Get blacklist with pagination */
+  /** ✅ Unblacklist a customer (persist + history) */
+  async unblacklistCustomer(id: string) {
+    const [customer] = await this.dbService.db
+      .select()
+      .from(customers)
+      .where(eq(customers.id, id));
+
+    if (!customer) throw new NotFoundException('Customer not found');
+
+    // deactivate active blacklist entries
+    await this.dbService.db
+      .update(customerBlacklist)
+      .set({ isActive: false })
+      .where(
+        and(
+          eq(customerBlacklist.customerId, id),
+          eq(customerBlacklist.isActive, true),
+        ),
+      );
+
+    // update customer flag
+    await this.dbService.db
+      .update(customers)
+      .set({
+        isBlacklisted: false,
+        blacklistReason: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(customers.id, id));
+
+    return { success: true, message: 'Customer unblacklisted' };
+  }
+
+  /** ✅ Get blacklist history with pagination */
   async getBlacklist(page = 1, pageSize = 20) {
     const offset = (page - 1) * pageSize;
 
     const [{ count }] = await this.dbService.db
       .select({ count: sql<number>`count(*)` })
-      .from(customerBlacklist)
-      .where(eq(customerBlacklist.isActive, true));
+      .from(customerBlacklist);
 
     const rows = await this.dbService.db
       .select()
       .from(customerBlacklist)
-      .where(eq(customerBlacklist.isActive, true))
       .orderBy(sql`${customerBlacklist.createdAt} DESC`)
       .offset(offset)
       .limit(pageSize);
@@ -245,7 +292,7 @@ export class CustomerService {
     });
   }
 
-  /** Rate a customer */
+  /** ✅ Rate a customer */
   async rateCustomer(id: string, dto: RateCustomerDto) {
     const ratingEntry = {
       id: createId(),
@@ -265,7 +312,6 @@ export class CustomerService {
       throw new NotFoundException('No ratings found for this customer');
     }
 
-    // Compute average
     const avg = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
 
     await this.dbService.db
@@ -280,7 +326,7 @@ export class CustomerService {
     return { average: avg, count: ratings.length };
   }
 
-  /** Get customer ratings with pagination */
+  /** ✅ Get customer ratings with pagination */
   async getCustomerRatings(id: string, page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
 
@@ -304,5 +350,57 @@ export class CustomerService {
       total: Number(count),
       totalPages: Math.ceil(Number(count) / pageSize),
     });
+  }
+  async findByCustomer(customerId: string, page = 1, pageSize = 10) {
+    const offset = (page - 1) * pageSize;
+
+    const data = await this.dbService.db
+      .select({
+        id: rents.id,
+        startDate: rents.startDate,
+        expectedEndDate: rents.expectedEndDate,
+        returnedAt: rents.returnedAt,
+        totalPrice: rents.totalPrice,
+        totalPaid: rents.totalPaid,
+        deposit: rents.deposit,
+        guarantee: rents.guarantee,
+        lateFee: rents.lateFee,
+        damageReport: rents.damageReport,
+        isFullyPaid: rents.isFullyPaid,
+        isOpenContract: rents.isOpenContract,
+        status: rents.status,
+        car: {
+          id: cars.id,
+          make: cars.make,
+          model: cars.model,
+          year: cars.year,
+        },
+      })
+      .from(rents)
+      .leftJoin(cars, eq(rents.carId, cars.id))
+      .where(eq(rents.customerId, customerId))
+      .limit(pageSize)
+      .offset(offset);
+
+    const total = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(rents)
+      .where(eq(rents.customerId, customerId));
+
+    const totalSpent = await this.dbService.db
+      .select({ sum: sql<number>`COALESCE(SUM(${rents.totalPaid}),0)` })
+      .from(rents)
+      .where(eq(rents.customerId, customerId));
+
+    return {
+      data,
+      total: total[0].count,
+      totalPages: Math.ceil(total[0].count / pageSize),
+      stats: {
+        totalRentals: total[0].count,
+        totalSpent: totalSpent[0].sum,
+        avgSpend: total[0].count > 0 ? totalSpent[0].sum / total[0].count : 0,
+      },
+    };
   }
 }

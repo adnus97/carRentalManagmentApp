@@ -11,6 +11,8 @@ import { CarsModule } from './cars/cars.module';
 import { CustomerModule } from './customer/customer.module';
 import { RentsModule } from './rents/rents.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { not } from 'drizzle-orm';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -23,6 +25,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ImagekitModule,
     CustomerModule,
     RentsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

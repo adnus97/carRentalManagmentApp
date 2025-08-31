@@ -154,4 +154,28 @@ export class CustomerController extends BaseController {
       this.handleControllerError(error);
     }
   }
+  @Put(':id/unblacklist')
+  async unblacklist(@Param('id') id: string) {
+    return await this.customerService.unblacklistCustomer(id);
+  }
+
+  @Get('customer/:customerId')
+  async getRentsByCustomer(
+    @Param('customerId') customerId: string,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    try {
+      const pageNum = Math.max(1, parseInt(page || '1', 10));
+      const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
+
+      return await this.customerService.findByCustomer(
+        customerId,
+        pageNum,
+        pageSizeNum,
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
 }

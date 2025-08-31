@@ -51,7 +51,7 @@ function Breadcrumbs() {
     }
 
     // ✅ Clients section
-    if (path.startsWith('/clients')) {
+    if (path.startsWith('/clients') || path.startsWith('/customerDetails')) {
       return [
         { title: 'Clients', href: '/clients', isCurrentPage: !entityName },
         ...(entityName

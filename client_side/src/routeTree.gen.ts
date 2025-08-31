@@ -21,6 +21,7 @@ import { Route as AuthIndexImport } from './routes/_auth/index'
 import { Route as LayoutRentsImport } from './routes/_layout.rents'
 import { Route as LayoutDashboardImport } from './routes/_layout.dashboard'
 import { Route as LayoutClientsImport } from './routes/_layout.clients'
+import { Route as LayoutCustomerDetailsIdImport } from './routes/_layout.customerDetails.$id'
 import { Route as LayoutCarDetailsIdImport } from './routes/_layout.carDetails.$id'
 
 // Create/Update Routes
@@ -80,6 +81,12 @@ const LayoutDashboardRoute = LayoutDashboardImport.update({
 const LayoutClientsRoute = LayoutClientsImport.update({
   id: '/clients',
   path: '/clients',
+  getParentRoute: () => LayoutRoute,
+} as any)
+
+const LayoutCustomerDetailsIdRoute = LayoutCustomerDetailsIdImport.update({
+  id: '/customerDetails/$id',
+  path: '/customerDetails/$id',
   getParentRoute: () => LayoutRoute,
 } as any)
 
@@ -170,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutCarDetailsIdImport
       parentRoute: typeof LayoutImport
     }
+    '/_layout/customerDetails/$id': {
+      id: '/_layout/customerDetails/$id'
+      path: '/customerDetails/$id'
+      fullPath: '/customerDetails/$id'
+      preLoaderRoute: typeof LayoutCustomerDetailsIdImport
+      parentRoute: typeof LayoutImport
+    }
   }
 }
 
@@ -190,6 +204,7 @@ interface LayoutRouteChildren {
   LayoutDashboardRoute: typeof LayoutDashboardRoute
   LayoutRentsRoute: typeof LayoutRentsRoute
   LayoutCarDetailsIdRoute: typeof LayoutCarDetailsIdRoute
+  LayoutCustomerDetailsIdRoute: typeof LayoutCustomerDetailsIdRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
@@ -197,6 +212,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutDashboardRoute: LayoutDashboardRoute,
   LayoutRentsRoute: LayoutRentsRoute,
   LayoutCarDetailsIdRoute: LayoutCarDetailsIdRoute,
+  LayoutCustomerDetailsIdRoute: LayoutCustomerDetailsIdRoute,
 }
 
 const LayoutRouteWithChildren =
@@ -213,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/rents': typeof LayoutRentsRoute
   '/': typeof AuthIndexRoute
   '/carDetails/$id': typeof LayoutCarDetailsIdRoute
+  '/customerDetails/$id': typeof LayoutCustomerDetailsIdRoute
 }
 
 export interface FileRoutesByTo {
@@ -226,6 +243,7 @@ export interface FileRoutesByTo {
   '/rents': typeof LayoutRentsRoute
   '/': typeof AuthIndexRoute
   '/carDetails/$id': typeof LayoutCarDetailsIdRoute
+  '/customerDetails/$id': typeof LayoutCustomerDetailsIdRoute
 }
 
 export interface FileRoutesById {
@@ -241,6 +259,7 @@ export interface FileRoutesById {
   '/_layout/rents': typeof LayoutRentsRoute
   '/_auth/': typeof AuthIndexRoute
   '/_layout/carDetails/$id': typeof LayoutCarDetailsIdRoute
+  '/_layout/customerDetails/$id': typeof LayoutCustomerDetailsIdRoute
 }
 
 export interface FileRouteTypes {
@@ -256,6 +275,7 @@ export interface FileRouteTypes {
     | '/rents'
     | '/'
     | '/carDetails/$id'
+    | '/customerDetails/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | ''
@@ -268,6 +288,7 @@ export interface FileRouteTypes {
     | '/rents'
     | '/'
     | '/carDetails/$id'
+    | '/customerDetails/$id'
   id:
     | '__root__'
     | '/_auth'
@@ -281,6 +302,7 @@ export interface FileRouteTypes {
     | '/_layout/rents'
     | '/_auth/'
     | '/_layout/carDetails/$id'
+    | '/_layout/customerDetails/$id'
   fileRoutesById: FileRoutesById
 }
 
@@ -332,7 +354,8 @@ export const routeTree = rootRoute
         "/_layout/clients",
         "/_layout/dashboard",
         "/_layout/rents",
-        "/_layout/carDetails/$id"
+        "/_layout/carDetails/$id",
+        "/_layout/customerDetails/$id"
       ]
     },
     "/about": {
@@ -365,6 +388,10 @@ export const routeTree = rootRoute
     },
     "/_layout/carDetails/$id": {
       "filePath": "_layout.carDetails.$id.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/customerDetails/$id": {
+      "filePath": "_layout.customerDetails.$id.tsx",
       "parent": "/_layout"
     }
   }

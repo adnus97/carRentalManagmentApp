@@ -31,10 +31,12 @@ export const customers = pgTable(
     createdAt: timestamp().defaultNow(),
     updatedAt: timestamp().defaultNow(),
     isDeleted: boolean('is_deleted').default(false),
+    isBlacklisted: boolean('is_blacklisted').default(false),
+    blacklistReason: text('blacklist_reason'),
   },
   (table) => {
     return {
-      // ✅ Composite unique index: orgId + documentId
+      //  Composite unique index: orgId + documentId
       orgDocumentUnique: uniqueIndex('org_document_unique').on(
         table.orgId,
         table.documentId,

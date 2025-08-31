@@ -13,6 +13,8 @@ export interface Customer {
   createdAt: string;
   updatedAt: string;
   isDeleted: boolean;
+  isBlacklisted?: boolean;
+  blacklistReason?: string | null;
 }
 
 export interface CustomerRating {
@@ -113,6 +115,22 @@ export const getCustomerRatings = async (
   pageSize: number = 10,
 ) => {
   const response = await api.get(`/customers/${id}/ratings`, {
+    params: { page, pageSize },
+  });
+  return response.data;
+};
+
+export const unblacklistCustomer = async (id: string) => {
+  const response = await api.put(`/customers/${id}/unblacklist`);
+  return response.data;
+};
+
+export const getRentsByCustomer = async (
+  customerId: string,
+  page: number = 1,
+  pageSize: number = 10,
+) => {
+  const response = await api.get(`/customers/customer/${customerId}`, {
     params: { page, pageSize },
   });
   return response.data;

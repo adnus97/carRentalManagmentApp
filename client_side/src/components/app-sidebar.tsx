@@ -14,7 +14,6 @@ import {
   CarProfile,
   UserList,
   ChartDonut,
-  Gear,
   BuildingOffice,
   CaretUpDown,
   User,
@@ -35,6 +34,7 @@ import { UserDefaultImg } from './user-defaultImg';
 import { authClient } from '@/lib/auth-client';
 import { ConfirmationDialog } from './confirmation-dialog';
 import { navigationConfig } from '@/config/navigation';
+import { NotificationsDropdown } from './notifications/notification-dropdown'; // ✅ import b.ell dropdown
 
 import React from 'react';
 
@@ -73,6 +73,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarContent className="gap-1 ml-4 h-full flex flex-col">
           <SidebarGroup className="flex-1">
             <SidebarMenu className="flex flex-col h-full">
+              {/* ✅ Render all nav items except the last (Settings) */}
               {navData.navMain.slice(0, -1).map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild>
@@ -87,20 +88,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuItem>
               ))}
 
-              <div className="mt-auto">
-                {navData.navMain.slice(-1).map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild>
-                      <Link
-                        to={item.url}
-                        className="hover:bg-gray-4 data-[status=active]:bg-gray-4"
-                      >
-                        {item.icon}
-                        <span className="ml-3">{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+              {/* ✅ Replace Settings with Notifications */}
+              <div className="mt-auto flex items-center justify-end p-2">
+                <NotificationsDropdown />
               </div>
 
               <Separator className="mb-2" />

@@ -22,28 +22,6 @@ function RouteComponent() {
     queryFn: () => getCarDetails(id),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (payload: any) => updateCar(id, payload),
-    onSuccess: () => {
-      successToast('Car updated successfully');
-      queryClient.invalidateQueries({ queryKey: ['carDetails', id] }); // ✅ fixed
-    },
-    onError: (err: any) => {
-      errorToast(err?.response?.data?.message || 'Failed to update car');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteCar(id),
-    onSuccess: () => {
-      successToast('Car deleted successfully');
-      router.navigate({ to: '/dashboard' });
-    },
-    onError: (err: any) => {
-      errorToast(err?.response?.data?.message || 'Failed to delete car');
-    },
-  });
-
   if (isLoading)
     return (
       <p className="flex  w-fit h-full mx-auto items-center gap-2 text-gray-500">

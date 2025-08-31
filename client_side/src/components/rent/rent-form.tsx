@@ -286,6 +286,18 @@ export function RentFormDialog({
   }, [deposit, isFullyPaid, setValue]);
 
   const onSubmit = (data: RentFormFields) => {
+    const selectedCustomer = customers?.data?.find(
+      (c: any) => c.id === data.customerId,
+    );
+
+    if (selectedCustomer?.isBlacklisted) {
+      toast({
+        type: 'error',
+        title: 'Validation Error',
+        description: 'This customer is blacklisted and cannot rent a car.',
+      });
+      return;
+    }
     if (!data.carId) {
       toast({
         type: 'error',
@@ -350,7 +362,7 @@ export function RentFormDialog({
               />
             </div>
             <div className="flex-1">
-              <Label htmlFor="customerId">Customer *</Label>
+              <Label htmlFor="customerId">Customer * </Label>
               <Controller
                 control={control}
                 name="customerId"
@@ -367,13 +379,20 @@ export function RentFormDialog({
                         <SelectValue placeholder="Select a customer" />
                       </SelectTrigger>
                       <SelectContent>
-                        {customers?.data?.map((customer: any) => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            {`${customer.firstName || ''} ${customer.lastName || ''}`.trim() ||
-                              customer.email ||
-                              customer.id}
-                          </SelectItem>
-                        ))}
+                        {customers?.data
+                          ?.filter((customer: any) => {
+                            if (customer.isBlacklisted) {
+                              return false;
+                            }
+                            return true;
+                          })
+                          .map((customer: any) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              {`${customer.firstName || ''} ${customer.lastName || ''}`.trim() ||
+                                customer.email ||
+                                customer.id}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
 
@@ -569,6 +588,9 @@ export function RentFormDialog({
 
           {/* Submit Button */}
           <div className="flex justify-end gap-2 pt-4">
+            <p className="text-[11px] text-[#EC6142] italic h-full flex items-center mr-auto ">
+              Blacklisted clients are not visible here
+            </p>
             <Button
               type="button"
               variant="outline"

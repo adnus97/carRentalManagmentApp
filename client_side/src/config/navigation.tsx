@@ -5,6 +5,7 @@ import {
   Gear,
   BuildingOffice,
   Key,
+  Bell,
 } from '@phosphor-icons/react';
 
 export const navigationConfig = {
@@ -35,9 +36,9 @@ export const navigationConfig = {
       icon: <BuildingOffice size={40} />,
     },
     {
-      title: 'Settings',
-      url: '/settings',
-      icon: <Gear size={40} />,
+      title: 'Notifications',
+      url: '/notifications', // not a real page, just placeholder
+      icon: <Bell size={40} />,
     },
   ],
 };
