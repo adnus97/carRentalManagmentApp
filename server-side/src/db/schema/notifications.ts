@@ -32,5 +32,5 @@ export const notifications = pgTable('notifications', {
   expiresAt: timestamp('expires_at', { withTimezone: true })
     .default(null)
     .$type<Date | null>(),
-  metadata: jsonb('metadata').$type<Record<string, any> | null>().default(null),
+  metadata: jsonb('metadata').$type<Record<string, any> | null>(),
 });

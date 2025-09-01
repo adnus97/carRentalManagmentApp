@@ -8,7 +8,7 @@ import {
 } from 'ag-grid-community';
 import { useQuery } from '@tanstack/react-query';
 import { getRentsByCustomer, getCustomerById } from '../../api/customers';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import {
   Pagination,
@@ -19,13 +19,12 @@ import {
   PaginationNext,
 } from '@/components/ui/pagination';
 import { Card } from '@/components/ui/card';
-import { Mail, Phone, IdCard, Calendar, User, CheckCircle } from 'lucide-react';
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
 export function ClientRentalsGrid({ customerId }: { customerId: string }) {
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const pageSize = 11;
 
   // ✅ Query 1: Customer info
   const { data: customer, isLoading: loadingCustomer } = useQuery({
@@ -40,10 +39,27 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
     placeholderData: (prev) => prev,
   });
 
-  // ✅ Query 3: All rentals (for stats only)
-  const { data: allData, isLoading: loadingAll } = useQuery({
+  // ✅ Query 3: Get ALL rentals with a much simpler approach
+  const { data: allRentalsData, isLoading: loadingAllRentals } = useQuery({
     queryKey: ['customerRentsAll', customerId],
-    queryFn: () => getRentsByCustomer(customerId), // no pagination
+    queryFn: async () => {
+      // First, get the first page to know total pages
+      const firstPage = await getRentsByCustomer(customerId, 1, pageSize);
+      if (!firstPage?.totalPages || firstPage.totalPages === 1) {
+        return firstPage?.data || [];
+      }
+
+      // If there are multiple pages, fetch them all
+      const allPages = await Promise.all(
+        Array.from({ length: firstPage.totalPages }, (_, i) =>
+          getRentsByCustomer(customerId, i + 1, pageSize),
+        ),
+      );
+
+      // Combine all results
+      return allPages.flatMap((pageData) => pageData?.data || []);
+    },
+    enabled: !!customerId, // Only run when we have a customerId
   });
 
   const colDefs: ColDef[] = [
@@ -79,17 +95,32 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
       headerName: 'Total Price',
       field: 'totalPrice',
       flex: 1,
-      valueFormatter: (p) => `${p.value?.toLocaleString()} MAD`,
+      valueFormatter: (p) => `${(p.value || 0).toLocaleString()} MAD`,
     },
     {
       headerName: 'Paid',
       field: 'totalPaid',
       flex: 1,
-      valueFormatter: (p) => `${p.value?.toLocaleString()} MAD`,
+      valueFormatter: (p) => `${(p.value || 0).toLocaleString()} MAD`,
     },
-    { headerName: 'Deposit', field: 'deposit', flex: 1 },
-    { headerName: 'Guarantee', field: 'guarantee', flex: 1 },
-    { headerName: 'Late Fee', field: 'lateFee', flex: 1 },
+    {
+      headerName: 'Deposit',
+      field: 'deposit',
+      flex: 1,
+      valueFormatter: (p) => (p.value || 0).toLocaleString(),
+    },
+    {
+      headerName: 'Guarantee',
+      field: 'guarantee',
+      flex: 1,
+      valueFormatter: (p) => (p.value || 0).toLocaleString(),
+    },
+    {
+      headerName: 'Late Fee',
+      field: 'lateFee',
+      flex: 1,
+      valueFormatter: (p) => (p.value || 0).toLocaleString(),
+    },
     {
       headerName: 'Fully Paid',
       field: 'isFullyPaid',
@@ -109,19 +140,17 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
         const status = params.value;
         const colors: Record<string, string> = {
           reserved:
-            'bg-purple-200 dark:bg-purple-900 !text-purple-800 dark:!text-purple-300 px-2 py-1 rounded',
+            'bg-purple-200 dark:bg-purple-900 !text-purple-800 dark:!text-purple-300',
           active:
-            'bg-green-200 dark:bg-green-900 !text-green-800 dark:!text-green-300 px-2 py-1 rounded',
+            'bg-green-200 dark:bg-green-900 !text-green-800 dark:!text-green-300',
           completed:
-            'bg-blue-200 dark:bg-blue-900 !text-blue-800 dark:!text-blue-300 px-2 py-1 rounded',
+            'bg-blue-200 dark:bg-blue-900 !text-blue-800 dark:!text-blue-300',
           cancelled:
-            'bg-red-200 dark:bg-red-900 !text-red-800 dark:!text-red-300 px-2 py-1 rounded',
+            'bg-red-200 dark:bg-red-900 !text-red-800 dark:!text-red-300',
         };
         return (
           <span
-            className={`px-2 py-1 rounded text-xs ${
-              colors[status] || 'bg-gray-400'
-            }`}
+            className={`px-2 py-1 rounded text-xs ${colors[status] || 'bg-gray-400'}`}
           >
             {status}
           </span>
@@ -130,21 +159,36 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
     },
   ];
 
-  if (isLoading || loadingCustomer || loadingAll)
+  if (isLoading || loadingCustomer || loadingAllRentals) {
     return <p>Loading client details...</p>;
-  if (isError) return <p className="text-red-500">Failed to load rentals.</p>;
+  }
 
+  if (isError) {
+    return <p className="text-red-500">Failed to load rentals.</p>;
+  }
+
+  // ✅ Safe data access with fallbacks
   const rentals = data?.data || [];
   const totalPages = data?.totalPages || 1;
+  const allRentals = allRentalsData || [];
 
-  // ✅ Compute stats from all rentals
-  const allRentals = allData?.data || [];
+  // ✅ Calculate stats from ALL rentals
   const totalRentals = allRentals.length;
   const totalSpent = allRentals.reduce(
-    (sum: any, r: any) => sum + (r.totalPrice || 0),
+    (sum: number, r: any) => sum + (r?.totalPaid || 0),
     0,
   );
-  const avgSpend = totalRentals > 0 ? totalSpent / totalRentals : 0;
+  const avgSpendPerRental = totalRentals > 0 ? totalSpent / totalRentals : 0;
+
+  // ✅ Debug output
+  console.log('Stats calculation:', {
+    totalRentals,
+    totalSpent,
+    avgSpendPerRental,
+    totalPages,
+    currentPageRentals: rentals.length,
+    allRentalsLength: allRentals.length,
+  });
 
   return (
     <div className="space-y-6">
@@ -160,21 +204,23 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
         </Card>
         <Card className="p-4 text-center">
           <p className="text-sm text-muted-foreground">Avg Spend / Rental</p>
-          <p className="text-xl font-bold">{avgSpend.toFixed(2)} MAD</p>
+          <p className="text-xl font-bold">
+            {avgSpendPerRental.toFixed(2)} MAD
+          </p>
         </Card>
       </div>
 
       {/* ✅ Rentals Grid */}
       <div
         className="ag-theme-alpine-dark rounded-lg shadow-md text-sm"
-        style={{ height: 400 }}
+        style={{ height: 500 }}
       >
         <AgGridReact
           rowHeight={40}
           headerHeight={40}
           rowData={rentals}
           columnDefs={colDefs}
-          pagination={false} // manual pagination
+          pagination={false}
         />
       </div>
 

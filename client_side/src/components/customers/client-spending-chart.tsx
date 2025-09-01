@@ -43,127 +43,172 @@ type RentalHistoryItem = {
 };
 
 export function ClientSpendingChart({
-  rentalHistory,
+  rentalHistory = [], // ✅ Default empty array
 }: {
-  rentalHistory: RentalHistoryItem[];
+  rentalHistory?: RentalHistoryItem[]; // ✅ Make optional
 }) {
   const [timeRange, setTimeRange] = React.useState<'7d' | '30d' | '90d'>('90d');
   const [visibleSeries, setVisibleSeries] = React.useState<
     'both' | 'spending' | 'rentals'
   >('both');
 
-  // ✅ Step 1: Build daily chart data
+  // ✅ Step 1: Build daily chart data with better error handling
   const chartData = React.useMemo(() => {
-    if (!rentalHistory) return [];
+    // ✅ Early return if no data
+    if (
+      !rentalHistory ||
+      !Array.isArray(rentalHistory) ||
+      rentalHistory.length === 0
+    ) {
+      return [];
+    }
 
     const grouped: Record<string, { spending: number; rentals: number }> = {};
 
-    rentalHistory.forEach((rental, i) => {
-      console.log('Rental item', i, rental); // 👈 log raw rental
-      const date = new Date(rental.startDate).toISOString().split('T')[0];
-      if (!grouped[date]) {
-        grouped[date] = { spending: 0, rentals: 0 };
-      }
-      console.log('Before add:', grouped[date]);
-      grouped[date].spending += rental.totalPaid ?? 0; // 👈 fallback
-      grouped[date].rentals += 1;
-      console.log('After add:', grouped[date]);
-    });
+    try {
+      rentalHistory.forEach((rental) => {
+        // ✅ Validate rental data
+        if (!rental || !rental.startDate) return;
 
-    const result = Object.entries(grouped)
-      .map(([date, values]) => ({
-        date,
-        spending: values.spending,
-        rentals: values.rentals,
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    console.log('Final chartData:', result);
-    return result;
-  }, [rentalHistory]);
-
-  // ✅ Step 2: Filter + aggregate + fill missing
-  const filteredData = React.useMemo(() => {
-    const referenceDate = new Date();
-    let daysToSubtract = 90;
-    if (timeRange === '30d') daysToSubtract = 30;
-    if (timeRange === '7d') daysToSubtract = 7;
-
-    const startDate = new Date(referenceDate);
-    startDate.setDate(startDate.getDate() - daysToSubtract);
-
-    // Filter by range
-    const filtered = chartData.filter(
-      (item) => new Date(item.date) >= startDate,
-    );
-
-    // ✅ If 90d → aggregate by month
-    if (timeRange === '90d') {
-      const monthly: Record<string, { spending: number; rentals: number }> = {};
-      filtered.forEach((item) => {
-        const d = new Date(item.date);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-          2,
-          '0',
-        )}`;
-        if (!monthly[key]) {
-          monthly[key] = { spending: 0, rentals: 0 };
+        const date = new Date(rental.startDate).toISOString().split('T')[0];
+        if (!grouped[date]) {
+          grouped[date] = { spending: 0, rentals: 0 };
         }
-        monthly[key].spending += item.spending;
-        monthly[key].rentals += item.rentals;
+        grouped[date].spending += rental.totalPaid ?? 0;
+        grouped[date].rentals += 1;
       });
 
-      // ✅ Fill missing months
-      const months: string[] = [];
-      const startMonth = new Date(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        1,
-      );
-      const endMonth = new Date(
-        referenceDate.getFullYear(),
-        referenceDate.getMonth(),
-        1,
+      const result = Object.entries(grouped)
+        .map(([date, values]) => ({
+          date,
+          spending: values.spending,
+          rentals: values.rentals,
+        }))
+        .sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+        );
+
+      return result;
+    } catch (error) {
+      console.error('Error processing rental history:', error);
+      return [];
+    }
+  }, [rentalHistory]);
+
+  // ✅ Step 2: Filter + aggregate + fill missing with better error handling
+  const filteredData = React.useMemo(() => {
+    // ✅ Early return if no chartData
+    if (!chartData || chartData.length === 0) {
+      return [];
+    }
+
+    try {
+      const referenceDate = new Date();
+      let daysToSubtract = 90;
+      if (timeRange === '30d') daysToSubtract = 30;
+      if (timeRange === '7d') daysToSubtract = 7;
+
+      const startDate = new Date(referenceDate);
+      startDate.setDate(startDate.getDate() - daysToSubtract);
+
+      // Filter by range
+      const filtered = chartData.filter(
+        (item) => new Date(item.date) >= startDate,
       );
 
-      for (
-        let d = new Date(startMonth);
-        d <= endMonth;
-        d.setMonth(d.getMonth() + 1)
-      ) {
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-          2,
-          '0',
-        )}`;
-        months.push(key);
+      // ✅ If 90d → aggregate by month
+      if (timeRange === '90d') {
+        const monthly: Record<string, { spending: number; rentals: number }> =
+          {};
+        filtered.forEach((item) => {
+          const d = new Date(item.date);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+            2,
+            '0',
+          )}`;
+          if (!monthly[key]) {
+            monthly[key] = { spending: 0, rentals: 0 };
+          }
+          monthly[key].spending += item.spending;
+          monthly[key].rentals += item.rentals;
+        });
+
+        // ✅ Fill missing months
+        const months: string[] = [];
+        const startMonth = new Date(
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          1,
+        );
+        const endMonth = new Date(
+          referenceDate.getFullYear(),
+          referenceDate.getMonth(),
+          1,
+        );
+
+        for (
+          let d = new Date(startMonth);
+          d <= endMonth;
+          d.setMonth(d.getMonth() + 1)
+        ) {
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+            2,
+            '0',
+          )}`;
+          months.push(key);
+        }
+
+        return months.map((month) => ({
+          date: month + '-01', // ✅ valid date
+          spending: monthly[month]?.spending || 0,
+          rentals: monthly[month]?.rentals || 0,
+        }));
       }
 
-      return months.map((month) => ({
-        date: month + '-01', // ✅ valid date
-        spending: monthly[month]?.spending || 0,
-        rentals: monthly[month]?.rentals || 0,
-      }));
-    }
-    console.log('Filtered data for', timeRange, filteredData);
-    // ✅ For 7d / 30d → fill missing days
-    const allDates: string[] = [];
-    for (
-      let d = new Date(startDate);
-      d <= referenceDate;
-      d.setDate(d.getDate() + 1)
-    ) {
-      allDates.push(d.toISOString().split('T')[0]);
-    }
+      // ✅ For 7d / 30d → fill missing days
+      const allDates: string[] = [];
+      for (
+        let d = new Date(startDate);
+        d <= referenceDate;
+        d.setDate(d.getDate() + 1)
+      ) {
+        allDates.push(d.toISOString().split('T')[0]);
+      }
 
-    return allDates.map((date) => {
-      const found = filtered.find((f) => f.date === date);
-      return {
-        date,
-        spending: found?.spending || 0,
-        rentals: found?.rentals || 0,
-      };
-    });
+      return allDates.map((date) => {
+        const found = filtered.find((f) => f.date === date);
+        return {
+          date,
+          spending: found?.spending || 0,
+          rentals: found?.rentals || 0,
+        };
+      });
+    } catch (error) {
+      console.error('Error filtering chart data:', error);
+      return [];
+    }
   }, [chartData, timeRange]);
+
+  // ✅ Show loading state if no data
+  if (!filteredData || filteredData.length === 0) {
+    return (
+      <Card className="pt-0 h-full">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b py-5">
+          <div className="grid flex-1 gap-1">
+            <CardTitle>Client Spending Over Time</CardTitle>
+            <CardDescription>
+              No spending data available for this client
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+          <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+            No data to display
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="pt-0 h-full">

@@ -3,8 +3,9 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
-import { DatabaseService } from '../db';
+import { customers, DatabaseService, users } from '../db';
 import { createId } from '@paralleldrive/cuid2';
 import { notifications } from '../db/schema/notifications';
 import { eq, and, sql } from 'drizzle-orm';
@@ -13,93 +14,91 @@ import { UpdateNotificationDto } from './dto/update-notification.dto';
 
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(private readonly dbService: DatabaseService) {}
 
-  /** ✅ Create a new notification */
-  async createNotification(dto: CreateNotificationDto) {
-    const id = createId();
-    let metadata: any = dto.metadata ?? null;
-
-    // ✅ If metadata is accidentally a string, parse it
-    if (typeof metadata === 'string') {
-      try {
-        metadata = JSON.parse(metadata);
-      } catch {
-        throw new BadRequestException(
-          'Invalid metadata format, must be object or null',
-        );
-      }
-    }
-    const newNotif: any = {
-      id,
-      userId: dto.userId,
-      orgId: dto.orgId && dto.orgId.trim() !== '' ? dto.orgId : null,
-      type: dto.type,
-      message: dto.message,
-      level: dto.level ?? 'info',
-      read: dto.read ?? false,
-      metadata,
-      expiresAt: dto.expiresAt ?? null,
-    };
-
-    if (dto.expiresAt) {
-      newNotif.expiresAt = dto.expiresAt;
-    }
-    console.log('[DEBUG] typeof metadata:', typeof newNotif.metadata);
-    console.log('[DEBUG] metadata value:', newNotif.metadata);
-    console.log('[DEBUG] Final notification object:', newNotif);
-
-    const query = this.dbService.db
-      .insert(notifications)
-      .values(newNotif)
-      .toSQL();
-    console.log('[DEBUG] SQL generated:', query.sql);
-    console.log('[DEBUG] SQL params:', query.params);
-
+  /** ✅ Create notification - Direct pg client access */
+  private async validateUserExists(userId: string): Promise<boolean> {
     try {
-      await this.dbService.db.insert(notifications).values(newNotif);
-      console.log('[DEBUG] ✅ Insert success');
-    } catch (err) {
-      console.error('[DEBUG] ❌ Insert failed:', err.message);
-      throw err;
-    }
+      const user = await this.dbService.db
+        .select({ id: users.id })
+        .from(users) // ✅ Correct table
+        .where(eq(users.id, userId))
+        .limit(1);
 
-    return newNotif;
+      return user.length > 0;
+    } catch {
+      return false;
+    }
   }
 
-  /** ✅ Update an existing notification */
-  async updateNotification(id: string, dto: UpdateNotificationDto) {
-    const updateData: any = {};
+  /** ✅ Create notification with user validation */
+  async createNotification(dto: CreateNotificationDto) {
+    const id = createId();
 
-    if (dto.type !== undefined) updateData.type = dto.type;
-    if (dto.message !== undefined) updateData.message = dto.message;
-    if (dto.level !== undefined) updateData.level = dto.level;
-    if (dto.read !== undefined) updateData.read = dto.read;
-    if (dto.metadata !== undefined) updateData.metadata = dto.metadata;
-    if (dto.expiresAt !== undefined) updateData.expiresAt = dto.expiresAt;
-    if (dto.orgId !== undefined) updateData.orgId = dto.orgId;
+    // ✅ Check if user exists in users table
+    const userExists = await this.validateUserExists(dto.userId);
+    if (!userExists) {
+      this.logger.warn(`Skipping notification - User ${dto.userId} not found`);
+      throw new BadRequestException(`User ${dto.userId} does not exist`);
+    }
+
+    // Handle metadata
+    let metadataObj: Record<string, any> | null = null;
+    if (dto.metadata) {
+      try {
+        metadataObj =
+          typeof dto.metadata === 'string'
+            ? JSON.parse(dto.metadata)
+            : dto.metadata;
+      } catch {
+        throw new BadRequestException('Invalid metadata format');
+      }
+    }
 
     try {
-      const result = await this.dbService.db
-        .update(notifications)
-        .set(updateData)
-        .where(eq(notifications.id, id));
+      // Get the underlying pg pool from Drizzle
+      const pool = (this.dbService.db as any)._.session.client;
 
-      if (!result) {
-        throw new NotFoundException(`Notification with id ${id} not found`);
-      }
+      const result = await pool.query(
+        `INSERT INTO notifications (
+          id, user_id, org_id, type, message, level, read, expires_at, metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+        RETURNING *`,
+        [
+          id,
+          dto.userId,
+          dto.orgId || null,
+          dto.type,
+          dto.message,
+          dto.level || 'info',
+          dto.read || false,
+          dto.expiresAt || null,
+          metadataObj,
+        ],
+      );
 
-      return { success: true, data: { id, ...updateData } };
+      this.logger.debug('✅ Insert successful');
+      return result.rows[0];
     } catch (err: any) {
+      this.logger.error('Database insert failed:', {
+        error: err.message,
+        code: err.code,
+        detail: err.detail,
+        userId: dto.userId,
+      });
       throw new BadRequestException(
-        `Failed to update notification: ${err.message}`,
+        `Failed to create notification: ${err.message}`,
       );
     }
   }
 
-  /** ✅ Get notifications for a user */
+  // ... rest of your methods remain the same
+
+  // Keep other methods using Drizzle (they work fine for reads)
   async getUserNotifications(userId: string, onlyUnread = false) {
-    return await this.dbService.db
+    const rows = await this.dbService.db
       .select()
       .from(notifications)
       .where(
@@ -108,16 +107,18 @@ export class NotificationsService {
           : eq(notifications.userId, userId),
       )
       .orderBy(sql`${notifications.createdAt} DESC`);
+
+    return rows;
   }
 
-  /** ✅ Mark a single notification as read */
   async markAsRead(notificationId: string) {
     const result = await this.dbService.db
       .update(notifications)
       .set({ read: true })
-      .where(eq(notifications.id, notificationId));
+      .where(eq(notifications.id, notificationId))
+      .returning();
 
-    if (!result) {
+    if (result.length === 0) {
       throw new NotFoundException(
         `Notification with id ${notificationId} not found`,
       );
@@ -126,7 +127,6 @@ export class NotificationsService {
     return { success: true };
   }
 
-  /** ✅ Mark all notifications as read for a user */
   async markAllAsRead(userId: string) {
     await this.dbService.db
       .update(notifications)

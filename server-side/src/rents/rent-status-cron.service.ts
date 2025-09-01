@@ -3,7 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DatabaseService } from '../db';
 import { rents } from '../db/schema/rents';
-import { eq, lte, and, isNotNull } from 'drizzle-orm';
+import { organization } from '../db/schema/organization';
+import { users } from '../db/schema/users';
+import { eq, lte, and, isNotNull, inArray } from 'drizzle-orm';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateNotificationDto } from '../notifications/dto/create-notification.dto';
 
@@ -37,13 +39,15 @@ export class RentStatusCronService {
           id: rents.id,
           carId: rents.carId,
           customerId: rents.customerId,
+          orgId: rents.orgId, // ✅ Get the organization ID
         });
 
-      await this.handleNotifications(
+      await this.notifyOrganizationOwners(
         reservedToActive,
         'RENT_STARTED',
         'info',
-        (rent) => `Rental ${rent.id} has started for car ${rent.carId}`,
+        (rent) =>
+          `🚗 Rental ${rent.id} has started for customer ${rent.customerId}`,
       );
 
       totalUpdated += reservedToActive.length;
@@ -64,23 +68,26 @@ export class RentStatusCronService {
           id: rents.id,
           carId: rents.carId,
           customerId: rents.customerId,
+          orgId: rents.orgId,
         });
 
-      await this.handleNotifications(
+      await this.notifyOrganizationOwners(
         activeToCompleted,
         'RENT_COMPLETED',
         'success',
-        (rent) => `Rental ${rent.id} has been completed for car ${rent.carId}`,
+        (rent) =>
+          `✅ Rental ${rent.id} has been completed by customer ${rent.customerId}`,
       );
 
       totalUpdated += activeToCompleted.length;
 
-      // 3. overdue check
+      // 3. overdue check (don't update status, just notify)
       const overdueRents = await this.dbService.db
         .select({
           id: rents.id,
           carId: rents.carId,
           customerId: rents.customerId,
+          orgId: rents.orgId,
         })
         .from(rents)
         .where(
@@ -91,11 +98,12 @@ export class RentStatusCronService {
           ),
         );
 
-      await this.handleNotifications(
+      await this.notifyOrganizationOwners(
         overdueRents,
         'RENT_OVERDUE',
         'warning',
-        (rent) => `Rental ${rent.id} for car ${rent.carId} is overdue!`,
+        (rent) =>
+          `⚠️ Rental ${rent.id} for customer ${rent.customerId} is overdue!`,
       );
 
       if (totalUpdated > 0) {
@@ -109,40 +117,89 @@ export class RentStatusCronService {
     }
   }
 
-  /** 🔹 Helper to create notifications with debug logging */
-  private async handleNotifications(
-    rentsList: { id: string; carId: string; customerId: string }[],
+  /** ✅ Notify only the organization owner for each rent */
+  private async notifyOrganizationOwners(
+    rentsList: {
+      id: string;
+      carId: string;
+      customerId: string;
+      orgId: string;
+    }[],
     type: string,
     level: 'info' | 'success' | 'warning' | 'error',
-    messageBuilder: (rent: { id: string; carId: string }) => string,
+    messageBuilder: (rent: {
+      id: string;
+      carId: string;
+      customerId: string;
+    }) => string,
   ) {
-    for (const rent of rentsList) {
-      const notifData: CreateNotificationDto = {
-        userId: rent.customerId,
-        type,
-        message: messageBuilder(rent),
-        level,
-        metadata: { rentId: rent.id, carId: rent.carId },
-      };
+    if (rentsList.length === 0) return;
 
-      this.logger.debug(`[CRON] Notification payload for ${type}:`);
-      this.logger.debug(JSON.stringify(notifData, null, 2));
+    try {
+      // ✅ Get all unique org IDs
+      const orgIds = [...new Set(rentsList.map((rent) => rent.orgId))];
 
-      try {
-        const result =
+      // ✅ Get all organization owners in one query
+      const organizationOwners = await this.dbService.db
+        .select({
+          orgId: organization.id,
+          userId: organization.userId,
+          userName: users.name,
+          userEmail: users.email,
+          orgName: organization.name,
+        })
+        .from(organization)
+        .innerJoin(users, eq(organization.userId, users.id))
+        .where(inArray(organization.id, orgIds));
+
+      // ✅ Create a map for quick lookup
+      const ownerMap = new Map(
+        organizationOwners.map((owner) => [owner.orgId, owner]),
+      );
+
+      // ✅ Send notifications
+      for (const rent of rentsList) {
+        const owner = ownerMap.get(rent.orgId);
+
+        if (!owner) {
+          this.logger.warn(
+            `No organization owner found for orgId: ${rent.orgId} (rent: ${rent.id})`,
+          );
+          continue;
+        }
+
+        const notifData: CreateNotificationDto = {
+          userId: owner.userId, // ✅ Notify only the organization owner
+          orgId: rent.orgId,
+          type,
+          message: messageBuilder(rent),
+          level,
+          metadata: {
+            rentId: rent.id,
+            carId: rent.carId,
+            customerId: rent.customerId,
+            organizationName: owner.orgName,
+          },
+        };
+
+        try {
           await this.notificationsService.createNotification(notifData);
-        this.logger.debug('[CRON] ✅ Notification created:');
-        this.logger.debug(JSON.stringify(result, null, 2));
-      } catch (err) {
-        this.logger.error(
-          `[CRON] ❌ Notification insert failed for rent ${rent.id}`,
-        );
-        this.logger.error(err.message);
+          this.logger.debug(
+            `[CRON] ✅ Notification sent to ${owner.userEmail} (${owner.orgName})`,
+          );
+        } catch (err: any) {
+          this.logger.error(
+            `[CRON] ❌ Failed to notify ${owner.userEmail}:`,
+            err.message,
+          );
+        }
       }
-    }
 
-    if (rentsList.length > 0) {
-      this.logger.log(`Processed ${rentsList.length} rent(s) for ${type}`);
+      this.logger.log(
+        `Notified organization owners for ${rentsList.length} rent(s) of type ${type}`,
+      );
+    } catch (err: any) {
+      this.logger.error('Error notifying organization owners:', err.message);
     }
   }
 }

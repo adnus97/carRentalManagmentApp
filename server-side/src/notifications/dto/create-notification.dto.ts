@@ -37,5 +37,5 @@ export class CreateNotificationDto {
 
   @IsOptional()
   @IsObject()
-  metadata?: Record<string, any> | null;
+  metadata?: string | Record<string, any> | null; // optional JSON object
 }

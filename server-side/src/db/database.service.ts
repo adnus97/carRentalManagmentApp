@@ -2,10 +2,11 @@ import 'dotenv/config';
 import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { type NodePgDatabase, drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from './schema';
-import { Pool } from 'pg';
+
+import pg from 'pg';
 
 export type SchemaType = typeof schema;
-
+const { Pool, types } = pg;
 @Injectable()
 export class DatabaseService implements OnModuleInit {
   db!: NodePgDatabase<SchemaType>;
