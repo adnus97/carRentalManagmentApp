@@ -16,15 +16,26 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { BlacklistCustomerDto } from './dto/blacklist.dto';
 import { RateCustomerDto } from './dto/rating.dto';
 import { createId } from '@paralleldrive/cuid2';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class CustomerService {
-  constructor(private readonly dbService: DatabaseService) {}
+  constructor(
+    private readonly dbService: DatabaseService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   private safeReturn<T>(data: T): T {
     return JSON.parse(JSON.stringify(data));
   }
+  private async getOrgOwner(orgId: string) {
+    const [org] = await this.dbService.db
+      .select({ userId: organization.userId })
+      .from(organization)
+      .where(eq(organization.id, orgId));
 
+    return org;
+  }
   /** ✅ Create customer */
   async create(userId: string, dto: CreateCustomerDto) {
     if (!userId) throw new BadRequestException('User ID is required');
@@ -70,6 +81,21 @@ export class CustomerService {
     };
 
     await this.dbService.db.insert(customers).values(newCustomer);
+    await this.notificationsService.createNotification({
+      userId,
+      orgId,
+      category: 'CUSTOMER',
+      type: 'CUSTOMER_REGISTERED',
+      priority: 'LOW',
+      title: 'New Customer Registered',
+      message: `${dto.firstName} ${dto.lastName} has been added to your customer base`,
+      actionUrl: `/customers/${newCustomer.id}`,
+      actionLabel: 'View Customer',
+      metadata: {
+        customerId: newCustomer.id,
+        customerName: `${dto.firstName} ${dto.lastName}`,
+      },
+    });
     return this.safeReturn(newCustomer);
   }
 
@@ -231,7 +257,27 @@ export class CustomerService {
         updatedAt: new Date(),
       })
       .where(eq(customers.id, id));
-
+    // 🔔 Enhanced notification
+    const orgOwner = await this.getOrgOwner(customer.orgId);
+    if (orgOwner) {
+      await this.notificationsService.createNotification({
+        userId: orgOwner.userId,
+        orgId: customer.orgId,
+        category: 'CUSTOMER',
+        type: 'CUSTOMER_BLACKLISTED',
+        priority: 'HIGH',
+        title: 'Customer Blacklisted',
+        message: `${customer.firstName} ${customer.lastName} has been blacklisted: ${dto.reason}`,
+        level: 'warning',
+        actionUrl: `/customers/${id}`,
+        actionLabel: 'View Customer',
+        metadata: {
+          customerId: id,
+          customerName: `${customer.firstName} ${customer.lastName}`,
+          reason: dto.reason,
+        },
+      });
+    }
     return this.safeReturn(entry);
   }
 
@@ -264,7 +310,26 @@ export class CustomerService {
         updatedAt: new Date(),
       })
       .where(eq(customers.id, id));
-
+    // 🔔 Add notification
+    const orgOwner = await this.getOrgOwner(customer.orgId);
+    if (orgOwner) {
+      await this.notificationsService.createNotification({
+        userId: orgOwner.userId,
+        orgId: customer.orgId,
+        category: 'CUSTOMER',
+        type: 'CUSTOMER_RATING_CHANGED',
+        priority: 'MEDIUM',
+        title: 'Customer Unblacklisted',
+        message: `${customer.firstName} ${customer.lastName} has been removed from blacklist`,
+        level: 'success',
+        actionUrl: `/customers/${id}`,
+        actionLabel: 'View Customer',
+        metadata: {
+          customerId: id,
+          customerName: `${customer.firstName} ${customer.lastName}`,
+        },
+      });
+    }
     return { success: true, message: 'Customer unblacklisted' };
   }
 
@@ -322,7 +387,40 @@ export class CustomerService {
         updatedAt: new Date(),
       })
       .where(eq(customers.id, id));
+    // 🔔 Add notification for extreme ratings (very low or very high)
+    if (dto.rating <= 2 || dto.rating >= 5) {
+      const [customer] = await this.dbService.db
+        .select()
+        .from(customers)
+        .where(eq(customers.id, id));
 
+      if (customer) {
+        const orgOwner = await this.getOrgOwner(customer.orgId);
+        if (orgOwner) {
+          await this.notificationsService.createNotification({
+            userId: orgOwner.userId,
+            orgId: customer.orgId,
+            category: 'CUSTOMER',
+            type: 'CUSTOMER_RATING_CHANGED',
+            priority: dto.rating <= 2 ? 'HIGH' : 'MEDIUM',
+            title:
+              dto.rating <= 2
+                ? 'Low Customer Rating'
+                : 'Excellent Customer Rating',
+            message: `${customer.firstName} ${customer.lastName} received a ${dto.rating}-star rating`,
+            level: dto.rating <= 2 ? 'warning' : 'success',
+            actionUrl: `/customers/${id}`,
+            actionLabel: 'View Customer',
+            metadata: {
+              customerId: id,
+              customerName: `${customer.firstName} ${customer.lastName}`,
+              rating: dto.rating,
+              averageRating: avg,
+            },
+          });
+        }
+      }
+    }
     return { average: avg, count: ratings.length };
   }
 

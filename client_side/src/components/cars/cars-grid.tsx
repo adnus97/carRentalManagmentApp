@@ -187,49 +187,72 @@ export const CarsGrid = () => {
       suppressMovable: true,
     },
     {
+      field: 'plateNumber', // 🆕 New plate number column
+      headerName: 'Plate Number',
+      width: 130,
+      sortable: true,
+      filter: 'agTextColumnFilter',
+      cellRenderer: (params: any) => (
+        <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+          {params.value || 'N/A'}
+        </span>
+      ),
+    },
+    {
       field: 'make',
       headerName: 'Make',
-      width: 150,
+      width: 120, // Reduced to make room
       sortable: true,
       filter: 'agTextColumnFilter',
     },
     {
       field: 'model',
       headerName: 'Model',
-      width: 150,
+      width: 120, // Reduced to make room
       sortable: true,
       filter: 'agTextColumnFilter',
     },
-    { field: 'year', headerName: 'Year', width: 100, sortable: true },
+    { field: 'year', headerName: 'Year', width: 80, sortable: true },
+    {
+      field: 'color', // 🆕 New color column
+      headerName: 'Color',
+      width: 100,
+      sortable: true,
+      filter: 'agTextColumnFilter',
+      cellRenderer: (params: any) => (
+        <div className="flex items-center gap-2">
+          {params.value && (
+            <div
+              className="w-4 h-4 rounded-full border border-gray-300"
+              style={{ backgroundColor: params.value.toLowerCase() }}
+            />
+          )}
+          <span>{params.value || 'N/A'}</span>
+        </div>
+      ),
+    },
     {
       field: 'purchasePrice',
       headerName: 'Purchase Price',
-      width: 150,
-      valueFormatter: currencyFormatter,
-    },
-    {
-      field: 'monthlyLeasePrice',
-      headerName: 'Monthly Lease Price',
-      width: 150,
+      width: 130,
       valueFormatter: currencyFormatter,
     },
     {
       field: 'pricePerDay',
       headerName: 'Price/Day',
-      width: 120,
+      width: 100,
       valueFormatter: currencyFormatter,
     },
     {
       headerName: 'Status',
       field: 'status',
-      width: 130,
+      width: 110,
       cellRenderer: (params: any) => statusBadge(params.value),
     },
     {
       headerName: 'Availability',
       field: 'isAvailable',
-      width: 150,
-
+      width: 120,
       cellRenderer: (params: any) => {
         const available = params.value;
         return (
@@ -246,7 +269,7 @@ export const CarsGrid = () => {
     {
       headerName: 'Next Available',
       field: 'nextAvailableDate',
-      width: 160,
+      width: 140,
       cellRenderer: (params: { value: string }) => {
         if (!params.value) {
           return <span>Available now</span>;
@@ -272,7 +295,7 @@ export const CarsGrid = () => {
     {
       headerName: 'Insurance Expiry',
       field: 'insuranceExpiryDate',
-      width: 150,
+      width: 130,
       cellRenderer: (params: { value: string }) => {
         if (!params.value) return null;
 
@@ -284,10 +307,10 @@ export const CarsGrid = () => {
         let tooltipMessage = 'Insurance is valid';
 
         if (isBefore(expiry, today)) {
-          color = '#EC6142'; // red
+          color = '#EC6142';
           tooltipMessage = 'Insurance has expired';
         } else if (isBefore(expiry, soon)) {
-          color = '#FFCA16'; // yellow
+          color = '#FFCA16';
           tooltipMessage = 'Insurance will soon be expired (less than 30 days)';
         }
 
@@ -308,11 +331,12 @@ export const CarsGrid = () => {
     {
       headerName: 'Actions',
       pinned: 'right',
-      width: 200,
+      width: 180,
       cellRenderer: (params: any) => (
         <div className="flex gap-2 items-center h-full">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => {
               setSelectedCarForRent(params.data);
               setRentDialogOpen(true);
@@ -322,17 +346,18 @@ export const CarsGrid = () => {
               ['maintenance', 'sold', 'deleted'].includes(params.data.status)
             }
           >
-            <ShoppingCart size={20} /> Rent
+            <ShoppingCart size={16} /> Rent
           </Button>
           <Button
             variant="outline"
+            size="sm"
             disabled={params.data.status === 'deleted'}
             onClick={() => {
               setSelectedCarForEdit(params.data);
               setEditDialogOpen(true);
             }}
           >
-            <Hammer size={20} /> Edit
+            <Hammer size={16} /> Edit
           </Button>
         </div>
       ),

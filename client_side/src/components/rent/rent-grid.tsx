@@ -40,6 +40,8 @@ ModuleRegistry.registerModules([
 ]);
 
 type RentRow = {
+  rentNumber: number;
+  year: number;
   isOpenContract: boolean;
   deposit?: number;
   id: string;

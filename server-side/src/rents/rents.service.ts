@@ -1,12 +1,17 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateRentDto } from './dto/create-rent.dto';
 import { UpdateRentDto } from './dto/update-rent.dto';
 import { createId } from '@paralleldrive/cuid2';
 import { cars, DatabaseService, organization } from 'src/db';
 import { eq, sql, and, ne } from 'drizzle-orm';
-import { rents } from 'src/db/schema/rents';
+import { rentCounters, rents } from 'src/db/schema/rents';
 import { customers } from 'src/db/schema/customers';
 import { RentStatus } from 'src/types/rent-status.type';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 function ensureDate(value: any): Date | undefined {
   if (!value) return undefined;
@@ -29,8 +34,63 @@ function ensureDate(value: any): Date | undefined {
 
 @Injectable()
 export class RentsService {
-  constructor(private readonly dbService: DatabaseService) {}
+  constructor(
+    private readonly dbService: DatabaseService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
+  private async generateRentId(
+    orgId: string,
+  ): Promise<{ id: string; rentNumber: number; year: number }> {
+    const currentYear = new Date().getFullYear();
 
+    // Get or create counter for this year and org
+    const [existingCounter] = await this.dbService.db
+      .select()
+      .from(rentCounters)
+      .where(
+        and(eq(rentCounters.orgId, orgId), eq(rentCounters.year, currentYear)),
+      );
+
+    let nextNumber: number;
+
+    if (existingCounter) {
+      // Increment existing counter
+      nextNumber = existingCounter.counter + 1;
+      await this.dbService.db
+        .update(rentCounters)
+        .set({
+          counter: nextNumber,
+          updatedAt: new Date(),
+        })
+        .where(eq(rentCounters.id, existingCounter.id));
+    } else {
+      // Create new counter for this year
+      nextNumber = 1;
+      await this.dbService.db.insert(rentCounters).values({
+        id: createId(),
+        orgId,
+        year: currentYear,
+        counter: nextNumber,
+      });
+    }
+
+    // Format: 001/2025, 002/2025, etc.
+    const formattedId = `${nextNumber.toString().padStart(3, '0')}/${currentYear}`;
+
+    return {
+      id: formattedId,
+      rentNumber: nextNumber,
+      year: currentYear,
+    };
+  }
+  private async getOrgOwner(orgId: string) {
+    const [org] = await this.dbService.db
+      .select({ userId: organization.userId })
+      .from(organization)
+      .where(eq(organization.id, orgId));
+
+    return org;
+  }
   private getAutoStatus(
     startDate: Date,
     returnedAt: Date | null,
@@ -198,8 +258,6 @@ export class RentsService {
 
   async create(createRentDto: CreateRentDto, userId: string) {
     try {
-      const id = createId();
-
       // Validate user and get organization
       const currentUserOrgId = await this.dbService.db
         .select({ id: organization.id })
@@ -211,7 +269,7 @@ export class RentsService {
       }
 
       const orgId = currentUserOrgId[0].id;
-
+      const { id, rentNumber, year } = await this.generateRentId(orgId);
       // Validate and convert dates
       const startDate = ensureDate(createRentDto.startDate);
       const expectedEndDate = ensureDate(createRentDto.expectedEndDate);
@@ -342,6 +400,8 @@ export class RentsService {
       // Prepare data with properly converted dates
       const rentData = {
         id,
+        rentNumber,
+        year,
         orgId,
         status: autoStatus,
         carId: createRentDto.carId,
@@ -367,8 +427,42 @@ export class RentsService {
           delete rentData[key as keyof typeof rentData],
       );
 
-      // Insert the rent record
-      const result = await this.dbService.db.insert(rents).values(rentData);
+      await this.dbService.db.insert(rents).values(rentData);
+      // 🔔 Add notification
+      const orgOwner = await this.getOrgOwner(orgId);
+      if (orgOwner) {
+        // Get customer and car details for better notification
+        const [customer] = await this.dbService.db
+          .select({
+            firstName: customers.firstName,
+            lastName: customers.lastName,
+          })
+          .from(customers)
+          .where(eq(customers.id, createRentDto.customerId));
+
+        const [car] = await this.dbService.db
+          .select({ make: cars.make, model: cars.model })
+          .from(cars)
+          .where(eq(cars.id, createRentDto.carId));
+
+        await this.notificationsService.createNotification({
+          userId: orgOwner.userId,
+          orgId,
+          category: 'RENTAL',
+          type: 'RENT_STARTED',
+          priority: 'MEDIUM',
+          title: 'New Rental Created',
+          message: `${customer?.firstName} ${customer?.lastName} rented ${car?.make} ${car?.model}`,
+          actionUrl: `/rentals/${id}`,
+          actionLabel: 'View Rental',
+          metadata: {
+            rentalId: id,
+            customerId: createRentDto.customerId,
+            carId: createRentDto.carId,
+            totalPrice: createRentDto.totalPrice,
+          },
+        });
+      }
 
       return {
         success: true,
@@ -677,7 +771,120 @@ export class RentsService {
         .update(rents)
         .set(updateData)
         .where(eq(rents.id, id));
+      // 🔔 Add notifications for important changes
+      const orgOwner = await this.getOrgOwner(rent.orgId);
+      if (orgOwner) {
+        // Payment received notification
+        if (
+          updateRentDto.totalPaid !== undefined &&
+          updateRentDto.totalPaid > (rent.totalPaid || 0)
+        ) {
+          const paymentAmount = updateRentDto.totalPaid - (rent.totalPaid || 0);
+          await this.notificationsService.createNotification({
+            userId: orgOwner.userId,
+            orgId: rent.orgId,
+            category: 'PAYMENT',
+            type: 'PAYMENT_RECEIVED',
+            priority: 'MEDIUM',
+            title: 'Payment Received',
+            message: `Payment of $${paymentAmount} received for rental ${id}`,
+            level: 'success',
+            actionUrl: `/rentals/${id}`,
+            actionLabel: 'View Rental',
+            metadata: {
+              rentalId: id,
+              paymentAmount,
+              totalPaid: updateRentDto.totalPaid,
+            },
+          });
+        }
 
+        // Status change notifications
+        if (updateRentDto.status && updateRentDto.status !== rent.status) {
+          let notificationType = 'RENT_STARTED';
+          let title = 'Rental Status Changed';
+          let priority = 'MEDIUM';
+          let level = 'info';
+
+          switch (updateRentDto.status) {
+            case 'completed':
+              notificationType = 'RENT_COMPLETED';
+              title = 'Rental Completed';
+              level = 'success';
+              break;
+            case 'canceled':
+              notificationType = 'RENT_CANCELLED';
+              title = 'Rental Cancelled';
+              level = 'warning';
+              priority = 'HIGH';
+              break;
+          }
+
+          await this.notificationsService.createNotification({
+            userId: orgOwner.userId,
+            orgId: rent.orgId,
+            category: 'RENTAL',
+            type: notificationType,
+            priority,
+            title,
+            message: `Rental ${id} status changed to ${updateRentDto.status}`,
+            level,
+            actionUrl: `/rentals/${id}`,
+            actionLabel: 'View Rental',
+            metadata: {
+              rentalId: id,
+              oldStatus: rent.status,
+              newStatus: updateRentDto.status,
+            },
+          });
+        }
+
+        // 🔔 Damage report notifications - trigger on ANY change
+        if (
+          updateRentDto.damageReport !== undefined &&
+          updateRentDto.damageReport !== rent.damageReport
+        ) {
+          let title: string | undefined;
+          let message: string | undefined;
+          let priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' = 'HIGH';
+
+          if (!rent.damageReport && updateRentDto.damageReport) {
+            // First time damage report
+            title = 'Damage Reported';
+            message = `Damage reported for rental ${id}: ${updateRentDto.damageReport}`;
+          } else if (rent.damageReport && updateRentDto.damageReport) {
+            // Damage report updated
+            title = 'Damage Report Updated';
+            message = `Damage report updated for rental ${id}: ${updateRentDto.damageReport}`;
+          } else if (rent.damageReport && !updateRentDto.damageReport) {
+            // Damage report removed/cleared
+            title = 'Damage Report Cleared';
+            message = `Damage report cleared for rental ${id}`;
+            priority = 'MEDIUM'; // Lower priority for clearing
+          }
+
+          // ✅ Only create notification if we have valid title and message
+          if (title && message) {
+            await this.notificationsService.createNotification({
+              userId: orgOwner.userId,
+              orgId: rent.orgId,
+              category: 'CAR',
+              type: 'CAR_DAMAGE_REPORTED',
+              priority,
+              title,
+              message,
+              level: 'warning',
+              actionUrl: `/rentals/${id}`,
+              actionLabel: 'View Rental',
+              metadata: {
+                rentalId: id,
+                oldDamageReport: rent.damageReport || null,
+                newDamageReport: updateRentDto.damageReport || null,
+              },
+            });
+          }
+        }
+      }
       return {
         success: true,
         message: 'Rental contract updated successfully',
@@ -772,6 +979,61 @@ export class RentsService {
       throw new BadRequestException(
         'Unable to delete rental contract. Please try again or contact support.',
       );
+    }
+  }
+
+  async getRentContract(rentId: string) {
+    try {
+      const [rentData] = await this.dbService.db
+        .select({
+          // Rent details
+          id: rents.id,
+          rentNumber: rents.rentNumber,
+          year: rents.year,
+          startDate: rents.startDate,
+          expectedEndDate: rents.expectedEndDate,
+          returnedAt: rents.returnedAt,
+          totalPrice: rents.totalPrice,
+          deposit: rents.deposit,
+          guarantee: rents.guarantee,
+          isOpenContract: rents.isOpenContract,
+          status: rents.status,
+
+          // Customer details
+          customerFirstName: customers.firstName,
+          customerLastName: customers.lastName,
+          customerEmail: customers.email,
+          customerPhone: customers.phone,
+          customerIdCard: customers.documentId,
+
+          // Car details
+          carMake: cars.make,
+          carModel: cars.model,
+          carYear: cars.year,
+          carPlate: cars.plateNumber,
+          carColor: cars.color,
+          carFuelType: cars.fuelType,
+          carMileage: cars.mileage,
+          pricePerDay: cars.pricePerDay,
+        })
+        .from(rents)
+        .leftJoin(customers, eq(rents.customerId, customers.id))
+        .leftJoin(cars, eq(rents.carId, cars.id))
+        .where(eq(rents.id, rentId));
+
+      if (!rentData) {
+        throw new NotFoundException('Rental contract not found');
+      }
+
+      return {
+        success: true,
+        data: rentData,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException('Unable to fetch contract details');
     }
   }
 }

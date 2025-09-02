@@ -13,6 +13,7 @@ import { RentsModule } from './rents/rents.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { not } from 'drizzle-orm';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ContractsModule } from './contracts/contracts.module';
 
 @Module({
   imports: [
@@ -26,6 +27,9 @@ import { NotificationsModule } from './notifications/notifications.module';
     CustomerModule,
     RentsModule,
     NotificationsModule,
+    ScheduleModule.forRoot(), // For cron jobs
+    NotificationsModule,
+    ContractsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -23,6 +23,9 @@ export interface Car {
   updatedAt?: string;
   isAvailable: boolean; // ✅ New dynamic field
   nextAvailableDate: string | null; // ✅ New dynamic field
+  plateNumber: string; // ✅ Required field
+  color: string | null; // ✅ Optional field
+  fuelType: string; // ✅ Default 'gasoline'
 }
 
 // ✅ Create a new car
@@ -33,6 +36,9 @@ export const createCar = async (data: {
   purchasePrice: number;
   pricePerDay: number;
   mileage: number;
+  plateNumber: string;
+  color?: string;
+  fuelType: string;
   monthlyLeasePrice: number;
   insuranceExpiryDate: Date;
   status: 'active' | 'sold' | 'leased' | 'maintenance' | 'deleted';
@@ -84,6 +90,9 @@ export const updateCar = async (
     purchasePrice: number;
     pricePerDay: number;
     mileage: number;
+    plateNumber: string; // ✅ Can be updated
+    color: string; // ✅ Can be updated
+    fuelType: string; // ✅ Can be updated
     monthlyLeasePrice: number;
     insuranceExpiryDate: Date;
     status: 'active' | 'sold' | 'leased' | 'maintenance' | 'deleted';

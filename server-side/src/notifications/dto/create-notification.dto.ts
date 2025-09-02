@@ -6,36 +6,65 @@ import {
   IsIn,
   IsObject,
   IsDate,
+  IsDateString,
+  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+  NotificationCategory,
+  NotificationPriority,
+  NotificationType,
+} from 'src/types/notification.types';
 
 export class CreateNotificationDto {
   @IsString()
-  userId: string; // must match users.id
+  userId: string;
 
   @IsOptional()
   @IsString()
-  orgId?: string | null; // optional, can be null
+  orgId?: string;
+
+  @IsEnum([
+    'RENTAL',
+    'PAYMENT',
+    'CUSTOMER',
+    'CAR',
+    'MAINTENANCE',
+    'FINANCIAL',
+    'SYSTEM',
+  ])
+  category: NotificationCategory;
 
   @IsString()
-  type: string; // e.g. RENT_STARTED, RENT_OVERDUE
+  type: NotificationType | string;
+
+  @IsOptional()
+  @IsEnum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+  priority?: NotificationPriority | string;
+
+  @IsString()
+  title: string;
 
   @IsString()
   message: string;
 
-  @IsIn(['info', 'success', 'warning', 'error'])
-  level: 'info' | 'success' | 'warning' | 'error' = 'info';
+  @IsOptional()
+  @IsEnum(['info', 'success', 'warning', 'error'])
+  level?: 'info' | 'success' | 'warning' | 'error' | string;
 
   @IsOptional()
-  @IsBoolean()
-  read?: boolean = false;
+  @IsString()
+  actionUrl?: string;
 
   @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  expiresAt?: Date | null;
+  @IsString()
+  actionLabel?: string;
+
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;
 
   @IsOptional()
   @IsObject()
-  metadata?: string | Record<string, any> | null; // optional JSON object
+  metadata?: Record<string, any>;
 }

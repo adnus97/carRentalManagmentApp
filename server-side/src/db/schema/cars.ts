@@ -12,6 +12,7 @@ import { organization } from './organization';
 
 export const cars = pgTable('cars', {
   id: varchar({ length: 255 }).primaryKey(),
+  plateNumber: varchar('plate_number', { length: 50 }).notNull().unique(),
   make: text('make').notNull(),
   model: text('model').notNull(),
   year: integer('year').notNull(),
@@ -23,6 +24,8 @@ export const cars = pgTable('cars', {
     .references(() => organization.id, { onDelete: 'cascade' }), // Deleting org deletes cars
   mileage: integer('mileage').notNull().default(0),
   monthlyLeasePrice: integer('monthly_lease_price').notNull(),
+  fuelType: varchar('fuel_type', { length: 30 }).default('gasoline'),
+  color: varchar('color', { length: 50 }),
   insuranceExpiryDate: timestamp('insurance_expiry_date').notNull(),
   status: text('status').default('active'), // e.g., active, sold, leased
   createdAt: timestamp(),

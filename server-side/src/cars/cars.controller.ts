@@ -195,4 +195,15 @@ export class CarsController {
       this.handleControllerError(error);
     }
   }
+  @Get(':id/insurance-status')
+  async checkInsuranceStatus(
+    @Param('id') id: string,
+    @CurrentUser() user: CustomUser,
+  ) {
+    return this.carsService.checkCarInsuranceStatus(id, user.id);
+  }
+  @Get('insurance/issues')
+  async getCarsWithInsuranceIssues(@CurrentUser() user: CustomUser) {
+    return this.carsService.getCarsWithInsuranceIssues(user.id);
+  }
 }

@@ -12,6 +12,8 @@ import { customers } from './customers';
 
 export const rents = pgTable('rents', {
   id: varchar('id', { length: 255 }).primaryKey().notNull(),
+  rentNumber: integer('rent_number').notNull(), // The sequential number part
+  year: integer('year').notNull(), // The year part
   carId: varchar('car_id', { length: 255 })
     .notNull()
     .references(() => cars.id, { onDelete: 'cascade' }),
@@ -36,4 +38,17 @@ export const rents = pgTable('rents', {
   }).default('reserved'),
   damageReport: text('damage_report').default(''),
   isDeleted: boolean('is_deleted').default(false).notNull(),
+});
+
+export const rentCounters = pgTable('rent_counters', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  year: integer('year').notNull(),
+  orgId: varchar('org_id', { length: 255 }).notNull(),
+  counter: integer('counter').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });

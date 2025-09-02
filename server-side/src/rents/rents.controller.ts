@@ -9,11 +9,15 @@ import {
   ValidationPipe,
   Put,
   Query,
+  Res,
+  Header,
 } from '@nestjs/common';
 import { RentsService } from './rents.service';
 import { CreateRentDto } from './dto/create-rent.dto';
 import { UpdateRentDto } from './dto/update-rent.dto';
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
+import { ContractsService } from 'src/contracts/contracts.service';
+import { Response } from 'express';
 
 function ensureDate(val: any) {
   if (val && typeof val === 'string') return new Date(val);
@@ -23,15 +27,22 @@ function ensureDate(val: any) {
 @Auth()
 @Controller('rents')
 export class RentsController {
-  constructor(private readonly rentsService: RentsService) {}
+  constructor(
+    private readonly rentsService: RentsService,
+    private readonly contractsService: ContractsService,
+  ) {}
 
   @Post()
-  create(
+  async create(
     @Body(ValidationPipe) createRentDto: CreateRentDto,
     @CurrentUser() user: CustomUser,
   ) {
     const userId = user.id;
-    return this.rentsService.create(createRentDto, userId);
+    const result = await this.rentsService.create(createRentDto, userId);
+    return {
+      ...result,
+      contractUrl: `/contracts/${result.data.id}`, // Add contract URL for frontend navigation
+    };
   }
 
   @Get()
@@ -72,5 +83,33 @@ export class RentsController {
   @Put(':id/soft-delete')
   async softDelete(@Param('id') id: string) {
     return this.rentsService.remove(id);
+  }
+
+  @Get(':id/contract')
+  async getContract(@Param('id') id: string) {
+    return this.rentsService.getRentContract(id);
+  }
+
+  // 🆕 Get contract as HTML
+  @Get(':id/contract/html')
+  async getContractHTML(@Param('id') id: string) {
+    const html = await this.contractsService.getContractHTML(id);
+    return { html };
+  }
+
+  // 🆕 Download contract as PDF
+  @Get(':id/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async downloadPDF(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const pdfBuffer = await this.contractsService.generateContractPDF(id);
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="contrat-${id}.pdf"`,
+    );
+    return pdfBuffer;
   }
 }

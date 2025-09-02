@@ -7,9 +7,15 @@ import {
   Patch,
   Query,
   BadRequestException,
+  ValidationPipe,
+  Post,
+  Put,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
+import { CreateNotificationDto } from './dto/create-notification.dto';
+import { NotificationQueryDto } from './dto/notification-query.dto';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 
 @Auth() // ✅ protect all routes with AuthGuard
 @Controller('notifications')
@@ -17,65 +23,102 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   /** Helper to ensure JSON-safe responses */
-  private safeReturn<T>(data: T): T {
-    return JSON.parse(JSON.stringify(data));
-  }
+  @Get()
+  async getNotifications(
+    @CurrentUser() user: CustomUser,
+    @Query(ValidationPipe) query: NotificationQueryDto,
+  ) {
+    // Transform query to match service expectations
+    const serviceOptions = {
+      category: query.category,
+      unread: query.unread,
+      priority: query.priority,
+      page: query.page || 1,
+      limit: query.limit || 20,
+    };
 
-  /** Centralized error handler */
-  private handleControllerError(error: any): never {
-    if (error instanceof BadRequestException) throw error;
-    if (error.getStatus && error.getResponse) throw error;
-    throw new BadRequestException(
-      error?.message || 'An unexpected error occurred',
+    return this.notificationsService.getUserNotifications(
+      user.id,
+      serviceOptions,
     );
   }
 
   /**
-   * GET /notifications?unread=true
-   * Fetch notifications for the current user
+   * Get notification summary
    */
-  @Get()
-  async getUserNotifications(
-    @CurrentUser() user: CustomUser,
-    @Query('unread') unread?: string,
-  ) {
-    try {
-      return this.safeReturn(
-        await this.notificationsService.getUserNotifications(
-          user.id,
-          unread === 'true',
-        ),
-      );
-    } catch (error) {
-      this.handleControllerError(error);
-    }
+  @Get('summary')
+  async getNotificationSummary(@CurrentUser() user: CustomUser) {
+    return this.notificationsService.getNotificationSummary(user.id);
   }
 
   /**
-   * PATCH /notifications/:id/read
-   * Mark a single notification as read
+   * Get user preferences
+   */
+  @Get('preferences')
+  async getPreferences(@CurrentUser() user: CustomUser) {
+    return this.notificationsService.getUserPreferences(user.id);
+  }
+
+  /**
+   * Update user preferences
+   */
+  @Put('preferences')
+  async updatePreferences(
+    @CurrentUser() user: CustomUser,
+    @Body(ValidationPipe) dto: UpdateNotificationPreferencesDto,
+  ) {
+    return this.notificationsService.updateUserPreferences(user.id, dto);
+  }
+
+  /**
+   * Mark specific notification as read
    */
   @Patch(':id/read')
-  async markAsRead(@Param('id') id: string) {
-    try {
-      return this.safeReturn(await this.notificationsService.markAsRead(id));
-    } catch (error) {
-      this.handleControllerError(error);
-    }
+  async markAsRead(@Param('id') id: string, @CurrentUser() user: CustomUser) {
+    return this.notificationsService.markAsRead(id, user.id);
   }
 
   /**
-   * PATCH /notifications/read-all
-   * Mark all notifications as read for the current user
+   * Mark all notifications as read
    */
-  @Patch('read-all')
+  @Post('mark-all-read')
   async markAllAsRead(@CurrentUser() user: CustomUser) {
-    try {
-      return this.safeReturn(
-        await this.notificationsService.markAllAsRead(user.id),
-      );
-    } catch (error) {
-      this.handleControllerError(error);
-    }
+    return this.notificationsService.markAllAsRead(user.id);
+  }
+
+  /**
+   * Dismiss notification
+   */
+  @Patch(':id/dismiss')
+  async dismissNotification(
+    @Param('id') id: string,
+    @CurrentUser() user: CustomUser,
+  ) {
+    return this.notificationsService.dismissNotification(id, user.id);
+  }
+
+  /**
+   * Create notification (for testing)
+   */
+  @Post()
+  async createNotification(@Body(ValidationPipe) dto: CreateNotificationDto) {
+    return this.notificationsService.createNotification(dto);
+  }
+
+  /**
+   * Test notification endpoint
+   */
+  @Post('test')
+  async testNotification(@CurrentUser() user: CustomUser) {
+    return this.notificationsService.createNotification({
+      userId: user.id,
+      category: 'SYSTEM',
+      type: 'SYSTEM_MAINTENANCE',
+      priority: 'MEDIUM',
+      title: 'Test Notification',
+      message: 'This is a test notification from the enhanced system',
+      actionUrl: '/dashboard',
+      actionLabel: 'Go to Dashboard',
+    });
   }
 }

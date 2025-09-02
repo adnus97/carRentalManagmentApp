@@ -19,10 +19,18 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../ui/toast';
 import { DatePickerDemo } from '../date-picker';
 import { DialogDescription } from '@radix-ui/react-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 const d = new Date();
 let year = d.getFullYear();
 const schema = z.object({
+  plateNumber: z.string().min(1, 'Plate number is required'),
   make: z.string().nonempty('Make is required'),
   model: z.string().nonempty('Model is required'),
   year: z
@@ -36,6 +44,8 @@ const schema = z.object({
     .number({ invalid_type_error: 'Rent price must be a number' })
     .min(1, 'Rent price must be greater than 0'),
   mileage: z.number().min(0, 'Mileage must be a positive number'),
+  color: z.string().optional(),
+  fuelType: z.string().optional(),
   monthlyLeasePrice: z
     .number()
     .min(0, 'Monthly lease price must be a positive number'),
@@ -51,12 +61,18 @@ export function DialogDemo({
 }: React.ComponentProps<'div'>) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
+  const [backendErrors, setBackendErrors] = useState<Record<string, string>>(
+    {},
+  );
+  const [generalError, setGeneralError] = useState<string>('');
   const mutation = useMutation({
     mutationFn: createCar,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cars'] });
       setIsOpen(false);
       reset();
+      setBackendErrors({});
+      setGeneralError('');
       toast({
         type: 'success',
         title: 'Success!',
@@ -69,29 +85,68 @@ export function DialogDemo({
         },
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error:', error);
-      toast({
-        type: 'error',
-        title: 'Error',
-        description: 'An error occurred while creating the car.',
-        button: {
-          label: 'Retry',
-          onClick: () => {
-            mutation.mutate({
-              make: watch('make'),
-              model: watch('model'),
-              year: watch('year'),
-              purchasePrice: watch('purchasePrice'),
-              pricePerDay: watch('pricePerDay'),
-              mileage: watch('mileage'),
-              monthlyLeasePrice: watch('monthlyLeasePrice'),
-              insuranceExpiryDate: watch('insuranceExpiryDate'),
-              status: 'active',
-            });
+
+      // ✅ Clear previous errors
+      setBackendErrors({});
+      setGeneralError('');
+
+      // ✅ Parse backend error response
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        'An unexpected error occurred';
+
+      // ✅ Handle specific error types
+      if (errorMessage.toLowerCase().includes('plate number')) {
+        // Plate number uniqueness error
+        setBackendErrors({ plateNumber: errorMessage });
+        toast({
+          type: 'error',
+          title: 'Duplicate Plate Number',
+          description:
+            'This plate number is already registered. Please use a different one.',
+        });
+      } else if (errorMessage.toLowerCase().includes('organization')) {
+        // Organization-related error
+        setGeneralError(
+          'There was an issue with your account. Please contact support.',
+        );
+        toast({
+          type: 'error',
+          title: 'Account Error',
+          description: 'Please contact support for assistance.',
+        });
+      } else if (errorMessage.toLowerCase().includes('required')) {
+        // Missing required fields
+        setGeneralError('Please fill in all required fields correctly.');
+        toast({
+          type: 'error',
+          title: 'Missing Information',
+          description: 'Please check all required fields and try again.',
+        });
+      } else {
+        // Generic error
+        setGeneralError(errorMessage);
+        toast({
+          type: 'error',
+          title: 'Error',
+          description: errorMessage,
+          button: {
+            label: 'Retry',
+            onClick: () => {
+              // ✅ Retry with current form values
+              const formData = getValues();
+              mutation.mutate({
+                ...formData,
+                fuelType: formData.fuelType ?? 'gasoline',
+                status: 'active',
+              });
+            },
           },
-        },
-      });
+        });
+      }
     },
   });
   const {
@@ -101,13 +156,17 @@ export function DialogDemo({
     formState: { errors, isSubmitting },
     watch,
     reset,
+    getValues,
   } = useForm<formFields>({
     resolver: zodResolver(schema),
     defaultValues: {
       make: '',
+      plateNumber: '',
       model: '',
       year: undefined,
       purchasePrice: undefined,
+      color: '',
+      fuelType: 'Diesel',
       pricePerDay: undefined,
       mileage: undefined,
       monthlyLeasePrice: undefined,
@@ -117,18 +176,26 @@ export function DialogDemo({
 
   const onSubmit = (data: formFields) => {
     mutation.mutate({
-      make: data.make,
-      model: data.model,
-      year: data.year,
-      purchasePrice: data.purchasePrice,
-      pricePerDay: data.pricePerDay,
-      mileage: data.mileage,
-      monthlyLeasePrice: data.monthlyLeasePrice,
-      insuranceExpiryDate: data.insuranceExpiryDate,
+      ...data,
+      fuelType: data.fuelType ?? '',
       status: 'active',
     });
   };
-
+  const colorOptions = [
+    'White',
+    'Black',
+    'Silver',
+    'Gray',
+    'Blue',
+    'Red',
+    'Green',
+    'Yellow',
+    'Orange',
+    'Brown',
+    'Purple',
+    'Gold',
+    'Beige',
+  ];
   return (
     <Dialog
       open={isOpen}
@@ -142,15 +209,14 @@ export function DialogDemo({
       <DialogTrigger asChild>
         <Button
           variant="default"
-          className=" text-white flex items-center gap-2 px-4 py-2 rounded-lg"
+          className="text-white flex items-center gap-2 px-4 py-2 rounded-lg"
         >
           <Plus size={40} />
           Add car
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[500px] pt-8">
-        {/* Hide title and description on small screens */}
+      <DialogContent className="sm:max-w-[600px] pt-8 max-h-[90vh] overflow-y-auto">
         <DialogTitle className="pb-1 hidden sm:block">
           Add a new Car
         </DialogTitle>
@@ -158,16 +224,31 @@ export function DialogDemo({
           Fill out the form below to add a new car to the system.
         </DialogDescription>
         <Separator className="mb-2 hidden sm:block" />
+
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div
-            className="
-              grid grid-cols-1 sm:grid-cols-2 gap-4
-            "
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* 🆕 Plate Number - Full width */}
+            <div className="flex flex-col ">
+              <Label htmlFor="plateNumber" className="mb-1">
+                Plate Number *
+              </Label>
+              <Input
+                id="plateNumber"
+                className="w-full font-mono"
+                placeholder="e.g. 123-A-456"
+                {...register('plateNumber')}
+              />
+              {errors.plateNumber && (
+                <span className="text-red-500 text-xs mt-1">
+                  {errors.plateNumber.message}
+                </span>
+              )}
+            </div>
+
             {/* Make */}
             <div className="flex flex-col">
               <Label htmlFor="make" className="mb-1">
-                Make
+                Make *
               </Label>
               <Input
                 id="make"
@@ -185,7 +266,7 @@ export function DialogDemo({
             {/* Model */}
             <div className="flex flex-col">
               <Label htmlFor="model" className="mb-1">
-                Model
+                Model *
               </Label>
               <Input
                 id="model"
@@ -203,7 +284,7 @@ export function DialogDemo({
             {/* Year */}
             <div className="flex flex-col">
               <Label htmlFor="year" className="mb-1">
-                Year
+                Year *
               </Label>
               <Input
                 id="year"
@@ -219,10 +300,70 @@ export function DialogDemo({
               )}
             </div>
 
+            <div>
+              <Label htmlFor="color">Color</Label>
+              <Controller
+                control={control}
+                name="color"
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ''}
+                  >
+                    <SelectTrigger
+                      className={errors.color ? 'border-red-500' : ''}
+                    >
+                      <SelectValue placeholder="Select color" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {colorOptions.map((color) => (
+                        <SelectItem key={color} value={color.toLowerCase()}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-4 h-4 rounded-full border border-gray-300"
+                              style={{ backgroundColor: color.toLowerCase() }}
+                            />
+                            {color}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.color && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.color.message}
+                </p>
+              )}
+            </div>
+
+            {/* 🆕 Fuel Type */}
+            <div className="flex flex-col">
+              <Label className="mb-1">Fuel Type</Label>
+              <Controller
+                control={control}
+                name="fuelType"
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select fuel type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gasoline">Gasoline</SelectItem>
+                      <SelectItem value="diesel">Diesel</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                      <SelectItem value="electric">Electric</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
             {/* Price/Day */}
             <div className="flex flex-col">
               <Label htmlFor="pricePerDay" className="mb-1">
-                Price/Day (DHS)
+                Price/Day (DHS) *
               </Label>
               <Input
                 id="pricePerDay"
@@ -240,7 +381,7 @@ export function DialogDemo({
             {/* Purchase Price */}
             <div className="flex flex-col">
               <Label htmlFor="purchasePrice" className="mb-1">
-                Purchase Price (DHS)
+                Purchase Price (DHS) *
               </Label>
               <Input
                 id="purchasePrice"
@@ -259,7 +400,7 @@ export function DialogDemo({
             {/* Monthly Lease Price */}
             <div className="flex flex-col">
               <Label htmlFor="monthlyLeasePrice" className="mb-1">
-                Monthly Lease (DHS)
+                Monthly Lease (DHS) *
               </Label>
               <Input
                 id="monthlyLeasePrice"
@@ -275,10 +416,29 @@ export function DialogDemo({
               )}
             </div>
 
-            {/* Insurance Expiry */}
+            {/* Mileage */}
+            <div className="flex flex-col">
+              <Label htmlFor="mileage" className="mb-1">
+                Mileage (km) *
+              </Label>
+              <Input
+                id="mileage"
+                type="number"
+                className="w-full"
+                placeholder="e.g. 120000"
+                {...register('mileage', { valueAsNumber: true })}
+              />
+              {errors.mileage && (
+                <span className="text-red-500 text-xs mt-1">
+                  {errors.mileage.message}
+                </span>
+              )}
+            </div>
+
+            {/* Insurance Expiry - Full width */}
             <div className="flex flex-col sm:col-span-2">
               <Label htmlFor="insuranceExpiryDate" className="mb-1">
-                Insurance Expiry
+                Insurance Expiry *
               </Label>
               <Controller
                 control={control}
@@ -294,25 +454,6 @@ export function DialogDemo({
               {errors.insuranceExpiryDate && (
                 <span className="text-red-500 text-xs mt-1">
                   {errors.insuranceExpiryDate.message}
-                </span>
-              )}
-            </div>
-
-            {/* Mileage */}
-            <div className="flex flex-col sm:col-span-2">
-              <Label htmlFor="mileage" className="mb-1">
-                Mileage
-              </Label>
-              <Input
-                id="mileage"
-                type="number"
-                className="w-full"
-                placeholder="e.g. 120000"
-                {...register('mileage', { valueAsNumber: true })}
-              />
-              {errors.mileage && (
-                <span className="text-red-500 text-xs mt-1">
-                  {errors.mileage.message}
                 </span>
               )}
             </div>

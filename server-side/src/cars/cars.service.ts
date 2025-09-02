@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { cars, DatabaseService, organization } from 'src/db';
-import { eq, ne, and, sql } from 'drizzle-orm';
+import { eq, ne, and, sql, lte } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 import { CreateCarDto } from './dto/create-car.dto';
 import { rents } from 'src/db/schema/rents';
@@ -13,10 +13,14 @@ import { customers } from 'src/db/schema/customers';
 import { maintenanceLogs } from 'src/db/schema/maintenanceLogs';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
 import { CreateMonthlyTargetDto } from './dto/create-monthly-target.dto';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class CarsService {
-  constructor(private readonly dbService: DatabaseService) {}
+  constructor(
+    private readonly dbService: DatabaseService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /** Helper to ensure JSON-safe responses */
   private safeReturn<T>(data: T): T {
@@ -25,6 +29,14 @@ export class CarsService {
 
   /** Centralized DB error handler */
   private handleDbError(error: any): never {
+    if (
+      error.constraint === 'cars_plate_number_unique' ||
+      error.message.includes('plate_number')
+    ) {
+      throw new BadRequestException(
+        'This plate number is already registered to another car. Please use a different plate number.',
+      );
+    }
     if (error.code === '23505') {
       throw new BadRequestException(
         'A car with these details already exists in your fleet. Please check your input.',
@@ -91,7 +103,38 @@ export class CarsService {
       }),
     ) as T;
   }
+  private async getOrgOwner(orgId: string) {
+    const [org] = await this.dbService.db
+      .select({ userId: organization.userId })
+      .from(organization)
+      .where(eq(organization.id, orgId));
 
+    return org;
+  }
+
+  private async isPlateNumberUnique(
+    plateNumber: string,
+    excludeCarId?: string,
+  ): Promise<boolean> {
+    try {
+      const conditions = [eq(cars.plateNumber, plateNumber)];
+
+      if (excludeCarId) {
+        conditions.push(ne(cars.id, excludeCarId));
+      }
+
+      const existingCar = await this.dbService.db
+        .select({ id: cars.id })
+        .from(cars)
+        .where(and(...conditions))
+        .limit(1);
+
+      return existingCar.length === 0;
+    } catch (error) {
+      console.error('Error checking plate number uniqueness:', error);
+      return false;
+    }
+  }
   /** Get all cars */
   async findAll(page = 1, pageSize = 20) {
     try {
@@ -110,6 +153,9 @@ export class CarsService {
           year: cars.year,
           purchasePrice: cars.purchasePrice,
           pricePerDay: cars.pricePerDay,
+          plateNumber: cars.plateNumber, // ✅ Add this
+          color: cars.color, // ✅ Add this
+          fuelType: cars.fuelType, // ✅ Add this
           orgId: cars.orgId,
           mileage: cars.mileage,
           monthlyLeasePrice: cars.monthlyLeasePrice,
@@ -155,6 +201,9 @@ export class CarsService {
           mileage: cars.mileage,
           monthlyLeasePrice: cars.monthlyLeasePrice,
           insuranceExpiryDate: cars.insuranceExpiryDate,
+          plateNumber: cars.plateNumber, // ✅ Add this
+          color: cars.color, // ✅ Add this
+          fuelType: cars.fuelType, // ✅ Add this
           status: cars.status,
           createdAt: cars.createdAt,
           updatedAt: cars.updatedAt,
@@ -208,6 +257,9 @@ export class CarsService {
           mileage: cars.mileage,
           monthlyLeasePrice: cars.monthlyLeasePrice,
           insuranceExpiryDate: cars.insuranceExpiryDate,
+          plateNumber: cars.plateNumber, // ✅ Add this
+          color: cars.color, // ✅ Add this
+          fuelType: cars.fuelType, // ✅ Add this
           status: cars.status,
           createdAt: cars.createdAt,
           updatedAt: cars.updatedAt,
@@ -241,6 +293,18 @@ export class CarsService {
 
       createCarDto = this.normalizeDates(createCarDto);
 
+      // ✅ Validate plate number uniqueness
+      if (createCarDto.plateNumber) {
+        const isUnique = await this.isPlateNumberUnique(
+          createCarDto.plateNumber,
+        );
+        if (!isUnique) {
+          throw new BadRequestException(
+            `A car with plate number "${createCarDto.plateNumber}" already exists. Please use a different plate number.`,
+          );
+        }
+      }
+
       const currentUserOrgId = await this.dbService.db
         .select({ id: organization.id })
         .from(organization)
@@ -257,10 +321,29 @@ export class CarsService {
         id,
         orgId,
         ...createCarDto,
-        status: createCarDto.status || 'available',
+        status: createCarDto.status || 'active',
       };
 
       await this.dbService.db.insert(cars).values(carData);
+
+      // 🔔 Add notification
+      await this.notificationsService.createNotification({
+        userId,
+        orgId,
+        category: 'CAR',
+        type: 'CAR_AVAILABLE',
+        priority: 'LOW',
+        title: 'New Car Added',
+        message: `${carData.make} ${carData.model} (${carData.plateNumber}) has been added to your fleet`,
+        actionUrl: `/cars/${id}`,
+        actionLabel: 'View Car',
+        metadata: {
+          carId: id,
+          make: carData.make,
+          model: carData.model,
+          plateNumber: carData.plateNumber,
+        },
+      });
 
       return this.safeReturn({
         success: true,
@@ -283,6 +366,19 @@ export class CarsService {
 
       updateData = this.normalizeDates(updateData);
 
+      // ✅ Validate plate number uniqueness if being updated
+      if (updateData.plateNumber) {
+        const isUnique = await this.isPlateNumberUnique(
+          updateData.plateNumber,
+          id,
+        );
+        if (!isUnique) {
+          throw new BadRequestException(
+            `A car with plate number "${updateData.plateNumber}" already exists. Please use a different plate number.`,
+          );
+        }
+      }
+
       const existingCar = await this.dbService.db
         .select()
         .from(cars)
@@ -301,6 +397,31 @@ export class CarsService {
         .update(cars)
         .set(finalUpdateData)
         .where(eq(cars.id, id));
+
+      // 🔔 Add notification for status changes
+      if (updateData.status && userId) {
+        const car = existingCar[0];
+        const orgOwner = await this.getOrgOwner(car.orgId);
+
+        if (orgOwner) {
+          await this.notificationsService.createNotification({
+            userId: orgOwner.userId,
+            orgId: car.orgId,
+            category: 'CAR',
+            type: 'CAR_AVAILABLE',
+            priority: updateData.status === 'maintenance' ? 'MEDIUM' : 'LOW',
+            title: 'Car Status Updated',
+            message: `${car.make} ${car.model} status changed to ${updateData.status}`,
+            actionUrl: `/cars/${id}`,
+            actionLabel: 'View Car',
+            metadata: {
+              carId: id,
+              oldStatus: car.status,
+              newStatus: updateData.status,
+            },
+          });
+        }
+      }
 
       return this.safeReturn({
         success: true,
@@ -528,7 +649,27 @@ export class CarsService {
         targetRents: targetDto.targetRents,
         revenueGoal: targetDto.revenueGoal,
       });
-
+      // 🔔 Add notification
+      const orgOwner = await this.getOrgOwner(orgId);
+      if (orgOwner) {
+        await this.notificationsService.createNotification({
+          userId: orgOwner.userId,
+          orgId,
+          category: 'FINANCIAL',
+          type: 'REVENUE_TARGET_MET',
+          priority: 'LOW',
+          title: 'New Target Set',
+          message: `Monthly target created for ${car.make} ${car.model}: ${targetDto.targetRents} rentals, $${targetDto.revenueGoal} revenue`,
+          actionUrl: `/cars/${carId}`,
+          actionLabel: 'View Car',
+          metadata: {
+            carId,
+            targetId,
+            targetRents: targetDto.targetRents,
+            revenueGoal: targetDto.revenueGoal,
+          },
+        });
+      }
       return this.safeReturn({
         success: true,
         message: 'Target created successfully',
@@ -669,10 +810,147 @@ export class CarsService {
         ...dto,
       });
 
+      // 🔔 Add notification
+      const orgOwner = await this.getOrgOwner(orgId);
+      if (orgOwner) {
+        await this.notificationsService.createNotification({
+          userId: orgOwner.userId,
+          orgId,
+          category: 'MAINTENANCE',
+          type: 'CAR_MAINTENANCE_DUE',
+          priority: dto.type === ('repair' as any) ? 'HIGH' : 'MEDIUM',
+          title: 'Maintenance Log Added',
+          message: `Maintenance recorded for ${car.make} ${car.model}: ${dto.description}`,
+          actionUrl: `/cars/${carId}`,
+          actionLabel: 'View Car',
+          metadata: { carId, maintenanceId: id, maintenanceType: dto.type },
+        });
+      }
       return this.safeReturn({
         success: true,
         message: 'Maintenance log added successfully',
         data: { id, carId, ...dto },
+      });
+    } catch (error) {
+      this.handleDbError(error);
+    }
+  }
+  async checkCarInsuranceStatus(carId: string, userId?: string) {
+    try {
+      const car = await this.findOne(carId);
+      if (!car) throw new NotFoundException('Car not found');
+
+      const now = new Date();
+      const insuranceDate = new Date(car.insuranceExpiryDate);
+      const daysUntilExpiry = Math.ceil(
+        (insuranceDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      let status: 'valid' | 'expiring_soon' | 'expiring_very_soon' | 'expired';
+      let priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+      let message: string;
+
+      if (daysUntilExpiry < 0) {
+        status = 'expired';
+        priority = 'URGENT';
+        message = `Insurance expired ${Math.abs(daysUntilExpiry)} days ago`;
+      } else if (daysUntilExpiry <= 3) {
+        status = 'expiring_very_soon';
+        priority = 'URGENT';
+        message = `Insurance expires in ${daysUntilExpiry} days`;
+      } else if (daysUntilExpiry <= 7) {
+        status = 'expiring_soon';
+        priority = 'HIGH';
+        message = `Insurance expires in ${daysUntilExpiry} days`;
+      } else if (daysUntilExpiry <= 30) {
+        status = 'expiring_soon';
+        priority = 'MEDIUM';
+        message = `Insurance expires in ${daysUntilExpiry} days`;
+      } else {
+        status = 'valid';
+        priority = 'LOW';
+        message = `Insurance valid for ${daysUntilExpiry} days`;
+      }
+
+      return this.safeReturn({
+        carId,
+        status,
+        priority,
+        message,
+        daysUntilExpiry,
+        insuranceExpiryDate: insuranceDate,
+        isExpired: daysUntilExpiry < 0,
+        needsAttention: daysUntilExpiry <= 30,
+      });
+    } catch (error) {
+      this.handleDbError(error);
+    }
+  }
+
+  /** Get all cars with insurance issues */
+  async getCarsWithInsuranceIssues(userId: string) {
+    try {
+      const userOrg = await this.dbService.db
+        .select({ id: organization.id })
+        .from(organization)
+        .where(eq(organization.userId, userId));
+
+      if (!userOrg.length) {
+        throw new BadRequestException('No organization found for this user.');
+      }
+
+      const now = new Date();
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+      const carsWithIssues = await this.dbService.db
+        .select({
+          id: cars.id,
+          make: cars.make,
+          model: cars.model,
+          year: cars.year,
+          insuranceExpiryDate: cars.insuranceExpiryDate,
+          status: cars.status,
+          pricePerDay: cars.pricePerDay,
+        })
+        .from(cars)
+        .where(
+          and(
+            eq(cars.orgId, userOrg[0].id),
+            lte(cars.insuranceExpiryDate, thirtyDaysFromNow),
+            eq(cars.status, 'active'),
+          ),
+        )
+        .orderBy(cars.insuranceExpiryDate);
+
+      const enrichedCars = carsWithIssues.map((car) => {
+        const daysUntilExpiry = Math.ceil(
+          (car.insuranceExpiryDate.getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24),
+        );
+
+        let urgency: 'expired' | 'critical' | 'warning' | 'info';
+        if (daysUntilExpiry < 0) urgency = 'expired';
+        else if (daysUntilExpiry <= 3) urgency = 'critical';
+        else if (daysUntilExpiry <= 7) urgency = 'warning';
+        else urgency = 'info';
+
+        return {
+          ...car,
+          daysUntilExpiry,
+          urgency,
+          isExpired: daysUntilExpiry < 0,
+        };
+      });
+
+      return this.safeReturn({
+        cars: enrichedCars,
+        summary: {
+          total: enrichedCars.length,
+          expired: enrichedCars.filter((c) => c.isExpired).length,
+          critical: enrichedCars.filter((c) => c.urgency === 'critical').length,
+          warning: enrichedCars.filter((c) => c.urgency === 'warning').length,
+        },
       });
     } catch (error) {
       this.handleDbError(error);

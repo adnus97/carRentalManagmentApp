@@ -9,10 +9,19 @@ import {
   IsDate,
   IsNumber,
   Max,
+  IsOptional,
+  Matches,
 } from 'class-validator';
 import { isEmpty } from 'rxjs';
 
 export class CreateCarDto {
+  @IsNotEmpty()
+  @IsString()
+  @Matches(/^[A-Z0-9-]+$/i, {
+    message: 'Plate number can only contain letters, numbers, and hyphens',
+  }) // ✅ Optional: Add format validation
+  plateNumber: string;
+
   @IsString()
   @IsNotEmpty()
   make: string;
@@ -53,4 +62,12 @@ export class CreateCarDto {
   @IsString()
   @IsNotEmpty()
   status: string; // e.g., 'active', 'sold', 'leased'
+
+  @IsOptional()
+  @IsString()
+  color?: string;
+
+  @IsOptional()
+  @IsString()
+  fuelType?: string;
 }
