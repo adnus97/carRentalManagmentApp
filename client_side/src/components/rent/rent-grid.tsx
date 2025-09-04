@@ -13,9 +13,13 @@ import {
 } from 'ag-grid-community';
 import { useMemo, useState, useEffect } from 'react';
 import { Button } from '../ui/button';
-import { removeRent, getAllRentsWithCarAndCustomer } from '@/api/rents';
+import {
+  removeRent,
+  getAllRentsWithCarAndCustomer,
+  downloadRentContractPDF,
+} from '@/api/rents'; // 🆕 Added downloadRentContractPDF
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PencilSimple, Trash } from '@phosphor-icons/react';
+import { PencilSimple, Trash, FileText, Download } from '@phosphor-icons/react'; // 🆕 Added FileText and Download icons
 import { ConfirmationDialog } from '../confirmation-dialog';
 import { toast } from '@/components/ui/toast';
 import React from 'react';
@@ -40,11 +44,12 @@ ModuleRegistry.registerModules([
 ]);
 
 type RentRow = {
+  id: string;
+  rentContractId: string;
   rentNumber: number;
   year: number;
   isOpenContract: boolean;
   deposit?: number;
-  id: string;
   carModel: string;
   customerName?: string;
   startDate: string | Date;
@@ -185,14 +190,86 @@ export const RentsGrid = () => {
     setShowDeleteDialog(false);
   };
 
-  // const rowSelection = useMemo<RowSelectionOptions | 'single' | 'multiple'>(
-  //   () => ({
-  //     mode: 'multiRow',
-  //     checkboxes: true,
-  //     headerCheckbox: true,
-  //   }),
-  //   [],
-  // );
+  // 🆕 Handle bulk contract viewing
+  const handleViewContracts = () => {
+    if (selectedRows.length === 1) {
+      // Single contract - open in new tab
+      window.open(`/contracts/${selectedRows[0].id}`, '_blank');
+    } else {
+      // Multiple contracts - open each in new tab
+      selectedRows.forEach((row) => {
+        window.open(`/contracts/${row.id}`, '_blank');
+      });
+      toast({
+        type: 'success',
+        title: 'Opening Contracts',
+        description: `Opening ${selectedRows.length} contract(s) in new tabs.`,
+      });
+    }
+  };
+
+  // 🆕 Handle bulk PDF downloads
+  const handleDownloadPDFs = async () => {
+    if (selectedRows.length === 1) {
+      // Single PDF download
+      const row = selectedRows[0];
+      const contractId =
+        row.rentContractId ||
+        (row.rentNumber && row.year
+          ? `${String(row.rentNumber).padStart(3, '0')}/${row.year}`
+          : `#${row.id.slice(0, 8)}`);
+
+      try {
+        await downloadRentContractPDF(row.id);
+        toast({
+          type: 'success',
+          title: 'Download Started',
+          description: `Contract ${contractId} is being downloaded.`,
+        });
+      } catch (error) {
+        toast({
+          type: 'error',
+          title: 'Download Failed',
+          description: 'Failed to download contract. Please try again.',
+        });
+      }
+    } else {
+      // Multiple PDF downloads
+      toast({
+        type: 'info',
+        title: 'Starting Downloads',
+        description: `Downloading ${selectedRows.length} contracts...`,
+      });
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const row of selectedRows) {
+        try {
+          await downloadRentContractPDF(row.id);
+          successCount++;
+        } catch (error) {
+          failCount++;
+        }
+        // Small delay between downloads to avoid overwhelming the server
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      if (failCount === 0) {
+        toast({
+          type: 'success',
+          title: 'Downloads Complete',
+          description: `Successfully downloaded ${successCount} contract(s).`,
+        });
+      } else {
+        toast({
+          type: 'warning',
+          title: 'Downloads Partial',
+          description: `Downloaded ${successCount} contract(s), ${failCount} failed.`,
+        });
+      }
+    }
+  };
 
   const currencyFormatter = (params: any) =>
     params.value ? `${params.value.toLocaleString()} DHS` : '';
@@ -321,6 +398,31 @@ export const RentsGrid = () => {
             new Date(returnedAt) < new Date()
           );
         },
+      },
+    },
+    {
+      field: 'rentContractId', // 🔄 Use the formatted contract ID
+      headerName: 'Contract #',
+      width: 120,
+      sortable: true,
+      filter: 'agTextColumnFilter',
+      cellRenderer: (params: any) => {
+        const { rentContractId, rentNumber, year, id } = params.data;
+
+        // Show formatted contract ID if available, otherwise fallback
+        const displayId =
+          rentContractId ||
+          (rentNumber && year
+            ? `${String(rentNumber).padStart(3, '0')}/${year}`
+            : `#${id.slice(0, 8)}`);
+
+        return (
+          <div className="flex flex-col">
+            <span className="font-semibold text-blue-600 dark:text-blue-400">
+              {displayId}
+            </span>
+          </div>
+        );
       },
     },
     {
@@ -504,7 +606,7 @@ export const RentsGrid = () => {
     {
       headerName: 'Actions',
       pinned: 'right',
-      width: 200,
+      width: 100, // 🔄 Reduced width since only Edit button
       cellRenderer: (params: any) => {
         const actualStatus = getActualStatus(params.data);
         const fullyPaid = params.data.totalPaid === params.data.totalPrice;
@@ -515,6 +617,7 @@ export const RentsGrid = () => {
 
         return (
           <div className="flex gap-2 items-center h-full">
+            {/* 🔄 Only Edit Button */}
             <Button
               variant="ghost"
               disabled={shouldDisableEdit}
@@ -566,6 +669,29 @@ export const RentsGrid = () => {
           <p>Manage your rent contracts below:</p>
           {selectedRows.length > 0 && (
             <div className="flex items-center gap-2 ">
+              {/* 🆕 View Contracts Button */}
+              <Button
+                variant="secondary"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleViewContracts}
+                disabled={selectedRows.length === 0}
+              >
+                <FileText size={20} />
+                View ({selectedRows.length})
+              </Button>
+
+              {/* 🆕 Download PDFs Button */}
+              <Button
+                variant="secondary"
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleDownloadPDFs}
+                disabled={selectedRows.length === 0}
+              >
+                <Download size={20} />
+                PDF ({selectedRows.length})
+              </Button>
+
+              {/* Existing Delete Button */}
               <Button
                 variant="secondary"
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
@@ -706,6 +832,10 @@ export const RentsGrid = () => {
           guarantee={selectedRentForEdit.guarantee}
           lateFee={selectedRentForEdit.lateFee}
           returnedAt={selectedRentForEdit.returnedAt}
+          // 🆕 Pass the new fields to the dialog
+          rentContractId={selectedRentForEdit.rentContractId}
+          rentNumber={selectedRentForEdit.rentNumber}
+          year={selectedRentForEdit.year}
           onRentUpdated={() => {
             queryClient.invalidateQueries({ queryKey: ['rents'] });
             queryClient.refetchQueries({ queryKey: ['rents', page, pageSize] });

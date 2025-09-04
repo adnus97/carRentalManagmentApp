@@ -1,5 +1,69 @@
+// src/api/rents.ts
 import { api } from './api';
 import { RentStatus } from '@/types/rent-status.type';
+
+export interface CreateRentResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: string;
+    rentContractId: string; // 🆕 New field
+    rentNumber: number; // 🆕 New field
+    year: number; // 🆕 New field
+    carId: string;
+    customerId: string;
+    startDate: string;
+    expectedEndDate?: string;
+    returnedAt?: string;
+    totalPrice: number;
+    deposit: number;
+    guarantee: number;
+    lateFee: number;
+    totalPaid: number;
+    isFullyPaid: boolean;
+    status: RentStatus;
+    damageReport?: string;
+    isOpenContract: boolean;
+    isDeleted: boolean;
+    orgId: string;
+  };
+  contractUrl?: string; // Added by backend
+}
+
+export interface RentWithDetails {
+  id: string;
+  rentContractId: string; // 🆕 New field
+  rentNumber: number; // 🆕 New field
+  year: number; // 🆕 New field
+  carId: string;
+  customerId: string;
+  startDate: string;
+  expectedEndDate?: string;
+  returnedAt?: string;
+  isOpenContract: boolean;
+  totalPrice: number;
+  deposit: number;
+  guarantee: number;
+  lateFee: number;
+  totalPaid: number;
+  isFullyPaid: boolean;
+  status: RentStatus;
+  damageReport?: string;
+  // Related data from joins
+  carModel: string;
+  carMake: string;
+  pricePerDay: number;
+  customerName: string;
+  customerEmail: string;
+}
+
+export interface GetRentsWithDetailsResponse {
+  data: RentWithDetails[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
 
 export const createRent = async (data: {
   carId: string;
@@ -12,12 +76,12 @@ export const createRent = async (data: {
   lateFee?: number;
   isOpenContract: boolean;
   status: RentStatus;
-  damageReport?: string | null; // ✅ Allow null
+  damageReport?: string | null;
   customerId: string;
   isDeleted?: boolean;
   totalPaid?: number;
   isFullyPaid?: boolean;
-}) => {
+}): Promise<CreateRentResponse> => {
   let returnedAt = data.returnedAt;
 
   // If open contract and no returnedAt, set far future date
@@ -42,7 +106,7 @@ export const createRent = async (data: {
   const response = await api.post('/rents', dataToSend, {
     headers: { 'Content-Type': 'application/json' },
   });
-  return response.data;
+  return response.data as CreateRentResponse;
 };
 
 export const getRents = async (page: number = 1, pageSize: number = 20) => {
@@ -50,15 +114,15 @@ export const getRents = async (page: number = 1, pageSize: number = 20) => {
   return response.data;
 };
 
-export const getRentById = async (id: string) => {
+export const getRentById = async (id: string): Promise<RentWithDetails[]> => {
   const response = await api.get(`/rents/${id}`);
   return response.data;
 };
 
 export const removeRent = async (id: string) => {
   const response = await api.put(
-    `/rents/${id}/soft-delete`, // ✅
-
+    `/rents/${id}/soft-delete`,
+    {},
     { headers: { 'Content-Type': 'application/json' } },
   );
   return response.data;
@@ -85,7 +149,7 @@ export const updateRent = async (
       'lateFee',
       'totalPaid',
       'isFullyPaid',
-      'status', // ✅ Keep status for cancel functionality
+      'status',
       'damageReport',
     ],
     active: [
@@ -94,11 +158,11 @@ export const updateRent = async (
       'totalPaid',
       'isFullyPaid',
       'damageReport',
-      'status', // ✅ Keep status for cancel functionality
+      'status',
       ...(isOpenContract ? ['returnedAt'] : []),
     ],
     completed: ['totalPaid', 'isFullyPaid', 'damageReport', 'lateFee'],
-    canceled: ['status'], // ✅ Allow status change to reactivate
+    canceled: ['status'],
   };
 
   // Filter updateData to only allowed fields
@@ -133,12 +197,40 @@ export const updateRent = async (
 
   return response.data;
 };
+
 export const getAllRentsWithCarAndCustomer = async (
   page: number = 1,
   pageSize: number = 5,
-) => {
+): Promise<GetRentsWithDetailsResponse> => {
   const response = await api.get('/rents/with-car-and-customer', {
     params: { page, pageSize },
   });
   return response.data;
+};
+
+// 🆕 Contract-related functions
+export const getRentContract = async (id: string) => {
+  const response = await api.get(`/rents/${id}/contract`);
+  return response.data;
+};
+
+export const getRentContractHTML = async (id: string) => {
+  const response = await api.get(`/rents/${id}/contract/html`);
+  return response.data;
+};
+
+export const downloadRentContractPDF = async (id: string) => {
+  const response = await api.get(`/rents/${id}/pdf`, {
+    responseType: 'blob',
+  });
+
+  // Create download link
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `contrat-${id}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 };

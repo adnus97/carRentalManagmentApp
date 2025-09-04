@@ -43,6 +43,7 @@ export class EnhancedCronService {
           carId: rents.carId,
           customerId: rents.customerId,
           orgId: rents.orgId,
+          rentContractId: rents.rentContractId,
         });
 
       // Send notifications for started rentals
@@ -56,7 +57,7 @@ export class EnhancedCronService {
             type: 'RENT_STARTED',
             priority: 'MEDIUM',
             title: 'Rental Started',
-            message: `Rental ${rent.id} has started`,
+            message: `Rental #${rent.rentContractId} has started`,
             actionUrl: `/rentals/${rent.id}`,
             actionLabel: 'View Rental',
             metadata: { rentalId: rent.id },
@@ -83,6 +84,7 @@ export class EnhancedCronService {
           carId: rents.carId,
           customerId: rents.customerId,
           orgId: rents.orgId,
+          rentContractId: rents.rentContractId,
         });
 
       // Send notifications for completed rentals
@@ -96,7 +98,7 @@ export class EnhancedCronService {
             type: 'RENT_COMPLETED',
             priority: 'MEDIUM',
             title: 'Rental Completed',
-            message: `Rental ${rent.id} has been completed`,
+            message: `Rental #${rent.rentContractId} has been completed`,
             actionUrl: `/rentals/${rent.id}`,
             actionLabel: 'View Rental',
             metadata: { rentalId: rent.id },
@@ -128,6 +130,7 @@ export class EnhancedCronService {
           customerId: rents.customerId,
           expectedEndDate: rents.expectedEndDate,
           orgId: rents.orgId,
+          rentContractId: rents.rentContractId,
         })
         .from(rents)
         .where(
@@ -148,7 +151,7 @@ export class EnhancedCronService {
             type: 'RENT_OVERDUE',
             priority: 'HIGH',
             title: 'Rental Overdue',
-            message: `Rental ${rental.id} is overdue and needs attention`,
+            message: `Rental ${rental.rentContractId} is overdue and needs attention`,
             actionUrl: `/rentals/${rental.id}`,
             actionLabel: 'Contact Customer',
             metadata: {
@@ -190,6 +193,7 @@ export class EnhancedCronService {
           customerId: rents.customerId,
           expectedEndDate: rents.expectedEndDate,
           orgId: rents.orgId,
+          rentContractId: rents.rentContractId,
         })
         .from(rents)
         .where(
@@ -211,7 +215,7 @@ export class EnhancedCronService {
             type: 'RENT_RETURN_REMINDER',
             priority: 'MEDIUM',
             title: 'Return Reminder',
-            message: `Rental ${rental.id} is due for return tomorrow`,
+            message: `Rental ${rental.rentContractId} is due for return tomorrow`,
             actionUrl: `/rentals/${rental.id}`,
             actionLabel: 'View Rental',
             metadata: { rentalId: rental.id },

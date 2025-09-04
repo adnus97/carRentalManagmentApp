@@ -17,7 +17,7 @@ import { DatePickerDemo } from '../date-picker';
 import { toast } from '../ui/toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader } from '../loader';
-import { createRent } from '@/api/rents';
+import { createRent, CreateRentResponse } from '@/api/rents';
 import {
   Select,
   SelectTrigger,
@@ -151,15 +151,23 @@ export function RentFormDialog({
 
   const mutation = useMutation({
     mutationFn: createRent,
-    onSuccess: () => {
+    onSuccess: (response: CreateRentResponse) => {
       queryClient.invalidateQueries({ queryKey: ['rents'] });
       queryClient.invalidateQueries({ queryKey: ['cars'] });
       onOpenChange(false);
       reset();
+
       toast({
         type: 'success',
         title: 'Success!',
-        description: 'Rent contract created successfully.',
+        description: `Rent contract ${response.data?.rentContractId || 'created'} successfully.`,
+      });
+
+      // 🆕 Optionally show contract actions
+      console.log('Contract created:', {
+        id: response.data.id,
+        contractId: response.data.rentContractId,
+        contractUrl: response.contractUrl,
       });
     },
     onError: (error: any) => {

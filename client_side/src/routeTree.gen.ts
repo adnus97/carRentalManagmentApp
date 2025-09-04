@@ -18,6 +18,7 @@ import { Route as AboutImport } from './routes/about'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as AuthIndexImport } from './routes/_auth/index'
+import { Route as ContractsIdImport } from './routes/contracts.$id'
 import { Route as LayoutRentsImport } from './routes/_layout.rents'
 import { Route as LayoutDashboardImport } from './routes/_layout.dashboard'
 import { Route as LayoutClientsImport } from './routes/_layout.clients'
@@ -64,6 +65,12 @@ const AuthIndexRoute = AuthIndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthRoute,
+} as any)
+
+const ContractsIdRoute = ContractsIdImport.update({
+  id: '/contracts/$id',
+  path: '/contracts/$id',
+  getParentRoute: () => rootRoute,
 } as any)
 
 const LayoutRentsRoute = LayoutRentsImport.update({
@@ -163,6 +170,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutRentsImport
       parentRoute: typeof LayoutImport
     }
+    '/contracts/$id': {
+      id: '/contracts/$id'
+      path: '/contracts/$id'
+      fullPath: '/contracts/$id'
+      preLoaderRoute: typeof ContractsIdImport
+      parentRoute: typeof rootRoute
+    }
     '/_auth/': {
       id: '/_auth/'
       path: '/'
@@ -227,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
   '/rents': typeof LayoutRentsRoute
+  '/contracts/$id': typeof ContractsIdRoute
   '/': typeof AuthIndexRoute
   '/carDetails/$id': typeof LayoutCarDetailsIdRoute
   '/customerDetails/$id': typeof LayoutCustomerDetailsIdRoute
@@ -241,6 +256,7 @@ export interface FileRoutesByTo {
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
   '/rents': typeof LayoutRentsRoute
+  '/contracts/$id': typeof ContractsIdRoute
   '/': typeof AuthIndexRoute
   '/carDetails/$id': typeof LayoutCarDetailsIdRoute
   '/customerDetails/$id': typeof LayoutCustomerDetailsIdRoute
@@ -257,6 +273,7 @@ export interface FileRoutesById {
   '/_layout/clients': typeof LayoutClientsRoute
   '/_layout/dashboard': typeof LayoutDashboardRoute
   '/_layout/rents': typeof LayoutRentsRoute
+  '/contracts/$id': typeof ContractsIdRoute
   '/_auth/': typeof AuthIndexRoute
   '/_layout/carDetails/$id': typeof LayoutCarDetailsIdRoute
   '/_layout/customerDetails/$id': typeof LayoutCustomerDetailsIdRoute
@@ -273,6 +290,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/dashboard'
     | '/rents'
+    | '/contracts/$id'
     | '/'
     | '/carDetails/$id'
     | '/customerDetails/$id'
@@ -286,6 +304,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/dashboard'
     | '/rents'
+    | '/contracts/$id'
     | '/'
     | '/carDetails/$id'
     | '/customerDetails/$id'
@@ -300,6 +319,7 @@ export interface FileRouteTypes {
     | '/_layout/clients'
     | '/_layout/dashboard'
     | '/_layout/rents'
+    | '/contracts/$id'
     | '/_auth/'
     | '/_layout/carDetails/$id'
     | '/_layout/customerDetails/$id'
@@ -313,6 +333,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OrganizationRoute: typeof OrganizationRoute
   SignupRoute: typeof SignupRoute
+  ContractsIdRoute: typeof ContractsIdRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -322,6 +343,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OrganizationRoute: OrganizationRoute,
   SignupRoute: SignupRoute,
+  ContractsIdRoute: ContractsIdRoute,
 }
 
 export const routeTree = rootRoute
@@ -339,7 +361,8 @@ export const routeTree = rootRoute
         "/about",
         "/login",
         "/organization",
-        "/signup"
+        "/signup",
+        "/contracts/$id"
       ]
     },
     "/_auth": {
@@ -381,6 +404,9 @@ export const routeTree = rootRoute
     "/_layout/rents": {
       "filePath": "_layout.rents.tsx",
       "parent": "/_layout"
+    },
+    "/contracts/$id": {
+      "filePath": "contracts.$id.tsx"
     },
     "/_auth/": {
       "filePath": "_auth/index.tsx",

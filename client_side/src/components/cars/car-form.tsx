@@ -315,7 +315,7 @@ export function DialogDemo({
                     >
                       <SelectValue placeholder="Select color" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="overflow-y-auto h-[300px]">
                       {colorOptions.map((color) => (
                         <SelectItem key={color} value={color.toLowerCase()}>
                           <div className="flex items-center gap-2">
@@ -339,13 +339,13 @@ export function DialogDemo({
             </div>
 
             {/* 🆕 Fuel Type */}
-            <div className="flex flex-col">
-              <Label className="mb-1">Fuel Type</Label>
+            <div>
+              <Label htmlFor="fuelType">Fuel Type</Label>
               <Controller
                 control={control}
                 name="fuelType"
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field?.value}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select fuel type" />
                     </SelectTrigger>

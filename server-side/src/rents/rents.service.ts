@@ -38,9 +38,12 @@ export class RentsService {
     private readonly dbService: DatabaseService,
     private readonly notificationsService: NotificationsService,
   ) {}
-  private async generateRentId(
-    orgId: string,
-  ): Promise<{ id: string; rentNumber: number; year: number }> {
+  private async generateRentId(orgId: string): Promise<{
+    id: string;
+    rentContractId: string;
+    rentNumber: number;
+    year: number;
+  }> {
     const currentYear = new Date().getFullYear();
 
     // Get or create counter for this year and org
@@ -74,11 +77,15 @@ export class RentsService {
       });
     }
 
-    // Format: 001/2025, 002/2025, etc.
-    const formattedId = `${nextNumber.toString().padStart(3, '0')}/${currentYear}`;
+    // ✅ Generate normal UUID for primary key
+    const id = createId();
+
+    // ✅ Format the contract ID: 001/2025, 002/2025, etc.
+    const rentContractId = `${nextNumber.toString().padStart(3, '0')}/${currentYear}`;
 
     return {
-      id: formattedId,
+      id, // ✅ Normal UUID
+      rentContractId, // ✅ Formatted display ID
       rentNumber: nextNumber,
       year: currentYear,
     };
@@ -269,7 +276,8 @@ export class RentsService {
       }
 
       const orgId = currentUserOrgId[0].id;
-      const { id, rentNumber, year } = await this.generateRentId(orgId);
+      const { id, rentContractId, rentNumber, year } =
+        await this.generateRentId(orgId);
       // Validate and convert dates
       const startDate = ensureDate(createRentDto.startDate);
       const expectedEndDate = ensureDate(createRentDto.expectedEndDate);
@@ -399,7 +407,8 @@ export class RentsService {
 
       // Prepare data with properly converted dates
       const rentData = {
-        id,
+        id, // ✅ Normal UUID
+        rentContractId, // ✅ Formatted contract ID
         rentNumber,
         year,
         orgId,
@@ -452,11 +461,12 @@ export class RentsService {
           type: 'RENT_STARTED',
           priority: 'MEDIUM',
           title: 'New Rental Created',
-          message: `${customer?.firstName} ${customer?.lastName} rented ${car?.make} ${car?.model}`,
+          message: `${customer?.firstName} ${customer?.lastName} rented ${car?.make} ${car?.model} - Contract #${rentContractId}`, // 🆕 Use rentContractId
           actionUrl: `/rentals/${id}`,
           actionLabel: 'View Rental',
           metadata: {
             rentalId: id,
+            rentContractId,
             customerId: createRentDto.customerId,
             carId: createRentDto.carId,
             totalPrice: createRentDto.totalPrice,
@@ -467,7 +477,7 @@ export class RentsService {
       return {
         success: true,
         message: 'Rental contract created successfully',
-        data: { id, ...rentData },
+        data: { id, rentContractId, ...rentData },
       };
     } catch (error) {
       // If it's already a BadRequestException, re-throw it
@@ -518,6 +528,9 @@ export class RentsService {
     const rawData = await this.dbService.db
       .select({
         id: rents.id,
+        rentContractId: rents.rentContractId, // ✅ Add this field
+        rentNumber: rents.rentNumber, // ✅ Add this field
+        year: rents.year, // ✅ Add this field
         carId: rents.carId,
         customerId: rents.customerId,
         startDate: rents.startDate,
@@ -702,6 +715,8 @@ export class RentsService {
       const nonDateFields = [
         'carId',
         'customerId',
+        'rentNumber',
+        'rentContractId',
         'isOpenContract',
         'totalPrice',
         'deposit',
@@ -787,7 +802,7 @@ export class RentsService {
             type: 'PAYMENT_RECEIVED',
             priority: 'MEDIUM',
             title: 'Payment Received',
-            message: `Payment of $${paymentAmount} received for rental ${id}`,
+            message: `Payment of $${paymentAmount} received for rental #${rent.rentContractId}`,
             level: 'success',
             actionUrl: `/rentals/${id}`,
             actionLabel: 'View Rental',
@@ -827,7 +842,7 @@ export class RentsService {
             type: notificationType,
             priority,
             title,
-            message: `Rental ${id} status changed to ${updateRentDto.status}`,
+            message: `Rental ${rent.rentContractId} status changed to ${updateRentDto.status}`,
             level,
             actionUrl: `/rentals/${id}`,
             actionLabel: 'View Rental',
@@ -851,15 +866,15 @@ export class RentsService {
           if (!rent.damageReport && updateRentDto.damageReport) {
             // First time damage report
             title = 'Damage Reported';
-            message = `Damage reported for rental ${id}: ${updateRentDto.damageReport}`;
+            message = `Damage reported for rental ${rent.rentContractId}: ${updateRentDto.damageReport}`;
           } else if (rent.damageReport && updateRentDto.damageReport) {
             // Damage report updated
             title = 'Damage Report Updated';
-            message = `Damage report updated for rental ${id}: ${updateRentDto.damageReport}`;
+            message = `Damage report updated for rental ${rent.rentContractId}: ${updateRentDto.damageReport}`;
           } else if (rent.damageReport && !updateRentDto.damageReport) {
             // Damage report removed/cleared
             title = 'Damage Report Cleared';
-            message = `Damage report cleared for rental ${id}`;
+            message = `Damage report cleared for rental ${rent.rentContractId}`;
             priority = 'MEDIUM'; // Lower priority for clearing
           }
 
@@ -988,6 +1003,8 @@ export class RentsService {
         .select({
           // Rent details
           id: rents.id,
+          orgId: rents.orgId,
+          rentContractId: rents.rentContractId,
           rentNumber: rents.rentNumber,
           year: rents.year,
           startDate: rents.startDate,
@@ -998,14 +1015,13 @@ export class RentsService {
           guarantee: rents.guarantee,
           isOpenContract: rents.isOpenContract,
           status: rents.status,
-
           // Customer details
           customerFirstName: customers.firstName,
           customerLastName: customers.lastName,
           customerEmail: customers.email,
           customerPhone: customers.phone,
-          customerIdCard: customers.documentId,
-
+          customerDocId: customers.documentId,
+          customerDocType: customers.documentType,
           // Car details
           carMake: cars.make,
           carModel: cars.model,
@@ -1015,6 +1031,7 @@ export class RentsService {
           carFuelType: cars.fuelType,
           carMileage: cars.mileage,
           pricePerDay: cars.pricePerDay,
+          fuelType: cars.fuelType,
         })
         .from(rents)
         .leftJoin(customers, eq(rents.customerId, customers.id))
@@ -1025,9 +1042,31 @@ export class RentsService {
         throw new NotFoundException('Rental contract not found');
       }
 
+      // ✅ Normalize customer identity fields
+      let customerCIN = '...............';
+      let customerPassport = '...............';
+      let customerDriverLicense = '...............';
+
+      switch (rentData.customerDocType?.toUpperCase()) {
+        case 'ID_CARD':
+          customerCIN = rentData.customerDocId || '...............';
+          break;
+        case 'PASSPORT':
+          customerPassport = rentData.customerDocId || '...............';
+          break;
+        case 'DRIVER_LICENSE':
+          customerDriverLicense = rentData.customerDocId || '...............';
+          break;
+      }
+
       return {
         success: true,
-        data: rentData,
+        data: {
+          ...rentData,
+          customerCIN,
+          customerPassport,
+          customerDriverLicense,
+        },
       };
     } catch (error) {
       if (error instanceof NotFoundException) {

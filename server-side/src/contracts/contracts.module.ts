@@ -4,11 +4,13 @@ import { ContractsService } from './contracts.service';
 import { ContractsController } from './contracts.controller';
 import { RentsModule } from '../rents/rents.module';
 import { DatabaseModule } from 'src/db/database.module';
+import { OrganizationModule } from 'src/organization/organization.module';
 
 @Module({
   imports: [
     DatabaseModule,
-    forwardRef(() => RentsModule), // Use forwardRef to avoid circular dependency
+    forwardRef(() => RentsModule),
+    OrganizationModule, // Use forwardRef to avoid circular dependency
   ],
   controllers: [ContractsController],
   providers: [ContractsService],

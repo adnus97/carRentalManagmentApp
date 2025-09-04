@@ -227,6 +227,9 @@ type Props = {
   guarantee?: number;
   lateFee?: number;
   isOpenContract: boolean;
+  rentContractId?: string;
+  rentNumber?: number;
+  year?: number;
   onRentUpdated?: () => void;
 };
 
@@ -528,6 +531,11 @@ export function EditRentFormDialog({
         <div className="space-y-2 pb-2">
           <DialogTitle className="flex items-center gap-2 text-lg flex-wrap">
             <span>Edit Rental Contract</span>
+            {rentData?.rentContractId && (
+              <Badge variant="outline" className="text-xs">
+                {rentData.rentContractId}
+              </Badge>
+            )}
             <Badge
               variant="secondary"
               className={`${currentStatusConfig.color} text-white flex items-center gap-1 text-xs`}
