@@ -15,7 +15,8 @@ import { not } from 'drizzle-orm';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ContractsModule } from './contracts/contracts.module';
 import { ReportsModule } from './reports/reports.module';
-
+import { ConfigModule } from '@nestjs/config';
+import { R2Module } from './r2/r2.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -32,6 +33,7 @@ import { ReportsModule } from './reports/reports.module';
     NotificationsModule,
     ContractsModule,
     ReportsModule,
+    R2Module,
   ],
   controllers: [AppController],
   providers: [AppService],

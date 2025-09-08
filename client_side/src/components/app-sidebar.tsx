@@ -29,7 +29,7 @@ import {
 import { Separator } from './ui/separator';
 import { useUser } from '@/contexts/user-context';
 import { useQuery } from '@tanstack/react-query';
-import { getOrganizationsByUserId } from '@/api/organization';
+import { getOrganizationByUser, Organization } from '@/api/organization';
 import { UserDefaultImg } from './user-defaultImg';
 import { authClient } from '@/lib/auth-client';
 import { ConfirmationDialog } from './confirmation-dialog';
@@ -37,15 +37,6 @@ import { navigationConfig } from '@/config/navigation';
 import { NotificationsDropdown } from './notifications/notification-dropdown'; // ✅ import b.ell dropdown
 
 import React from 'react';
-
-interface Organization {
-  name: string;
-  userId: string;
-  image: string;
-  createdAt: Date;
-  updatedAt: Date;
-  id: string;
-}
 
 const navData = navigationConfig;
 
@@ -56,7 +47,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const { data, isLoading } = useQuery<Organization[]>({
     queryKey: ['organizations'],
-    queryFn: getOrganizationsByUserId,
+    queryFn: getOrganizationByUser,
   }) as { data: Organization[] | undefined; isLoading: boolean };
 
   const handleSignOut = async () => {

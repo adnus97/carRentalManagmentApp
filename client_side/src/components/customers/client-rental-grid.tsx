@@ -194,15 +194,60 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
     <div className="space-y-6">
       {/* ✅ Stats Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4 text-center">
+        <Card
+          className={[
+            'text-center',
+            'p-6 border border-border shadow-md rounded-lg',
+            'relative overflow-hidden rounded-xl border shadow-sm',
+            // Light mode
+            'border-gray-200 bg-white text-gray-900',
+            'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
+            // Dark mode (Insurance style)
+            'dark:border-border dark:text-gray-100 dark:shadow-lg',
+            'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
+          ].join(' ')}
+        >
+          {/* Dark-mode glow orbs */}
+          <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
+          <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
           <p className="text-sm text-muted-foreground">Total Rentals</p>
           <p className="text-xl font-bold">{totalRentals}</p>
         </Card>
-        <Card className="p-4 text-center">
+        <Card
+          className={[
+            'text-center',
+            'p-6 border border-border shadow-md rounded-lg',
+            'relative overflow-hidden rounded-xl border shadow-sm',
+            // Light mode
+            'border-gray-200 bg-white text-gray-900',
+            'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
+            // Dark mode (Insurance style)
+            'dark:border-border dark:text-gray-100 dark:shadow-lg',
+            'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
+          ].join(' ')}
+        >
+          {/* Dark-mode glow orbs */}
+          <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
+          <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
           <p className="text-sm text-muted-foreground">Total Spent</p>
           <p className="text-xl font-bold">{totalSpent.toLocaleString()} MAD</p>
         </Card>
-        <Card className="p-4 text-center">
+        <Card
+          className={[
+            'text-center',
+            'p-6 border border-border shadow-md rounded-lg',
+            'relative overflow-hidden rounded-xl border shadow-sm',
+            // Light mode
+            'border-gray-200 bg-white text-gray-900',
+            'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
+            // Dark mode (Insurance style)
+            'dark:border-border dark:text-gray-100 dark:shadow-lg',
+            'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
+          ].join(' ')}
+        >
+          {/* Dark-mode glow orbs */}
+          <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
+          <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
           <p className="text-sm text-muted-foreground">Avg Spend / Rental</p>
           <p className="text-xl font-bold">
             {avgSpendPerRental.toFixed(2)} MAD

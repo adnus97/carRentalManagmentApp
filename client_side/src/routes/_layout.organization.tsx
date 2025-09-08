@@ -1,7 +1,7 @@
-import { OrgForm } from '@/components/organization/organization-form';
+import { OrganizationDetails } from '@/components/organization/organization-details';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/organization')({
+export const Route = createFileRoute('/_layout/organization')({
   beforeLoad: ({ context, location }) => {
     console.log('context', context);
     if (!context.auth.is_authenticated) {
@@ -13,5 +13,5 @@ export const Route = createFileRoute('/organization')({
       });
     }
   },
-  component: OrgForm,
+  component: OrganizationDetails,
 });

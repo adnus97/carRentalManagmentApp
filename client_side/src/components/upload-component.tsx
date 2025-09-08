@@ -1,12 +1,13 @@
-import { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Eye, Loader2, Upload, X } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 import { useR2Upload, UploadResult } from '@/hooks/useR2Upload';
+import { useState } from 'react';
+import { Progress } from '@/components/ui/progress';
+import { toast } from '@/components/ui/toast';
 
-interface UploadComponentProps {
-  onUploadSuccess: (image: UploadResult) => void;
+interface Props {
+  onUploadSuccess: (img: UploadResult) => void;
   onUploadProgress?: (uploading: boolean) => void;
   currentImage?: string;
 }
@@ -15,52 +16,60 @@ export function UploadComponent({
   onUploadSuccess,
   onUploadProgress,
   currentImage,
-}: UploadComponentProps) {
+}: Props) {
   const [image, setImage] = useState<UploadResult | null>(null);
   const { uploadFile, uploading, progress } = useR2Upload();
 
-  const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file.');
-      event.target.value = '';
+  const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith('image/')) {
+      toast({
+        title: 'Invalid type',
+        type: 'error',
+        description: 'Upload an image file.',
+      });
+      e.target.value = '';
       return;
     }
-
     try {
       onUploadProgress?.(true);
-      const result = await uploadFile(file, 'organizations/logos');
+      const result = await uploadFile(f, 'organizations/logos');
       setImage(result);
       onUploadSuccess(result);
-    } catch (err) {
-      console.error('Upload error:', err);
-      alert('Failed to upload image.');
+      toast({
+        title: 'Success! ',
+        type: 'success',
+        description: 'Logo uploaded!',
+      });
+    } catch (e: any) {
+      toast({
+        title: 'Upload failed',
+        type: 'error',
+        description: e.message || '',
+      });
     } finally {
       onUploadProgress?.(false);
-      event.target.value = '';
+      e.target.value = '';
     }
   };
 
+  const view = (url: string) => window.open(url, '_blank')?.focus();
   const clear = () => setImage(null);
-  const view = (url: string) => window.open(url, '_blank');
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <input
-          id="org-logo-input"
+          id="logo-input"
           type="file"
           accept="image/*"
-          onChange={handleImageUpload}
+          onChange={onChange}
           disabled={uploading}
           className="hidden"
         />
         <Label
-          htmlFor="org-logo-input"
+          htmlFor="logo-input"
           className="flex items-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer"
         >
           {uploading ? (
@@ -91,7 +100,6 @@ export function UploadComponent({
             </span>
             <div className="flex gap-1">
               <Button
-                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => view(image?.url || currentImage!)}
@@ -101,7 +109,6 @@ export function UploadComponent({
               </Button>
               {image && (
                 <Button
-                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={clear}
@@ -115,7 +122,7 @@ export function UploadComponent({
           <div className="relative w-32 h-32 border rounded-lg overflow-hidden">
             <img
               src={image?.url || currentImage}
-              alt="Organization logo"
+              alt="Logo"
               className="w-full h-full object-cover"
             />
           </div>

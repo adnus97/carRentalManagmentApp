@@ -329,6 +329,43 @@ export const CarsGrid = () => {
       },
     },
     {
+      headerName: 'Technical Visit Expiry', // ✅ New column
+      field: 'technicalVisiteExpiryDate',
+      width: 150,
+      cellRenderer: (params: { value: string }) => {
+        if (!params.value) return null;
+
+        const expiry = new Date(params.value);
+        const today = new Date();
+        const soon = addDays(today, 30);
+
+        let color = '';
+        let tooltipMessage = 'Technical visit is valid';
+
+        if (isBefore(expiry, today)) {
+          color = '#EC6142';
+          tooltipMessage = 'Technical visit has expired';
+        } else if (isBefore(expiry, soon)) {
+          color = '#FFCA16';
+          tooltipMessage =
+            'Technical visit will soon be expired (less than 30 days)';
+        }
+
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span style={{ color, fontWeight: 'bold', cursor: 'help' }}>
+                  {format(expiry, 'dd/MM/yyyy')}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">{tooltipMessage}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      },
+    },
+    {
       headerName: 'Actions',
       pinned: 'right',
       width: 180,

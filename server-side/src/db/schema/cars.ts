@@ -27,6 +27,9 @@ export const cars = pgTable('cars', {
   fuelType: varchar('fuel_type', { length: 30 }).default('gasoline'),
   color: varchar('color', { length: 50 }),
   insuranceExpiryDate: timestamp('insurance_expiry_date').notNull(),
+  technicalVisiteExpiryDate: timestamp(
+    'technical_visite_expiry_date',
+  ).notNull(), // ✅ New field
   status: text('status').default('active'), // e.g., active, sold, leased
   createdAt: timestamp(),
   updatedAt: timestamp(),

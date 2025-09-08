@@ -19,6 +19,7 @@ export class OrganizationService {
       .from(organization)
       .where(eq(organization.userId, userId));
   }
+
   async findOne(id: string) {
     return await this.dbService.db
       .select()
@@ -29,25 +30,26 @@ export class OrganizationService {
   async createOrganization(
     createOrganizationDto: CreateOrganizationDto,
     userId: string,
-    image: string,
   ) {
     const id = createId();
     return await this.dbService.db.insert(organization).values({
       id,
       userId: userId,
-      image: image,
-      ...createOrganizationDto,
+      ...createOrganizationDto, // ✅ Now includes all the new fields
+      updatedAt: new Date(),
     });
   }
 
   async updateOrganization(
     id: string,
     updateOrganizationDto: UpdateOrganizationDto,
-    image: string,
   ) {
     return this.dbService.db
       .update(organization)
-      .set({ image, ...updateOrganizationDto })
+      .set({
+        ...updateOrganizationDto, // ✅ Now includes all the new fields
+        updatedAt: new Date(),
+      })
       .where(eq(organization.id, id));
   }
 

@@ -221,7 +221,21 @@ export default function CarDetailsPage({ carId }: { carId: string }) {
       {/* 🚗 Car Info + 📈 Chart Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {/* Car Info */}
-        <Card className="lg:col-span-1 h-full min-h-[400px] shadow-lg border border-border bg-white dark:bg-gray-900 rounded-xl flex flex-col">
+        <Card
+          className={[
+            'lg:col-span-1 h-full min-h-[400px] shadow-lg',
+            'relative overflow-hidden rounded-xl border shadow-sm',
+            // Light mode
+            'border-gray-200 bg-white text-gray-900',
+            'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
+            // Dark mode (Insurance style)
+            'dark:border-border dark:text-gray-100 dark:shadow-lg',
+            'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
+          ].join(' ')}
+        >
+          {/* Dark-mode glow orbs */}
+          <div className="pointer-events-none absolute -right-12 -top-12 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
+          <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
           <CardHeader className="pb-4 border-b border-border">
             <CardTitle className="text-2xl font-bold flex items-center gap-2">
               🚗 {car.make} {car.model}{' '}
@@ -247,26 +261,40 @@ export default function CarDetailsPage({ carId }: { carId: string }) {
             </div>
             <div className="flex flex-col">
               <span className="text-muted-foreground">Purchase Price</span>
-              <span className="font-semibold text-lg">
-                {car.purchasePrice.toLocaleString()} MAD
+              <span className="font-semibold text-base">
+                {car.purchasePrice.toLocaleString()} DHS
               </span>
             </div>
             <div className="flex flex-col">
               <span className="text-muted-foreground">Price / Day</span>
-              <span className="font-semibold text-lg">
-                {car.pricePerDay} MAD
+              <span className="font-semibold text-base">
+                {car.pricePerDay} DHS
               </span>
             </div>
             <div className="flex flex-col">
               <span className="text-muted-foreground">Mileage</span>
-              <span className="font-semibold text-lg">
+              <span className="font-semibold text-base">
                 {car.mileage.toLocaleString()} km
               </span>
             </div>
             <div className="flex flex-col">
               <span className="text-muted-foreground">Monthly Payment</span>
-              <span className="font-semibold text-lg">
-                {car.monthlyLeasePrice} MAD
+              <span className="font-semibold text-base">
+                {car.monthlyLeasePrice} DHS
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-muted-foreground">Insurance Expiry</span>
+              <span className="font-semibold">
+                {safeFormat(car.insuranceExpiryDate)}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-muted-foreground">
+                Technical Visit Expiry
+              </span>
+              <span className="font-semibold">
+                {safeFormat(car.technicalVisiteExpiryDate)}
               </span>
             </div>
           </CardContent>

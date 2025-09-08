@@ -59,6 +59,11 @@ export class CreateCarDto {
   @IsNotEmpty()
   insuranceExpiryDate: Date;
 
+  @IsDate()
+  @Type(() => Date) // Ensure correct date transformation
+  @IsNotEmpty()
+  technicalVisiteExpiryDate: Date;
+
   @IsString()
   @IsNotEmpty()
   status: string; // e.g., 'active', 'sold', 'leased'

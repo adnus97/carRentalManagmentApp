@@ -131,7 +131,6 @@ export class CarsService {
 
       return existingCar.length === 0;
     } catch (error) {
-      console.error('Error checking plate number uniqueness:', error);
       return false;
     }
   }
@@ -160,6 +159,7 @@ export class CarsService {
           mileage: cars.mileage,
           monthlyLeasePrice: cars.monthlyLeasePrice,
           insuranceExpiryDate: cars.insuranceExpiryDate,
+          technicalVisiteExpiryDate: cars.technicalVisiteExpiryDate,
           status: cars.status,
           createdAt: cars.createdAt,
           updatedAt: cars.updatedAt,
@@ -201,6 +201,7 @@ export class CarsService {
           mileage: cars.mileage,
           monthlyLeasePrice: cars.monthlyLeasePrice,
           insuranceExpiryDate: cars.insuranceExpiryDate,
+          technicalVisiteExpiryDate: cars.technicalVisiteExpiryDate,
           plateNumber: cars.plateNumber, // ✅ Add this
           color: cars.color, // ✅ Add this
           fuelType: cars.fuelType, // ✅ Add this
@@ -257,6 +258,7 @@ export class CarsService {
           mileage: cars.mileage,
           monthlyLeasePrice: cars.monthlyLeasePrice,
           insuranceExpiryDate: cars.insuranceExpiryDate,
+          technicalVisiteExpiryDate: cars.technicalVisiteExpiryDate,
           plateNumber: cars.plateNumber, // ✅ Add this
           color: cars.color, // ✅ Add this
           fuelType: cars.fuelType, // ✅ Add this
@@ -344,7 +346,32 @@ export class CarsService {
           plateNumber: carData.plateNumber,
         },
       });
+      // ✅ Check for technical visit expiry and notify
+      const now = new Date();
+      const technicalVisiteExpiry = new Date(carData.technicalVisiteExpiryDate);
+      const daysUntilTechnicalVisiteExpiry = Math.ceil(
+        (technicalVisiteExpiry.getTime() - now.getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
 
+      if (daysUntilTechnicalVisiteExpiry <= 30) {
+        await this.notificationsService.createNotification({
+          userId,
+          orgId,
+          category: 'MAINTENANCE',
+          type: 'CAR_MAINTENANCE_DUE',
+          priority: daysUntilTechnicalVisiteExpiry <= 7 ? 'HIGH' : 'MEDIUM',
+          title: 'Technical Visit Due Soon',
+          message: `${carData.make} ${carData.model} technical visit expires in ${daysUntilTechnicalVisiteExpiry} days`,
+          actionUrl: `/cars/${id}`,
+          actionLabel: 'View Car',
+          metadata: {
+            carId: id,
+            type: 'technical_visit',
+            daysRemaining: daysUntilTechnicalVisiteExpiry,
+          },
+        });
+      }
       return this.safeReturn({
         success: true,
         message: 'Car added successfully',
@@ -364,17 +391,30 @@ export class CarsService {
     try {
       if (!id) throw new BadRequestException('Car ID is required');
 
-      updateData = this.normalizeDates(updateData);
+      // ✅ Ensure dates are properly handled
+      const processedData = { ...updateData };
+
+      if (updateData.insuranceExpiryDate) {
+        processedData.insuranceExpiryDate = new Date(
+          updateData.insuranceExpiryDate,
+        );
+      }
+
+      if (updateData.technicalVisiteExpiryDate) {
+        processedData.technicalVisiteExpiryDate = new Date(
+          updateData.technicalVisiteExpiryDate,
+        );
+      }
 
       // ✅ Validate plate number uniqueness if being updated
-      if (updateData.plateNumber) {
+      if (processedData.plateNumber) {
         const isUnique = await this.isPlateNumberUnique(
-          updateData.plateNumber,
+          processedData.plateNumber,
           id,
         );
         if (!isUnique) {
           throw new BadRequestException(
-            `A car with plate number "${updateData.plateNumber}" already exists. Please use a different plate number.`,
+            `A car with plate number "${processedData.plateNumber}" already exists. Please use a different plate number.`,
           );
         }
       }
@@ -389,7 +429,7 @@ export class CarsService {
       }
 
       const finalUpdateData = {
-        ...updateData,
+        ...processedData,
         updatedAt: new Date(),
       };
 
@@ -1126,5 +1166,126 @@ export class CarsService {
       daysRemaining,
       isExpired: end < now,
     };
+  }
+
+  async checkCarTechnicalVisiteStatus(carId: string, userId?: string) {
+    try {
+      const car = await this.findOne(carId);
+      if (!car) throw new NotFoundException('Car not found');
+
+      const now = new Date();
+      const technicalVisiteDate = new Date(car.technicalVisiteExpiryDate);
+      const daysUntilExpiry = Math.ceil(
+        (technicalVisiteDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      let status: 'valid' | 'expiring_soon' | 'expiring_very_soon' | 'expired';
+      let priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+      let message: string;
+
+      if (daysUntilExpiry < 0) {
+        status = 'expired';
+        priority = 'URGENT';
+        message = `Technical visit expired ${Math.abs(daysUntilExpiry)} days ago`;
+      } else if (daysUntilExpiry <= 3) {
+        status = 'expiring_very_soon';
+        priority = 'URGENT';
+        message = `Technical visit expires in ${daysUntilExpiry} days`;
+      } else if (daysUntilExpiry <= 7) {
+        status = 'expiring_soon';
+        priority = 'HIGH';
+        message = `Technical visit expires in ${daysUntilExpiry} days`;
+      } else if (daysUntilExpiry <= 30) {
+        status = 'expiring_soon';
+        priority = 'MEDIUM';
+        message = `Technical visit expires in ${daysUntilExpiry} days`;
+      } else {
+        status = 'valid';
+        priority = 'LOW';
+        message = `Technical visit valid for ${daysUntilExpiry} days`;
+      }
+
+      return this.safeReturn({
+        carId,
+        status,
+        priority,
+        message,
+        daysUntilExpiry,
+        technicalVisiteExpiryDate: technicalVisiteDate,
+        isExpired: daysUntilExpiry < 0,
+        needsAttention: daysUntilExpiry <= 30,
+      });
+    } catch (error) {
+      this.handleDbError(error);
+    }
+  }
+  /** Get all cars with technical visit issues */
+  async getCarsWithTechnicalVisiteIssues(userId: string) {
+    try {
+      const userOrg = await this.dbService.db
+        .select({ id: organization.id })
+        .from(organization)
+        .where(eq(organization.userId, userId));
+
+      if (!userOrg.length) {
+        throw new BadRequestException('No organization found for this user.');
+      }
+
+      const now = new Date();
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+      const carsWithIssues = await this.dbService.db
+        .select({
+          id: cars.id,
+          make: cars.make,
+          model: cars.model,
+          year: cars.year,
+          technicalVisiteExpiryDate: cars.technicalVisiteExpiryDate,
+          status: cars.status,
+          pricePerDay: cars.pricePerDay,
+        })
+        .from(cars)
+        .where(
+          and(
+            eq(cars.orgId, userOrg[0].id),
+            lte(cars.technicalVisiteExpiryDate, thirtyDaysFromNow),
+            eq(cars.status, 'active'),
+          ),
+        )
+        .orderBy(cars.technicalVisiteExpiryDate);
+
+      const enrichedCars = carsWithIssues.map((car) => {
+        const daysUntilExpiry = Math.ceil(
+          (car.technicalVisiteExpiryDate.getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24),
+        );
+
+        let urgency: 'expired' | 'critical' | 'warning' | 'info';
+        if (daysUntilExpiry < 0) urgency = 'expired';
+        else if (daysUntilExpiry <= 3) urgency = 'critical';
+        else if (daysUntilExpiry <= 7) urgency = 'warning';
+        else urgency = 'info';
+
+        return {
+          ...car,
+          daysUntilExpiry,
+          urgency,
+          isExpired: daysUntilExpiry < 0,
+        };
+      });
+
+      return this.safeReturn({
+        cars: enrichedCars,
+        summary: {
+          total: enrichedCars.length,
+          expired: enrichedCars.filter((c) => c.isExpired).length,
+          critical: enrichedCars.filter((c) => c.urgency === 'critical').length,
+          warning: enrichedCars.filter((c) => c.urgency === 'warning').length,
+        },
+      });
+    } catch (error) {
+      this.handleDbError(error);
+    }
   }
 }

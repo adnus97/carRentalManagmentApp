@@ -153,7 +153,21 @@ export default function CarTargetsGrid({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
       {/* Active Target Card (same endpoint as merged row) */}
-      <Card className="p-4 border border-border shadow-md rounded-lg bg-white dark:bg-gray-900">
+      <Card
+        className={[
+          'p-4 border border-border shadow-md rounded-lg',
+          'relative overflow-hidden rounded-xl border shadow-sm',
+          // Light mode
+          'border-gray-200 bg-white text-gray-900',
+          'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
+          // Dark mode (Insurance style)
+          'dark:border-border dark:text-gray-100 dark:shadow-lg',
+          'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
+        ].join(' ')}
+      >
+        {/* Dark-mode glow orbs */}
+        <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
+        <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-base">
             {format(new Date(activeCard.startDate), 'dd MMM')} -{' '}

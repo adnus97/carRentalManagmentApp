@@ -215,4 +215,17 @@ export class CarsController {
     const onDate = date ? new Date(date) : undefined;
     return this.carsService.getActiveTargetCard(carId, onDate);
   }
+
+  @Get(':id/technical-visite-status')
+  async checkTechnicalVisiteStatus(
+    @Param('id') id: string,
+    @CurrentUser() user: CustomUser,
+  ) {
+    return this.carsService.checkCarTechnicalVisiteStatus(id, user.id);
+  }
+
+  @Get('technical-visite/issues')
+  async getCarsWithTechnicalVisiteIssues(@CurrentUser() user: CustomUser) {
+    return this.carsService.getCarsWithTechnicalVisiteIssues(user.id);
+  }
 }

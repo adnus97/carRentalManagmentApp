@@ -52,6 +52,9 @@ const schema = z.object({
   insuranceExpiryDate: z.date().refine((date) => date > new Date(), {
     message: 'Insurance expiry date must be in the future',
   }),
+  technicalVisiteExpiryDate: z.date().refine((date) => date > new Date(), {
+    message: 'Technical visit expiry date must be in the future',
+  }),
 });
 type formFields = z.infer<typeof schema>;
 
@@ -171,6 +174,7 @@ export function DialogDemo({
       mileage: undefined,
       monthlyLeasePrice: undefined,
       insuranceExpiryDate: undefined,
+      technicalVisiteExpiryDate: undefined,
     },
   });
 
@@ -216,7 +220,7 @@ export function DialogDemo({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[600px] pt-8 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] pt-8 max-h-[90vh] overflow-hidden">
         <DialogTitle className="pb-1 hidden sm:block">
           Add a new Car
         </DialogTitle>
@@ -436,7 +440,7 @@ export function DialogDemo({
             </div>
 
             {/* Insurance Expiry - Full width */}
-            <div className="flex flex-col sm:col-span-2">
+            <div className="flex flex-col">
               <Label htmlFor="insuranceExpiryDate" className="mb-1">
                 Insurance Expiry *
               </Label>
@@ -454,6 +458,27 @@ export function DialogDemo({
               {errors.insuranceExpiryDate && (
                 <span className="text-red-500 text-xs mt-1">
                   {errors.insuranceExpiryDate.message}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <Label htmlFor="technicalVisiteExpiryDate" className="mb-1">
+                Technical Visit Expiry *
+              </Label>
+              <Controller
+                control={control}
+                name="technicalVisiteExpiryDate"
+                rules={{ required: 'Required' }}
+                render={({ field }) => (
+                  <DatePickerDemo
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              {errors.technicalVisiteExpiryDate && (
+                <span className="text-red-500 text-xs mt-1">
+                  {errors.technicalVisiteExpiryDate.message}
                 </span>
               )}
             </div>

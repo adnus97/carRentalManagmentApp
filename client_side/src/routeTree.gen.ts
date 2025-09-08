@@ -12,7 +12,6 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as SignupImport } from './routes/signup'
-import { Route as OrganizationImport } from './routes/organization'
 import { Route as LoginImport } from './routes/login'
 import { Route as AboutImport } from './routes/about'
 import { Route as LayoutImport } from './routes/_layout'
@@ -21,6 +20,7 @@ import { Route as AuthIndexImport } from './routes/_auth/index'
 import { Route as ContractsIdImport } from './routes/contracts.$id'
 import { Route as LayoutReportsImport } from './routes/_layout.reports'
 import { Route as LayoutRentsImport } from './routes/_layout.rents'
+import { Route as LayoutOrganizationImport } from './routes/_layout.organization'
 import { Route as LayoutDashboardImport } from './routes/_layout.dashboard'
 import { Route as LayoutClientsImport } from './routes/_layout.clients'
 import { Route as LayoutCustomerDetailsIdImport } from './routes/_layout.customerDetails.$id'
@@ -31,12 +31,6 @@ import { Route as LayoutCarDetailsIdImport } from './routes/_layout.carDetails.$
 const SignupRoute = SignupImport.update({
   id: '/signup',
   path: '/signup',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const OrganizationRoute = OrganizationImport.update({
-  id: '/organization',
-  path: '/organization',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -83,6 +77,12 @@ const LayoutReportsRoute = LayoutReportsImport.update({
 const LayoutRentsRoute = LayoutRentsImport.update({
   id: '/rents',
   path: '/rents',
+  getParentRoute: () => LayoutRoute,
+} as any)
+
+const LayoutOrganizationRoute = LayoutOrganizationImport.update({
+  id: '/organization',
+  path: '/organization',
   getParentRoute: () => LayoutRoute,
 } as any)
 
@@ -142,13 +142,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
-    '/organization': {
-      id: '/organization'
-      path: '/organization'
-      fullPath: '/organization'
-      preLoaderRoute: typeof OrganizationImport
-      parentRoute: typeof rootRoute
-    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -168,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof LayoutDashboardImport
+      parentRoute: typeof LayoutImport
+    }
+    '/_layout/organization': {
+      id: '/_layout/organization'
+      path: '/organization'
+      fullPath: '/organization'
+      preLoaderRoute: typeof LayoutOrganizationImport
       parentRoute: typeof LayoutImport
     }
     '/_layout/rents': {
@@ -230,6 +230,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 interface LayoutRouteChildren {
   LayoutClientsRoute: typeof LayoutClientsRoute
   LayoutDashboardRoute: typeof LayoutDashboardRoute
+  LayoutOrganizationRoute: typeof LayoutOrganizationRoute
   LayoutRentsRoute: typeof LayoutRentsRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutCarDetailsIdRoute: typeof LayoutCarDetailsIdRoute
@@ -239,6 +240,7 @@ interface LayoutRouteChildren {
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutClientsRoute: LayoutClientsRoute,
   LayoutDashboardRoute: LayoutDashboardRoute,
+  LayoutOrganizationRoute: LayoutOrganizationRoute,
   LayoutRentsRoute: LayoutRentsRoute,
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutCarDetailsIdRoute: LayoutCarDetailsIdRoute,
@@ -252,10 +254,10 @@ export interface FileRoutesByFullPath {
   '': typeof LayoutRouteWithChildren
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
-  '/organization': typeof OrganizationRoute
   '/signup': typeof SignupRoute
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
+  '/organization': typeof LayoutOrganizationRoute
   '/rents': typeof LayoutRentsRoute
   '/reports': typeof LayoutReportsRoute
   '/contracts/$id': typeof ContractsIdRoute
@@ -268,10 +270,10 @@ export interface FileRoutesByTo {
   '': typeof LayoutRouteWithChildren
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
-  '/organization': typeof OrganizationRoute
   '/signup': typeof SignupRoute
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
+  '/organization': typeof LayoutOrganizationRoute
   '/rents': typeof LayoutRentsRoute
   '/reports': typeof LayoutReportsRoute
   '/contracts/$id': typeof ContractsIdRoute
@@ -286,10 +288,10 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
-  '/organization': typeof OrganizationRoute
   '/signup': typeof SignupRoute
   '/_layout/clients': typeof LayoutClientsRoute
   '/_layout/dashboard': typeof LayoutDashboardRoute
+  '/_layout/organization': typeof LayoutOrganizationRoute
   '/_layout/rents': typeof LayoutRentsRoute
   '/_layout/reports': typeof LayoutReportsRoute
   '/contracts/$id': typeof ContractsIdRoute
@@ -304,10 +306,10 @@ export interface FileRouteTypes {
     | ''
     | '/about'
     | '/login'
-    | '/organization'
     | '/signup'
     | '/clients'
     | '/dashboard'
+    | '/organization'
     | '/rents'
     | '/reports'
     | '/contracts/$id'
@@ -319,10 +321,10 @@ export interface FileRouteTypes {
     | ''
     | '/about'
     | '/login'
-    | '/organization'
     | '/signup'
     | '/clients'
     | '/dashboard'
+    | '/organization'
     | '/rents'
     | '/reports'
     | '/contracts/$id'
@@ -335,10 +337,10 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/about'
     | '/login'
-    | '/organization'
     | '/signup'
     | '/_layout/clients'
     | '/_layout/dashboard'
+    | '/_layout/organization'
     | '/_layout/rents'
     | '/_layout/reports'
     | '/contracts/$id'
@@ -353,7 +355,6 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   AboutRoute: typeof AboutRoute
   LoginRoute: typeof LoginRoute
-  OrganizationRoute: typeof OrganizationRoute
   SignupRoute: typeof SignupRoute
   ContractsIdRoute: typeof ContractsIdRoute
 }
@@ -363,7 +364,6 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   AboutRoute: AboutRoute,
   LoginRoute: LoginRoute,
-  OrganizationRoute: OrganizationRoute,
   SignupRoute: SignupRoute,
   ContractsIdRoute: ContractsIdRoute,
 }
@@ -382,7 +382,6 @@ export const routeTree = rootRoute
         "/_layout",
         "/about",
         "/login",
-        "/organization",
         "/signup",
         "/contracts/$id"
       ]
@@ -398,6 +397,7 @@ export const routeTree = rootRoute
       "children": [
         "/_layout/clients",
         "/_layout/dashboard",
+        "/_layout/organization",
         "/_layout/rents",
         "/_layout/reports",
         "/_layout/carDetails/$id",
@@ -410,9 +410,6 @@ export const routeTree = rootRoute
     "/login": {
       "filePath": "login.tsx"
     },
-    "/organization": {
-      "filePath": "organization.tsx"
-    },
     "/signup": {
       "filePath": "signup.tsx"
     },
@@ -422,6 +419,10 @@ export const routeTree = rootRoute
     },
     "/_layout/dashboard": {
       "filePath": "_layout.dashboard.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/organization": {
+      "filePath": "_layout.organization.tsx",
       "parent": "/_layout"
     },
     "/_layout/rents": {

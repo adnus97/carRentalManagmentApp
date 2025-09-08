@@ -18,6 +18,7 @@ export interface Car {
   mileage: number;
   monthlyLeasePrice: number;
   insuranceExpiryDate: string; // ISO date string
+  technicalVisiteExpiryDate: string;
   status: 'active' | 'sold' | 'leased' | 'maintenance' | 'deleted';
   createdAt?: string;
   updatedAt?: string;
@@ -41,6 +42,7 @@ export const createCar = async (data: {
   fuelType: string;
   monthlyLeasePrice: number;
   insuranceExpiryDate: Date;
+  technicalVisiteExpiryDate: Date;
   status: 'active' | 'sold' | 'leased' | 'maintenance' | 'deleted';
 }) => {
   const response = await api.post('/cars', data, {
@@ -90,15 +92,33 @@ export const updateCar = async (
     purchasePrice: number;
     pricePerDay: number;
     mileage: number;
-    plateNumber: string; // ✅ Can be updated
-    color: string; // ✅ Can be updated
-    fuelType: string; // ✅ Can be updated
+    plateNumber: string;
+    color: string;
+    fuelType: string;
     monthlyLeasePrice: number;
     insuranceExpiryDate: Date;
+    technicalVisiteExpiryDate: Date;
     status: 'active' | 'sold' | 'leased' | 'maintenance' | 'deleted';
   }>,
 ) => {
-  const response = await api.put(`/cars/${id}`, data, {
+  // ✅ Convert date fields to ISO strings if they exist
+  const payload = { ...data };
+
+  if (data.insuranceExpiryDate) {
+    payload.insuranceExpiryDate = new Date(
+      data.insuranceExpiryDate,
+    ).toISOString() as any;
+  }
+
+  if (data.technicalVisiteExpiryDate) {
+    payload.technicalVisiteExpiryDate = new Date(
+      data.technicalVisiteExpiryDate,
+    ).toISOString() as any;
+  }
+
+  console.log('API update payload with ISO dates:', payload);
+
+  const response = await api.put(`/cars/${id}`, payload, {
     headers: { 'Content-Type': 'application/json' },
   });
   return response.data;
