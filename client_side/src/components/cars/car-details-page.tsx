@@ -224,7 +224,8 @@ export default function CarDetailsPage({ carId }: { carId: string }) {
         <Card className="lg:col-span-1 h-full min-h-[400px] shadow-lg border border-border bg-white dark:bg-gray-900 rounded-xl flex flex-col">
           <CardHeader className="pb-4 border-b border-border">
             <CardTitle className="text-2xl font-bold flex items-center gap-2">
-              🚗 {car.make} {car.model}
+              🚗 {car.make} {car.model}{' '}
+              <span className="text-sm font-normal">{car.plateNumber}</span>
             </CardTitle>
             <p className="text-sm text-muted-foreground">Vehicle Overview</p>
           </CardHeader>
@@ -277,7 +278,7 @@ export default function CarDetailsPage({ carId }: { carId: string }) {
             rentalHistory={rentalHistory.map((r: any) => ({
               startDate: r.startDate,
               endDate: r.endDate,
-              totalPrice: r.totalPrice,
+              totalPrice: r.totalPaid,
             }))}
           />
         </div>

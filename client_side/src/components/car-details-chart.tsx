@@ -1,7 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from 'recharts';
 
 import {
   Card,
@@ -13,9 +21,7 @@ import {
 import {
   ChartConfig,
   ChartContainer,
-  ChartLegend,
   ChartLegendContent,
-  ChartTooltip,
   ChartTooltipContent,
 } from './ui/chart';
 import {
@@ -225,7 +231,7 @@ export function ChartAreaInteractive({
               tickMargin={8}
               minTickGap={32}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
-              tickFormatter={(value) => {
+              tickFormatter={(value: string | number) => {
                 const date = new Date(value);
                 if (timeRange === '90d') {
                   return date.toLocaleDateString('en-US', {
@@ -240,30 +246,27 @@ export function ChartAreaInteractive({
               }}
             />
 
-            {/* Y Axes */}
+            {/* ✅ Primary Y-axis (no yAxisId) - CartesianGrid will use this */}
             <YAxis
-              yAxisId="left"
               orientation="left"
               stroke={chartConfig.revenue.color}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
             />
+            {/* ✅ Secondary Y-axis (keep yAxisId) */}
             <YAxis
-              label={() => {
-                return <div>Hello</div>;
-              }}
               yAxisId="right"
               orientation="right"
               stroke={chartConfig.rents.color}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
             />
 
-            {/* ✅ Tooltip with type-safe mapping + DHS + growth */}
-            <ChartTooltip
+            {/* ✅ Tooltip */}
+            <Tooltip
               cursor={false}
               content={
                 <ChartTooltipContent
                   className="space-y-1 text-[13px]"
-                  style={{ color: 'var(---muted-foreground)' }}
+                  style={{ color: 'var(--muted-foreground)' }}
                   labelFormatter={(value) => {
                     const date = new Date(value);
                     if (timeRange === '90d') {
@@ -277,33 +280,31 @@ export function ChartAreaInteractive({
                       day: 'numeric',
                     });
                   }}
-                  formatter={(value, name, props) => {
-                    const key = props.dataKey as keyof typeof chartConfig;
+                  formatter={(value, name, item, index) => {
+                    const key = item.dataKey as keyof typeof chartConfig;
                     const config = chartConfig[key];
 
-                    // Format value
+                    const numericValue = Number(value);
                     const formattedValue =
                       key === 'revenue'
-                        ? `${new Intl.NumberFormat('en-US').format(value as number)} DHS`
-                        : new Intl.NumberFormat('en-US').format(
-                            value as number,
-                          );
+                        ? `${new Intl.NumberFormat('en-US').format(
+                            numericValue,
+                          )} DHS`
+                        : new Intl.NumberFormat('en-US').format(numericValue);
 
-                    // Calculate growth vs previous point
-                    const index = props?.payload?.index ?? -1;
+                    // Growth
+                    const pointIndex = item?.payload?.index ?? -1;
                     let growth: string | null = null;
-                    if (index > 0 && filteredData[index - 1]) {
-                      const prev = filteredData[index - 1][key] as number;
-                      const curr = value as number;
+                    if (pointIndex > 0 && filteredData[pointIndex - 1]) {
+                      const prev = filteredData[pointIndex - 1][key] as number;
                       if (prev > 0) {
-                        const pct = ((curr - prev) / prev) * 100;
+                        const pct = ((numericValue - prev) / prev) * 100;
                         growth = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
                       }
                     }
 
-                    return [
+                    return (
                       <div className="flex w-44 justify-between items-center gap-2">
-                        {/* Colored dot */}
                         <span
                           className="inline-block h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: config.color }}
@@ -323,18 +324,17 @@ export function ChartAreaInteractive({
                             {growth}
                           </span>
                         )}
-                      </div>,
-                    ]; // ✅
+                      </div>
+                    );
                   }}
                   indicator="dot"
                 />
               }
             />
 
-            {/* Series */}
+            {/* ✅ Series - bind revenue to primary axis (no yAxisId) */}
             {(visibleSeries === 'both' || visibleSeries === 'revenue') && (
               <Area
-                yAxisId="left"
                 dataKey="revenue"
                 type="monotone"
                 fill="url(#fillRevenue)"
@@ -342,6 +342,7 @@ export function ChartAreaInteractive({
                 strokeWidth={2}
               />
             )}
+            {/* ✅ Series - bind rents to secondary axis */}
             {(visibleSeries === 'both' || visibleSeries === 'rents') && (
               <Area
                 yAxisId="right"
@@ -353,7 +354,7 @@ export function ChartAreaInteractive({
               />
             )}
 
-            <ChartLegend content={<ChartLegendContent />} />
+            <Legend content={<ChartLegendContent payload={undefined} />} />
           </AreaChart>
         </ChartContainer>
       </CardContent>

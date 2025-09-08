@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import * as PDFDocument from 'pdfkit';
 import { RentsService } from '../rents/rents.service';
 import { OrganizationService } from 'src/organization/organization.service';
+import puppeteer from 'puppeteer';
 
 @Injectable()
 export class ContractsService {
@@ -10,158 +11,6 @@ export class ContractsService {
     private readonly rentsService: RentsService,
     private readonly organizationService: OrganizationService,
   ) {}
-
-  async generateContractPDF(rentId: string): Promise<Buffer> {
-    const { data: contract } = await this.rentsService.getRentContract(rentId);
-
-    // Fetch organization data using orgId from contract
-    let organizationName = 'Société de Location'; // Generic fallback
-    try {
-      if (contract.orgId) {
-        const org = await this.organizationService.findOne(contract.orgId);
-        organizationName = org[0]?.name || 'Société de Location';
-      }
-    } catch (error) {
-      console.warn('Could not fetch organization name:', error);
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        const doc = new PDFDocument({ margin: 50 });
-        const chunks: Buffer[] = [];
-
-        doc.on('data', (chunk) => chunks.push(chunk));
-        doc.on('end', () => resolve(Buffer.concat(chunks)));
-
-        // Header - Use organization name
-        doc.fontSize(20).text(organizationName, 50, 50);
-        doc.fontSize(12).text('Contrat de Location', 400, 50);
-
-        // Contract details box - Use rentContractId instead of id
-        doc.rect(50, 80, 500, 40).stroke();
-        doc
-          .fontSize(12)
-          .text(`Loc: ${contract.rentContractId || contract.id}`, 60, 90);
-        doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 60, 105);
-
-        // Customer section (LOCATAIRE)
-        let yPosition = 140;
-        doc.fontSize(14).fillColor('#4472C4').text('LOCATAIRE', 50, yPosition);
-
-        yPosition += 30;
-        doc.fontSize(10).fillColor('black');
-        doc.text('Conducteur Principal:', 50, yPosition);
-        doc.text(
-          `${contract.customerFirstName} ${contract.customerLastName}`,
-          180,
-          yPosition,
-        );
-
-        yPosition += 15;
-        doc.text('CIN:', 50, yPosition);
-        doc.text(`${contract.customerCIN || ''}`, 180, yPosition);
-
-        yPosition += 15;
-        doc.text('Téléphone:', 50, yPosition);
-        doc.text(`${contract.customerPhone || ''}`, 180, yPosition);
-
-        // Vehicle section (VÉHICULE)
-        yPosition += 40;
-        doc.fontSize(14).fillColor('#4472C4').text('VÉHICULE', 50, yPosition);
-
-        yPosition += 30;
-        doc.fontSize(10).fillColor('black');
-        doc.text('Livraison véhicule:', 50, yPosition);
-        doc.text(`${contract.carMake} ${contract.carModel}`, 180, yPosition);
-
-        yPosition += 15;
-        doc.text('Année:', 50, yPosition);
-        doc.text(`${contract.carYear}`, 180, yPosition);
-
-        yPosition += 15;
-        doc.text('Immatriculation:', 50, yPosition);
-        doc.text(`${contract.carPlate}`, 180, yPosition);
-
-        yPosition += 15;
-        doc.text('Couleur:', 50, yPosition);
-        doc.text(`${contract.carColor || 'N/A'}`, 180, yPosition);
-
-        yPosition += 15;
-        doc.text('Kilométrage départ:', 50, yPosition);
-        doc.text(`${contract.carMileage || 0} km`, 180, yPosition);
-
-        // Rental period section
-        yPosition += 30;
-        doc.text('Date et heure de réception:', 50, yPosition);
-        doc.text(
-          `${new Date(contract.startDate).toLocaleDateString('fr-FR')}`,
-          250,
-          yPosition,
-        );
-
-        yPosition += 15;
-        doc.text('Lieu de réception:', 50, yPosition);
-        doc.text(organizationName, 250, yPosition);
-
-        yPosition += 15;
-        doc.text('Date et heure prévue de retour:', 50, yPosition);
-        const endDate = contract.returnedAt || contract.expectedEndDate;
-        doc.text(
-          `${new Date(endDate).toLocaleDateString('fr-FR')}`,
-          250,
-          yPosition,
-        );
-
-        // Billing section (FACTURATION)
-        yPosition += 40;
-        doc
-          .fontSize(14)
-          .fillColor('#4472C4')
-          .text('FACTURATION', 50, yPosition);
-
-        yPosition += 30;
-        doc.fontSize(10).fillColor('black');
-        doc.text('Prix par jour TTC:', 50, yPosition);
-        doc.text(`${contract.pricePerDay} DH`, 450, yPosition);
-
-        yPosition += 15;
-        doc.text('Dépôt:', 50, yPosition);
-        doc.text(`${contract.deposit || 0} DH`, 450, yPosition);
-
-        yPosition += 15;
-        doc.text('Garantie:', 50, yPosition);
-        doc.text(`${contract.guarantee || 0} DH`, 450, yPosition);
-
-        yPosition += 15;
-        doc.text('Prix TOTAL TTC:', 50, yPosition);
-        doc.text(`${contract.totalPrice || 0} DH`, 450, yPosition);
-
-        // Terms and conditions
-        yPosition += 40;
-        doc
-          .fontSize(8)
-          .text(
-            'Conditions générales: Le locataire reconnaît avoir pris connaissance des conditions générales...',
-            50,
-            yPosition,
-            { width: 500, align: 'justify' },
-          );
-
-        // Signatures - Use organization name
-        yPosition += 60;
-        doc.text('Lu et approuvé', 50, yPosition);
-        doc.text('Signature du Locataire', 300, yPosition);
-
-        yPosition += 40;
-        doc.text(organizationName, 50, yPosition);
-        doc.text('_________________', 300, yPosition);
-
-        doc.end();
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
 
   async getContractHTML(rentId: string): Promise<string> {
     const { data: contract } = await this.rentsService.getRentContract(rentId);
@@ -202,32 +51,58 @@ export class ContractsService {
     <title>Contrat de Location - ${contract.rentContractId}</title>
     <style>
       :root {
-        --primary: #065f46; /* Dark green */
-        --secondary: #f3f4f6;
+        --primarycol: #065f46; /* Dark green */
+        --secondarycol: #f3f4f6;
         --text-dark: #000000;
         --text-light: #333333;
       }
-      * { box-sizing: border-box; }
-      body {
-        font-family: 'Segoe UI', Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-        background: white;
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        height: 100%;
+        background: #ffffff !important;
         color: var(--text-dark);
+        font-family: 'Segoe UI', Arial, sans-serif;
         font-size: 13px;
       }
       .page {
         width: 210mm;
         margin: auto;
         padding: 20mm;
-        background: white;
+        background: #ffffff;
         position: relative;
+        overflow: hidden;
       }
+
+      /* ✅ Watermark */
+      .watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-30deg);
+        font-size: 70px;
+        font-weight: bold;
+        color: rgba(0, 0, 0, 0.05); /* faint */
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 0;
+        text-align: center;
+      }
+      .watermark img {
+        opacity: 0.05;
+        max-width: 400px;
+        height: auto;
+      }
+
+      header, .info-bar, .grid, .signatures, .actions {
+        position: relative;
+        z-index: 1; /* ✅ content above watermark */
+      }
+
       header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 3px solid var(--primary);
+        border-bottom: 3px solid var(--primarycol);
         padding-bottom: 10px;
         margin-bottom: 20px;
       }
@@ -243,23 +118,23 @@ export class ContractsService {
       }
       header h1 {
         font-size: 20px;
-        color: var(--primary);
+        color: var(--primarycol);
         margin: 0;
       }
       header .title {
         font-size: 18px;
         font-weight: bold;
-        color: var(--text-dark); /* ✅ ensure visible */
+        color: var(--text-dark);
       }
       .info-bar {
         display: flex;
         justify-content: space-between;
-        background: var(--secondary);
+        background: var(--secondarycol);
         padding: 8px 12px;
         border-radius: 6px;
         margin-bottom: 20px;
         font-size: 14px;
-        color: var(--text-dark); /* ✅ ensure visible */
+        color: var(--text-dark);
         font-weight: bold;
       }
       .grid {
@@ -273,7 +148,7 @@ export class ContractsService {
         background: white;
       }
       section h2 {
-        background: var(--primary);
+        background: var(--primarycol);
         color: white;
         padding: 6px 10px;
         font-size: 14px;
@@ -291,7 +166,7 @@ export class ContractsService {
       .field:last-child { border-bottom: none; }
       .field label {
         font-weight: 600;
-        color: var(--text-dark); /* ✅ darker */
+        color: var(--text-dark);
         min-width: 150px;
       }
       .field span {
@@ -300,7 +175,7 @@ export class ContractsService {
         background: #fff;
         padding: 3px 6px;
         border-radius: 4px;
-        border: 1px solid #999; /* ✅ darker border */
+        border: 1px solid #999;
         min-width: 100px;
         text-align: center;
       }
@@ -321,7 +196,7 @@ export class ContractsService {
         display: block;
         font-size: 11px;
         font-weight: 600;
-        color: #000; /* ✅ black */
+        color: #000;
         margin-bottom: 3px;
       }
       .doc-box span {
@@ -332,7 +207,7 @@ export class ContractsService {
       .total {
         font-size: 14px;
         font-weight: bold;
-        color: var(--primary);
+        color: var(--primarycol);
         text-align: right;
         margin-top: 6px;
       }
@@ -340,7 +215,7 @@ export class ContractsService {
         display: flex;
         justify-content: space-between;
         margin-top: 40px;
-        color: #000; /* ✅ ensure visible */
+        color: #000;
         font-weight: bold;
       }
       .signature-box {
@@ -362,7 +237,7 @@ export class ContractsService {
         font-size: 14px;
         cursor: pointer;
         font-weight: 600;
-        background: var(--primary);
+        background: var(--primarycol);
         color: white;
       }
       @media print {
@@ -374,12 +249,21 @@ export class ContractsService {
           size: A4;
           margin: 15mm;
         }
-        .actions { display: none; } /* ✅ hide print button in print */
+        .actions { display: none; }
       }
     </style>
   </head>
   <body>
     <div class="page">
+      <!-- ✅ Watermark -->
+      <div class="watermark">
+        ${
+          organizationLogo
+            ? `<img src="${organizationLogo}" alt="Logo">`
+            : organizationName || 'ORGANISATION'
+        }
+      </div>
+
       <header>
         <div class="org-info">
           ${organizationLogo ? `<img src="${organizationLogo}" alt="Logo">` : ''}
@@ -453,5 +337,34 @@ export class ContractsService {
   </body>
   </html>
   `;
+  }
+
+  async generateContractPDF(rentId: string): Promise<Buffer> {
+    const html = await this.getContractHTML(rentId);
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+      const page = await browser.newPage();
+      await page.setContent(html, {
+        waitUntil: ['load', 'domcontentloaded', 'networkidle0'],
+      });
+
+      // Optional: ensure images (e.g., organizationLogo) load if they’re remote
+      // await page.waitForNetworkIdle({ idleTime: 300 });
+
+      const pdf = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '15mm', right: '15mm', bottom: '15mm', left: '15mm' },
+      });
+
+      return Buffer.from(pdf);
+    } finally {
+      await browser.close();
+    }
   }
 }

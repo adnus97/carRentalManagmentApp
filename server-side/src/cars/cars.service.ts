@@ -659,7 +659,7 @@ export class CarsService {
           type: 'REVENUE_TARGET_MET',
           priority: 'LOW',
           title: 'New Target Set',
-          message: `Monthly target created for ${car.make} ${car.model}: ${targetDto.targetRents} rentals, $${targetDto.revenueGoal} revenue`,
+          message: `Monthly target created for ${car.make} ${car.model}: ${targetDto.targetRents} rentals, ${targetDto.revenueGoal}MAD revenue`,
           actionUrl: `/cars/${carId}`,
           actionLabel: 'View Car',
           metadata: {
@@ -697,22 +697,63 @@ export class CarsService {
         targetRents: carMonthlyTargets.targetRents,
         revenueGoal: carMonthlyTargets.revenueGoal,
         createdAt: carMonthlyTargets.createdAt,
-        actualRents: sql<number>`(
-        SELECT COUNT(*) FROM ${rents} 
-        WHERE ${rents.carId} = ${carId} -- ✅ filter by this car
-        AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
-        AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
-        AND ${rents.isDeleted} = false
-        AND ${rents.status} != 'canceled'
-      )`,
-        actualRevenue: sql<number>`(
-        SELECT COALESCE(SUM(${rents.totalPaid}), 0) FROM ${rents}
-        WHERE ${rents.carId} = ${carId} -- ✅ filter by this car
-        AND ${rents.startDate} >= ${carMonthlyTargets.startDate}
-        AND ${rents.startDate} <= ${carMonthlyTargets.endDate}
-        AND ${rents.isDeleted} = false
-        AND ${rents.status} != 'canceled'
-      )`,
+
+        // Overlapping rents count (correlated subquery)
+        actualRents: sql<number>`
+      (
+        SELECT COUNT(*)
+        FROM ${rents} r
+        WHERE r.car_id = ${carId}
+          AND r.is_deleted = false
+          AND r.status <> 'canceled'
+          AND r.start_date <= ${carMonthlyTargets.endDate}
+          AND COALESCE(r.returned_at, r.expected_end_date, r.start_date) >= ${carMonthlyTargets.startDate}
+      )
+    `,
+
+        // Prorated revenue (correlated subquery)
+        actualRevenue: sql<number>`
+      (
+        SELECT COALESCE(
+          SUM(
+            CASE
+              WHEN r.total_paid > 0 THEN
+                r.total_paid::numeric *
+                (
+                  GREATEST(
+                    0::numeric,
+                    LEAST(
+                      EXTRACT(EPOCH FROM ${carMonthlyTargets.endDate}) / 86400.0,
+                      EXTRACT(EPOCH FROM COALESCE(r.returned_at, r.expected_end_date, r.start_date)) / 86400.0
+                    )
+                    -
+                    GREATEST(
+                      EXTRACT(EPOCH FROM ${carMonthlyTargets.startDate}) / 86400.0,
+                      EXTRACT(EPOCH FROM r.start_date) / 86400.0
+                    )
+                    + 1
+                  )
+                  /
+                  GREATEST(
+                    1::numeric,
+                    EXTRACT(EPOCH FROM COALESCE(r.returned_at, r.expected_end_date, r.start_date)) / 86400.0
+                    - EXTRACT(EPOCH FROM r.start_date) / 86400.0
+                    + 1
+                  )
+                )
+              ELSE 0
+            END
+          ),
+          0
+        )::numeric(12,2)
+        FROM ${rents} r
+        WHERE r.car_id = ${carId}
+          AND r.is_deleted = false
+          AND r.status <> 'canceled'
+          AND r.start_date <= ${carMonthlyTargets.endDate}
+          AND COALESCE(r.returned_at, r.expected_end_date, r.start_date) >= ${carMonthlyTargets.startDate}
+      )
+    `,
       })
       .from(carMonthlyTargets)
       .where(eq(carMonthlyTargets.carId, carId))
@@ -720,7 +761,13 @@ export class CarsService {
       .offset(offset)
       .limit(pageSize);
 
-    const enrichedTargets = targets.map((t) => this.enrichTarget(t));
+    const enrichedTargets = targets.map((t) =>
+      this.enrichTarget({
+        ...t,
+        actualRevenue: Number((t as any).actualRevenue ?? 0),
+        actualRents: Number((t as any).actualRents ?? 0),
+      }),
+    );
 
     return {
       data: enrichedTargets,
@@ -774,6 +821,7 @@ export class CarsService {
         totalPrice: rents.totalPrice,
         totalPaid: rents.totalPaid,
         status: rents.status,
+        isOpenContract: rents.isOpenContract,
       })
       .from(rents)
       .where(and(eq(rents.carId, carId), eq(rents.isDeleted, false)))
@@ -955,5 +1003,128 @@ export class CarsService {
     } catch (error) {
       this.handleDbError(error);
     }
+  }
+
+  // cars.service.ts (add below other methods)
+
+  async getActiveTargetCard(
+    carId: string,
+    onDate?: Date, // optional reference date; default now
+  ): Promise<{
+    id: string;
+    startDate: Date;
+    endDate: Date;
+    targetRents: number;
+    revenueGoal: number;
+    actualRents: number;
+    actualRevenue: number;
+    revenueProgress: number;
+    rentProgress: number;
+    daysRemaining: number;
+    isExpired: boolean;
+  } | null> {
+    const ref = onDate ? new Date(onDate) : new Date();
+
+    // 1) Find the active target for this car on ref date
+    const [t] = await this.dbService.db
+      .select({
+        id: carMonthlyTargets.id,
+        startDate: carMonthlyTargets.startDate,
+        endDate: carMonthlyTargets.endDate,
+        targetRents: carMonthlyTargets.targetRents,
+        revenueGoal: carMonthlyTargets.revenueGoal,
+        orgId: carMonthlyTargets.orgId,
+        carId: carMonthlyTargets.carId,
+      })
+      .from(carMonthlyTargets)
+      .where(
+        and(
+          eq(carMonthlyTargets.carId, carId),
+          sql`${carMonthlyTargets.startDate} <= ${ref}`,
+          sql`${carMonthlyTargets.endDate} >= ${ref}`,
+        ),
+      )
+      .limit(1);
+
+    if (!t) return null;
+
+    // 2) Compute actuals with the SAME logic as TargetsMetrics
+    const [actuals] = await this.dbService.db
+      .select({
+        revenue: sql<number>`
+        COALESCE(
+          SUM(
+            CASE 
+              WHEN ${rents.totalPaid} > 0 THEN
+                ${rents.totalPaid} * (
+                  GREATEST(0, 
+                    LEAST(
+                      EXTRACT(epoch FROM ${t.endDate}::timestamp) / 86400.0,
+                      EXTRACT(epoch FROM COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})::timestamp) / 86400.0
+                    ) - 
+                    GREATEST(
+                      EXTRACT(epoch FROM ${t.startDate}::timestamp) / 86400.0,
+                      EXTRACT(epoch FROM ${rents.startDate}) / 86400.0
+                    ) + 1
+                  ) / 
+                  GREATEST(1,
+                    EXTRACT(epoch FROM COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})::timestamp) / 86400.0 - 
+                    EXTRACT(epoch FROM ${rents.startDate}) / 86400.0 + 1
+                  )
+                )
+              ELSE 0
+            END
+          ), 
+          0
+        )
+      `,
+        rentsCount: sql<number>`COUNT(*)`,
+      })
+      .from(rents)
+      .where(
+        and(
+          eq(rents.orgId, t.orgId),
+          eq(rents.carId, t.carId),
+          sql`${rents.isDeleted} = false`,
+          // overlap with target
+          sql`${rents.startDate} <= ${t.endDate}`,
+          sql`(
+          ${rents.returnedAt} >= ${t.startDate} 
+          OR ${rents.expectedEndDate} >= ${t.startDate} 
+          OR ${rents.status} IN ('active', 'reserved') 
+          OR ${rents.isOpenContract} = true
+        )`,
+        ),
+      );
+
+    // 3) Derive card KPIs
+    const now = ref;
+    const end = new Date(t.endDate);
+    const daysRemaining = Math.max(
+      0,
+      Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+    );
+
+    const actualRevenue = Math.round(actuals?.revenue ?? 0);
+    const actualRents = actuals?.rentsCount ?? 0;
+
+    const revenueProgress =
+      t.revenueGoal > 0 ? (actualRevenue / t.revenueGoal) * 100 : 0;
+    const rentProgress =
+      t.targetRents > 0 ? (actualRents / t.targetRents) * 100 : 0;
+
+    return {
+      id: t.id,
+      startDate: t.startDate,
+      endDate: t.endDate,
+      targetRents: t.targetRents,
+      revenueGoal: t.revenueGoal,
+      actualRents,
+      actualRevenue,
+      revenueProgress,
+      rentProgress,
+      daysRemaining,
+      isExpired: end < now,
+    };
   }
 }

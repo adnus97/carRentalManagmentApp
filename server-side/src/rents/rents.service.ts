@@ -31,7 +31,16 @@ function ensureDate(value: any): Date | undefined {
 
   return undefined;
 }
-
+// Helper: whole-day difference in UTC (avoid DST/local-time issues)
+function daysBetweenUTC(a: Date, b: Date) {
+  const A = new Date(
+    Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()),
+  );
+  const B = new Date(
+    Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()),
+  );
+  return Math.max(0, Math.ceil((B.getTime() - A.getTime()) / 86400000));
+}
 @Injectable()
 export class RentsService {
   constructor(
@@ -635,7 +644,7 @@ export class RentsService {
 
   async update(id: string, updateRentDto: Partial<CreateRentDto>) {
     try {
-      // Get current rent data first
+      // 1) Load current rent
       const currentRent = await this.dbService.db
         .select()
         .from(rents)
@@ -646,22 +655,20 @@ export class RentsService {
       }
 
       const rent = currentRent[0];
+
+      // 2) Status-based allowed fields checks (kept from your logic)
       const currentStatus = this.getAutoStatus(
         rent.startDate,
         rent.returnedAt,
         rent.expectedEndDate,
         rent.status,
       );
-
-      // Get allowed fields for this rent's status
       const allowedFields = this.getAllowedUpdateFields(rent);
 
-      // Check if any disallowed fields are being updated
       const attemptedFields = Object.keys(updateRentDto);
       const disallowedFields = attemptedFields.filter(
         (field) => !allowedFields.includes(field),
       );
-
       if (disallowedFields.length > 0) {
         throw new BadRequestException(
           this.getStatusBasedErrorMessage(
@@ -672,46 +679,43 @@ export class RentsService {
         );
       }
 
-      // Prepare update data with proper date conversion
+      // 3) Prepare update data
       const updateData: any = {};
-
-      // Handle date fields specifically
       let datesChanged = false;
 
+      // Convert dates safely
       if (
         updateRentDto.startDate !== undefined &&
         allowedFields.includes('startDate')
       ) {
-        const convertedDate = ensureDate(updateRentDto.startDate);
-        if (convertedDate) {
-          updateData.startDate = convertedDate;
+        const d = ensureDate(updateRentDto.startDate);
+        if (d) {
+          updateData.startDate = d;
           datesChanged = true;
         }
       }
-
       if (
         updateRentDto.expectedEndDate !== undefined &&
         allowedFields.includes('expectedEndDate')
       ) {
-        const convertedDate = ensureDate(updateRentDto.expectedEndDate);
-        if (convertedDate) {
-          updateData.expectedEndDate = convertedDate;
+        const d = ensureDate(updateRentDto.expectedEndDate);
+        if (d) {
+          updateData.expectedEndDate = d;
           datesChanged = true;
         }
       }
-
       if (
         updateRentDto.returnedAt !== undefined &&
         allowedFields.includes('returnedAt')
       ) {
-        const convertedDate = ensureDate(updateRentDto.returnedAt);
-        if (convertedDate) {
-          updateData.returnedAt = convertedDate;
+        const d = ensureDate(updateRentDto.returnedAt);
+        if (d) {
+          updateData.returnedAt = d;
           datesChanged = true;
         }
       }
 
-      // Handle non-date fields
+      // Non-date fields
       const nonDateFields = [
         'carId',
         'customerId',
@@ -727,18 +731,18 @@ export class RentsService {
         'status',
         'damageReport',
         'isDeleted',
-      ];
+      ] as const;
 
-      nonDateFields.forEach((field) => {
+      for (const field of nonDateFields) {
         if (
           updateRentDto[field as keyof CreateRentDto] !== undefined &&
           allowedFields.includes(field)
         ) {
           updateData[field] = updateRentDto[field as keyof CreateRentDto];
         }
-      });
+      }
 
-      // Only check availability if dates are being changed
+      // 4) Date-change availability check
       if (datesChanged) {
         const newStartDate = updateData.startDate || rent.startDate;
         const newEndDate =
@@ -754,7 +758,6 @@ export class RentsService {
             newEndDate,
             id,
           );
-
           if (!available) {
             throw new BadRequestException(
               'This car is already rented during the selected time period. Please choose different dates.',
@@ -763,14 +766,108 @@ export class RentsService {
         }
       }
 
-      // Auto-determine status if not explicitly set to canceled
+      // 5) Keep billed-to-date current for open contracts (sets totalPrice)
+      // helper for whole-day diff in UTC
+      function daysBetweenUTC(a: Date, b: Date) {
+        const A = new Date(
+          Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()),
+        );
+        const B = new Date(
+          Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()),
+        );
+        return Math.max(0, Math.ceil((B.getTime() - A.getTime()) / 86400000));
+      }
+
+      const openNowOrLater =
+        rent.isOpenContract || updateRentDto.isOpenContract;
+
+      if (openNowOrLater && updateRentDto.totalPrice === undefined) {
+        const [carRow] = await this.dbService.db
+          .select({ pricePerDay: cars.pricePerDay })
+          .from(cars)
+          .where(eq(cars.id, rent.carId));
+
+        if (carRow?.pricePerDay != null) {
+          const start = updateRentDto.startDate
+            ? ensureDate(updateRentDto.startDate)!
+            : rent.startDate;
+
+          // If returning now, use returnedAt in payload; else use stored; if none => bill to NOW
+          const endCandidate = updateRentDto.returnedAt
+            ? ensureDate(updateRentDto.returnedAt)!
+            : rent.returnedAt || new Date();
+
+          const billedDays = daysBetweenUTC(start, endCandidate);
+          const computedBilled = billedDays * carRow.pricePerDay;
+
+          updateData.totalPrice = computedBilled;
+        }
+      }
+
+      // 6) Normalize when fully paid / completed
+      const willBeCompleted =
+        (updateRentDto.status && updateRentDto.status === 'completed') ||
+        (!!updateRentDto.returnedAt &&
+          ensureDate(updateRentDto.returnedAt)! <= new Date());
+
+      const finalBilledCandidate =
+        updateRentDto.totalPrice ??
+        updateData.totalPrice ??
+        rent.totalPrice ??
+        0;
+
+      const willBeFullyPaid =
+        updateRentDto.isFullyPaid === true ||
+        (updateRentDto.totalPaid !== undefined &&
+          finalBilledCandidate > 0 &&
+          updateRentDto.totalPaid >= finalBilledCandidate);
+
+      if (willBeCompleted || willBeFullyPaid) {
+        // Recompute billed one last time for open contracts
+        if (rent.isOpenContract || updateRentDto.isOpenContract) {
+          const [carRow] = await this.dbService.db
+            .select({ pricePerDay: cars.pricePerDay })
+            .from(cars)
+            .where(eq(cars.id, rent.carId));
+
+          const start = updateRentDto.startDate
+            ? ensureDate(updateRentDto.startDate)!
+            : rent.startDate;
+
+          const finalEnd = updateRentDto.returnedAt
+            ? ensureDate(updateRentDto.returnedAt)!
+            : rent.returnedAt || new Date();
+
+          const billedDays = daysBetweenUTC(start, finalEnd);
+          const recomputedBilled = (carRow?.pricePerDay ?? 0) * billedDays;
+
+          updateData.totalPrice = recomputedBilled;
+        }
+
+        const finalBilled =
+          updateRentDto.totalPrice ??
+          updateData.totalPrice ??
+          rent.totalPrice ??
+          0;
+
+        // If fully paid and totalPaid not provided, align it with final billed
+        if (updateRentDto.totalPaid === undefined && willBeFullyPaid) {
+          updateData.totalPaid = finalBilled;
+        }
+
+        // Flip isFullyPaid if implied
+        if (updateRentDto.isFullyPaid === undefined && willBeFullyPaid) {
+          updateData.isFullyPaid = true;
+        }
+      }
+
+      // 7) Auto-status if not explicitly 'canceled' or set by payload
       const finalStartDate = updateData.startDate || rent.startDate;
       const finalReturnedAt = updateData.returnedAt || rent.returnedAt;
       const finalExpectedEndDate =
         updateData.expectedEndDate || rent.expectedEndDate;
       const newStatus = updateData.status || rent.status;
 
-      // Only auto-update status if it's not being explicitly set to canceled
       if (newStatus !== 'canceled' && !updateRentDto.status) {
         const autoStatus: RentStatus = this.getAutoStatus(
           finalStartDate,
@@ -781,15 +878,16 @@ export class RentsService {
         updateData.status = autoStatus;
       }
 
-      // Perform the update
+      // 8) Persist
       const result = await this.dbService.db
         .update(rents)
         .set(updateData)
         .where(eq(rents.id, id));
-      // 🔔 Add notifications for important changes
+
+      // 9) Notifications
       const orgOwner = await this.getOrgOwner(rent.orgId);
       if (orgOwner) {
-        // Payment received notification
+        // Payment received (compare new vs old if provided)
         if (
           updateRentDto.totalPaid !== undefined &&
           updateRentDto.totalPaid > (rent.totalPaid || 0)
@@ -802,7 +900,7 @@ export class RentsService {
             type: 'PAYMENT_RECEIVED',
             priority: 'MEDIUM',
             title: 'Payment Received',
-            message: `Payment of $${paymentAmount} received for rental #${rent.rentContractId}`,
+            message: `Payment of ${paymentAmount}DHS received for rental #${rent.rentContractId}`,
             level: 'success',
             actionUrl: `/rentals/${id}`,
             actionLabel: 'View Rental',
@@ -814,7 +912,7 @@ export class RentsService {
           });
         }
 
-        // Status change notifications
+        // Status change
         if (updateRentDto.status && updateRentDto.status !== rent.status) {
           let notificationType = 'RENT_STARTED';
           let title = 'Rental Status Changed';
@@ -854,7 +952,7 @@ export class RentsService {
           });
         }
 
-        // 🔔 Damage report notifications - trigger on ANY change
+        // Damage report notification
         if (
           updateRentDto.damageReport !== undefined &&
           updateRentDto.damageReport !== rent.damageReport
@@ -864,21 +962,17 @@ export class RentsService {
           let priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' = 'HIGH';
 
           if (!rent.damageReport && updateRentDto.damageReport) {
-            // First time damage report
             title = 'Damage Reported';
             message = `Damage reported for rental ${rent.rentContractId}: ${updateRentDto.damageReport}`;
           } else if (rent.damageReport && updateRentDto.damageReport) {
-            // Damage report updated
             title = 'Damage Report Updated';
             message = `Damage report updated for rental ${rent.rentContractId}: ${updateRentDto.damageReport}`;
           } else if (rent.damageReport && !updateRentDto.damageReport) {
-            // Damage report removed/cleared
             title = 'Damage Report Cleared';
             message = `Damage report cleared for rental ${rent.rentContractId}`;
-            priority = 'MEDIUM'; // Lower priority for clearing
+            priority = 'MEDIUM';
           }
 
-          // ✅ Only create notification if we have valid title and message
           if (title && message) {
             await this.notificationsService.createNotification({
               userId: orgOwner.userId,
@@ -900,43 +994,36 @@ export class RentsService {
           }
         }
       }
+
       return {
         success: true,
         message: 'Rental contract updated successfully',
         data: result,
       };
     } catch (error) {
-      // If it's already a BadRequestException, re-throw it
       if (error instanceof BadRequestException) {
         throw error;
       }
-
-      // Handle database constraint errors with user-friendly messages
       if (error.code === '23505') {
         throw new BadRequestException(
           'A rental with these details already exists. Please check your input.',
         );
       }
-
       if (error.code === '23503') {
         throw new BadRequestException(
           'The selected car or customer is no longer available.',
         );
       }
-
       if (error.code === '23514') {
         throw new BadRequestException(
           'Some of the provided information is invalid. Please check your input.',
         );
       }
-
       if (error.code === '23502') {
         throw new BadRequestException(
           'Required information is missing. Please fill in all required fields.',
         );
       }
-
-      // Generic error
       throw new BadRequestException(
         'Unable to update rental contract. Please try again or contact support.',
       );

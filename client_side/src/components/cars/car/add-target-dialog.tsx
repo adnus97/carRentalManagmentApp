@@ -57,7 +57,11 @@ export default function AddTargetDialog({
     onSuccess: () => {
       successToast('Target added successfully');
       queryClient.invalidateQueries({ queryKey: ['carDetails', carId] });
-      setIsOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['activeTargetCard', carId] }),
+        queryClient.invalidateQueries({
+          queryKey: ['carTargets.v-merge', carId],
+        }),
+        setIsOpen(false);
       reset();
     },
     onError: (err: any) => {

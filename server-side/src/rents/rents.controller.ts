@@ -11,6 +11,8 @@ import {
   Query,
   Res,
   Header,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { RentsService } from './rents.service';
 import { CreateRentDto } from './dto/create-rent.dto';
@@ -98,18 +100,35 @@ export class RentsController {
   }
 
   // 🆕 Download contract as PDF
-  @Get(':id/pdf')
-  @Header('Content-Type', 'application/pdf')
+  @Get(':id/contract-pdf')
   async downloadPDF(
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response,
+    @Res() res: Response, // not passthrough so we control raw write
   ) {
-    const pdfBuffer = await this.contractsService.generateContractPDF(id);
+    try {
+      const pdfBuffer = await this.contractsService.generateContractPDF(id);
+      if (!pdfBuffer || !(pdfBuffer instanceof Buffer)) {
+        throw new HttpException(
+          'PDF generation failed',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
 
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="contrat-${id}.pdf"`,
-    );
-    return pdfBuffer;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="contrat-${id}.pdf"`,
+      );
+      res.setHeader('Content-Length', pdfBuffer.length.toString());
+      return res.send(pdfBuffer);
+    } catch (err) {
+      console.error('downloadPDF error:', err);
+      // You can be more specific if your service throws KnownError/NotFound
+      return res.status(500).json({
+        statusCode: 500,
+        error: 'INTERNAL_SERVER_ERROR',
+        message: 'An unexpected error occurred',
+      });
+    }
   }
 }

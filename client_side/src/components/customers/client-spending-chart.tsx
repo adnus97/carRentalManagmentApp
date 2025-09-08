@@ -310,13 +310,13 @@ export function ClientSpendingChart({
               }}
             />
 
-            {/* Y Axes */}
+            {/* ✅ Primary Y-axis (no yAxisId) - CartesianGrid will use this */}
             <YAxis
-              yAxisId="left"
               orientation="left"
               stroke={chartConfig.spending.color}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
             />
+            {/* ✅ Secondary Y-axis (keep yAxisId) */}
             <YAxis
               yAxisId="right"
               orientation="right"
@@ -372,10 +372,9 @@ export function ClientSpendingChart({
               }
             />
 
-            {/* Series */}
+            {/* ✅ Series - bind spending to primary axis (no yAxisId) */}
             {(visibleSeries === 'both' || visibleSeries === 'spending') && (
               <Area
-                yAxisId="left"
                 dataKey="spending"
                 type="monotone"
                 fill="url(#fillSpending)"
@@ -384,6 +383,7 @@ export function ClientSpendingChart({
                 activeDot={{ r: 4 }}
               />
             )}
+            {/* ✅ Series - bind rentals to secondary axis */}
             {(visibleSeries === 'both' || visibleSeries === 'rentals') && (
               <Area
                 yAxisId="right"
@@ -396,7 +396,7 @@ export function ClientSpendingChart({
               />
             )}
 
-            <ChartLegend content={<ChartLegendContent />} />
+            <ChartLegend content={<ChartLegendContent payload={undefined} />} />
           </AreaChart>
         </ChartContainer>
       </CardContent>

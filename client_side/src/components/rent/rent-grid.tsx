@@ -190,24 +190,78 @@ export const RentsGrid = () => {
     setShowDeleteDialog(false);
   };
 
-  // 🆕 Handle bulk contract viewing
-  const handleViewContracts = () => {
-    if (selectedRows.length === 1) {
-      // Single contract - open in new tab
-      window.open(`/contracts/${selectedRows[0].id}`, '_blank');
-    } else {
-      // Multiple contracts - open each in new tab
-      selectedRows.forEach((row) => {
-        window.open(`/contracts/${row.id}`, '_blank');
+  // 🆕 Drop-in replacement: bulk open contracts reliably
+  const handleViewContracts = (e?: React.MouseEvent) => {
+    if (e?.preventDefault) e.preventDefault();
+
+    const rows = Array.isArray(selectedRows) ? selectedRows : [];
+    if (rows.length === 0) {
+      toast({
+        type: 'info',
+        title: 'No selection',
+        description: 'Please select at least one contract.',
       });
+      return;
+    }
+
+    // Collect IDs synchronously
+    const ids: string[] = [];
+    for (const r of rows) {
+      const id = r?.id;
+      if (id) ids.push(id);
+    }
+
+    if (ids.length === 0) {
+      toast({
+        type: 'error',
+        title: 'Missing IDs',
+        description: 'Selected rows do not contain contract IDs.',
+      });
+      return;
+    }
+
+    // Pre-open about:blank tabs within the same user gesture
+    const windows: (Window | null)[] = [];
+    for (let i = 0; i < ids.length; i++) {
+      windows.push(window.open('about:blank', '_blank', 'noopener,noreferrer'));
+    }
+
+    // Point them to the target URLs
+    let opened = 0;
+    for (let i = 0; i < ids.length; i++) {
+      const w = windows[i];
+      if (w) {
+        try {
+          w.location.href = `/contracts/${ids[i]}`;
+          opened++;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    // Feedback toast AFTER all window.open calls
+    if (opened === ids.length) {
       toast({
         type: 'success',
         title: 'Opening Contracts',
-        description: `Opening ${selectedRows.length} contract(s) in new tabs.`,
+        description: `Opened ${opened} contract(s) in new tabs.`,
+      });
+    } else if (opened > 0) {
+      toast({
+        type: 'warning',
+        title: 'Partially blocked',
+        description: `Opened ${opened} of ${ids.length} contract(s). Pop‑ups may be blocked.`,
+      });
+    } else {
+      toast({
+        type: 'warning',
+        title: 'Pop‑ups blocked',
+        description:
+          'Your browser blocked pop‑ups. Please allow pop‑ups for this site and click again.',
       });
     }
   };
-
   // 🆕 Handle bulk PDF downloads
   const handleDownloadPDFs = async () => {
     if (selectedRows.length === 1) {
@@ -669,29 +723,71 @@ export const RentsGrid = () => {
           <p>Manage your rent contracts below:</p>
           {selectedRows.length > 0 && (
             <div className="flex items-center gap-2 ">
-              {/* 🆕 View Contracts Button */}
-              <Button
-                variant="secondary"
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={handleViewContracts}
-                disabled={selectedRows.length === 0}
-              >
-                <FileText size={20} />
-                View ({selectedRows.length})
-              </Button>
+              {/* View button: only when exactly 1 selected */}
+              {selectedRows.length === 1 && (
+                <a
+                  href={`/contracts/${selectedRows[0]?.id ?? ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-accent-9 bg-transparent text-sm text-accent-11 shadow-sm hover:bg-accent-9 hover:text-accent-9-contrast"
+                  onClick={(e) => {
+                    if (!selectedRows[0]?.id) {
+                      e.preventDefault();
+                      toast({
+                        type: 'error',
+                        title: 'Missing ID',
+                        description:
+                          'Selected row does not contain a contract ID.',
+                      });
+                    }
+                  }}
+                >
+                  <FileText size={20} />
+                  View
+                </a>
+              )}
 
-              {/* 🆕 Download PDFs Button */}
-              <Button
-                variant="secondary"
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
-                onClick={handleDownloadPDFs}
-                disabled={selectedRows.length === 0}
-              >
-                <Download size={20} />
-                PDF ({selectedRows.length})
-              </Button>
+              {/* PDF button: only when exactly 1 selected */}
+              {selectedRows.length === 1 && (
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    const row = selectedRows[0];
+                    const contractId =
+                      row?.rentContractId ||
+                      (row?.rentNumber && row?.year
+                        ? `${String(row.rentNumber).padStart(3, '0')}/${row.year}`
+                        : `#${String(row?.id || '').slice(0, 8)}`);
 
-              {/* Existing Delete Button */}
+                    try {
+                      // Ensure downloadRentContractPDF triggers a browser download
+                      // and throws on non-200 responses.
+                      await downloadRentContractPDF(row.id);
+                      toast({
+                        type: 'success',
+                        title: 'Download Started',
+                        description: `Contract ${contractId} is being downloaded.`,
+                      });
+                    } catch (error: any) {
+                      const msg =
+                        error?.response?.data?.message ||
+                        error?.response?.data?.error ||
+                        error?.message ||
+                        'Failed to download contract. Please try again.';
+                      toast({
+                        type: 'error',
+                        title: 'Download Failed',
+                        description: msg,
+                      });
+                    }
+                  }}
+                >
+                  <Download size={20} />
+                  PDF
+                </Button>
+              )}
+
+              {/* Delete button: still supports multiple */}
               <Button
                 variant="secondary"
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"

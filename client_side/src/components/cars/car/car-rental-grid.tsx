@@ -53,7 +53,7 @@ export default function CarRentalsGrid({
       totalPages: 1,
     },
   });
-  console.log('Total Pages:', data?.totalPages);
+
   if (isLoading) return <p>Loading rentals...</p>;
 
   const totalPages = data?.totalPages || 1;
@@ -75,7 +75,7 @@ export default function CarRentalsGrid({
     }
     return pages;
   };
-
+  console.log('HEEEEEEEEEEEEEE', currentRent);
   // ✅ Grid columns
   const columnDefs = [
     {
@@ -130,7 +130,10 @@ export default function CarRentalsGrid({
               <div>
                 <p className="text-muted-foreground">Total Price</p>
                 <p className="font-bold text-sm">
-                  {safeNumber(currentRent.totalPrice).toLocaleString()} MAD
+                  {currentRent.isOpenContract
+                    ? safeNumber(currentRent.totalPaid).toLocaleString()
+                    : safeNumber(currentRent.totalPrice).toLocaleString()}
+                  MAD
                 </p>
               </div>
               <div>

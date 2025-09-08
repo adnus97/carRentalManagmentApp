@@ -252,7 +252,7 @@ export const CarsGrid = () => {
     {
       headerName: 'Availability',
       field: 'isAvailable',
-      width: 120,
+      width: 140,
       cellRenderer: (params: any) => {
         const available = params.value;
         return (

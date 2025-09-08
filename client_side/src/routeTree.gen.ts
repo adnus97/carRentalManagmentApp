@@ -19,6 +19,7 @@ import { Route as LayoutImport } from './routes/_layout'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as AuthIndexImport } from './routes/_auth/index'
 import { Route as ContractsIdImport } from './routes/contracts.$id'
+import { Route as LayoutReportsImport } from './routes/_layout.reports'
 import { Route as LayoutRentsImport } from './routes/_layout.rents'
 import { Route as LayoutDashboardImport } from './routes/_layout.dashboard'
 import { Route as LayoutClientsImport } from './routes/_layout.clients'
@@ -71,6 +72,12 @@ const ContractsIdRoute = ContractsIdImport.update({
   id: '/contracts/$id',
   path: '/contracts/$id',
   getParentRoute: () => rootRoute,
+} as any)
+
+const LayoutReportsRoute = LayoutReportsImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => LayoutRoute,
 } as any)
 
 const LayoutRentsRoute = LayoutRentsImport.update({
@@ -170,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutRentsImport
       parentRoute: typeof LayoutImport
     }
+    '/_layout/reports': {
+      id: '/_layout/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof LayoutReportsImport
+      parentRoute: typeof LayoutImport
+    }
     '/contracts/$id': {
       id: '/contracts/$id'
       path: '/contracts/$id'
@@ -217,6 +231,7 @@ interface LayoutRouteChildren {
   LayoutClientsRoute: typeof LayoutClientsRoute
   LayoutDashboardRoute: typeof LayoutDashboardRoute
   LayoutRentsRoute: typeof LayoutRentsRoute
+  LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutCarDetailsIdRoute: typeof LayoutCarDetailsIdRoute
   LayoutCustomerDetailsIdRoute: typeof LayoutCustomerDetailsIdRoute
 }
@@ -225,6 +240,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutClientsRoute: LayoutClientsRoute,
   LayoutDashboardRoute: LayoutDashboardRoute,
   LayoutRentsRoute: LayoutRentsRoute,
+  LayoutReportsRoute: LayoutReportsRoute,
   LayoutCarDetailsIdRoute: LayoutCarDetailsIdRoute,
   LayoutCustomerDetailsIdRoute: LayoutCustomerDetailsIdRoute,
 }
@@ -241,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
   '/rents': typeof LayoutRentsRoute
+  '/reports': typeof LayoutReportsRoute
   '/contracts/$id': typeof ContractsIdRoute
   '/': typeof AuthIndexRoute
   '/carDetails/$id': typeof LayoutCarDetailsIdRoute
@@ -256,6 +273,7 @@ export interface FileRoutesByTo {
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
   '/rents': typeof LayoutRentsRoute
+  '/reports': typeof LayoutReportsRoute
   '/contracts/$id': typeof ContractsIdRoute
   '/': typeof AuthIndexRoute
   '/carDetails/$id': typeof LayoutCarDetailsIdRoute
@@ -273,6 +291,7 @@ export interface FileRoutesById {
   '/_layout/clients': typeof LayoutClientsRoute
   '/_layout/dashboard': typeof LayoutDashboardRoute
   '/_layout/rents': typeof LayoutRentsRoute
+  '/_layout/reports': typeof LayoutReportsRoute
   '/contracts/$id': typeof ContractsIdRoute
   '/_auth/': typeof AuthIndexRoute
   '/_layout/carDetails/$id': typeof LayoutCarDetailsIdRoute
@@ -290,6 +309,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/dashboard'
     | '/rents'
+    | '/reports'
     | '/contracts/$id'
     | '/'
     | '/carDetails/$id'
@@ -304,6 +324,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/dashboard'
     | '/rents'
+    | '/reports'
     | '/contracts/$id'
     | '/'
     | '/carDetails/$id'
@@ -319,6 +340,7 @@ export interface FileRouteTypes {
     | '/_layout/clients'
     | '/_layout/dashboard'
     | '/_layout/rents'
+    | '/_layout/reports'
     | '/contracts/$id'
     | '/_auth/'
     | '/_layout/carDetails/$id'
@@ -377,6 +399,7 @@ export const routeTree = rootRoute
         "/_layout/clients",
         "/_layout/dashboard",
         "/_layout/rents",
+        "/_layout/reports",
         "/_layout/carDetails/$id",
         "/_layout/customerDetails/$id"
       ]
@@ -403,6 +426,10 @@ export const routeTree = rootRoute
     },
     "/_layout/rents": {
       "filePath": "_layout.rents.tsx",
+      "parent": "/_layout"
+    },
+    "/_layout/reports": {
+      "filePath": "_layout.reports.tsx",
       "parent": "/_layout"
     },
     "/contracts/$id": {

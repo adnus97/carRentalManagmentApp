@@ -40,4 +40,5 @@ export interface RentalRow {
   totalPaid: number;
   status: string;
   customerName: string;
+  isOpenContract: boolean;
 }

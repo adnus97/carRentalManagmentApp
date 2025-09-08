@@ -206,4 +206,13 @@ export class CarsController {
   async getCarsWithInsuranceIssues(@CurrentUser() user: CustomUser) {
     return this.carsService.getCarsWithInsuranceIssues(user.id);
   }
+  // cars.controller.ts
+  @Get(':carId/active-target-card')
+  async getActiveTargetCard(
+    @Param('carId') carId: string,
+    @Query('date') date?: string,
+  ) {
+    const onDate = date ? new Date(date) : undefined;
+    return this.carsService.getActiveTargetCard(carId, onDate);
+  }
 }

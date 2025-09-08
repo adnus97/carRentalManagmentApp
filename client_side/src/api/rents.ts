@@ -219,18 +219,50 @@ export const getRentContractHTML = async (id: string) => {
   return response.data;
 };
 
-export const downloadRentContractPDF = async (id: string) => {
-  const response = await api.get(`/rents/${id}/pdf`, {
+// Uses your preconfigured `api` instance (Axios)
+export async function downloadRentContractPDF(id: string) {
+  // 1) Request the PDF as a blob
+  const res = await api.get(`/rents/${id}/contract-pdf`, {
     responseType: 'blob',
+    headers: { Accept: 'application/pdf' },
+    withCredentials: true, // keep if your API uses cookies/session
   });
 
-  // Create download link
-  const url = window.URL.createObjectURL(new Blob([response.data]));
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `contrat-${id}.pdf`);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
+  // 2) Validate content-type (optional but helpful)
+  const ct =
+    (res.headers?.['content-type'] as string) ||
+    (res.headers?.['Content-Type'] as string) ||
+    '';
+  if (!ct.toLowerCase().includes('pdf')) {
+    // Try to read as text for better error details
+    try {
+      const text = await (res.data as Blob).text();
+      throw new Error(
+        text || `Unexpected content-type: ${ct || 'unknown'} (expected PDF)`,
+      );
+    } catch {
+      throw new Error(
+        `Unexpected content-type: ${ct || 'unknown'} (expected PDF)`,
+      );
+    }
+  }
+
+  // 3) Derive filename from headers, fallback to contract-{id}.pdf
+  const cd =
+    (res.headers?.['content-disposition'] as string) ||
+    (res.headers?.['Content-Disposition'] as string) ||
+    '';
+  const match = cd.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+  const filename = match ? decodeURIComponent(match[1]) : `contract-${id}.pdf`;
+
+  // 4) Create a blob URL and download
+  const blob = res.data as Blob;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

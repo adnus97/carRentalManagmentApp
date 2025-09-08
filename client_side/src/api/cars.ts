@@ -223,3 +223,25 @@ export const getCarRentals = async (
   });
   return response.data;
 };
+
+export const getActiveTargetCard = async (
+  carId: string,
+  date?: string, // ISO optional
+): Promise<{
+  id: string;
+  startDate: string;
+  endDate: string;
+  targetRents: number;
+  revenueGoal: number;
+  actualRents: number;
+  actualRevenue: number;
+  revenueProgress: number;
+  rentProgress: number;
+  daysRemaining: number;
+  isExpired: boolean;
+} | null> => {
+  const response = await api.get(`/cars/${carId}/active-target-card`, {
+    params: date ? { date } : undefined,
+  });
+  return response.data;
+};

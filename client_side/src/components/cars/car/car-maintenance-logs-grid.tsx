@@ -186,7 +186,7 @@ function MaintenanceSummaryCard({ logs }: { logs: MaintenanceLogRow[] }) {
                 cx="50%"
                 cy="50%"
                 outerRadius={80}
-                label={({ value }) => `${value.toLocaleString()} MAD`} // ✅ show price
+                label={({ value }) => `${value?.toLocaleString()} MAD`} // ✅ show price
               >
                 {chartData.map((entry, index) => (
                   <Cell
