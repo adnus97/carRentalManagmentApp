@@ -1,124 +1,137 @@
-import { useState } from 'react';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Eye, Loader2, Upload, X } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { useR2Upload, UploadResult } from '@/hooks/useR2Upload';
+// components/image-uploader.tsx
+import { useState, useRef } from 'react';
+import { Button } from './ui/button';
+import { X, Upload, Loader2 } from 'lucide-react';
+import { toast } from './ui/toast';
+import { useR2Upload } from '../hooks/useR2Upload';
+import { File } from '@/api/files';
 
-interface UploadComponentProps {
-  onUploadSuccess: (image: UploadResult) => void;
-  onUploadProgress?: (uploading: boolean) => void;
+interface Props {
   currentImage?: string;
+  onUploadProgress?: (uploading: boolean) => void;
+  onUploadSuccess: (file: File) => void;
 }
 
 export function UploadComponent({
-  onUploadSuccess,
-  onUploadProgress,
   currentImage,
-}: UploadComponentProps) {
-  const [image, setImage] = useState<UploadResult | null>(null);
-  const { uploadFile, uploading, progress } = useR2Upload();
+  onUploadProgress,
+  onUploadSuccess,
+}: Props) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const { uploadFile, uploading } = useR2Upload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file.');
-      event.target.value = '';
+      toast({
+        title: 'Invalid file type',
+        type: 'error',
+        description: 'Please select an image file (PNG, JPG, WEBP)',
+      });
+      e.target.value = '';
       return;
     }
 
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setPreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
     try {
       onUploadProgress?.(true);
-      const result = await uploadFile(file, 'organizations/logos');
-      setImage(result);
-      onUploadSuccess(result);
-    } catch (err) {
-      console.error('Upload error:', err);
-      alert('Failed to upload image.');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('is_public', 'true');
+      formData.append('type', 'organization');
+      formData.append('ids', JSON.stringify({}));
+
+      const result = await uploadFile(formData);
+      if (result) {
+        onUploadSuccess(result);
+        toast({
+          title: 'Uploaded',
+          type: 'success',
+          description: 'Organization logo uploaded successfully.',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Upload failed',
+        type: 'error',
+        description: err.message || 'Failed to upload image',
+      });
+      setPreview(null);
     } finally {
       onUploadProgress?.(false);
-      event.target.value = '';
+      e.target.value = '';
     }
   };
 
-  const clear = () => setImage(null);
-  const view = (url: string) => window.open(url, '_blank');
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  const clearPreview = () => {
+    setPreview(null);
+  };
+
+  const displayImage = preview || currentImage;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <input
-          id="org-logo-input"
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          disabled={uploading}
-          className="hidden"
-        />
-        <Label
-          htmlFor="org-logo-input"
-          className="flex items-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer"
-        >
-          {uploading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Upload className="w-4 h-4" />
+    <div className="space-y-3">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        disabled={uploading}
+        className="hidden"
+      />
+
+      {/* Your existing styled button */}
+      <Button
+        variant="outline"
+        onClick={openFilePicker}
+        disabled={uploading}
+        className="gap-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+      >
+        {uploading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Uploading...
+          </>
+        ) : (
+          <>
+            <Upload className="h-4 w-4" />
+            Choose Image
+          </>
+        )}
+      </Button>
+
+      {/* Preview/Current image */}
+      {displayImage && (
+        <div className="relative w-24 h-24 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-gray-50 dark:bg-gray-900">
+          <img
+            src={displayImage}
+            alt="Organization logo"
+            className="w-full h-full object-cover"
+          />
+          {preview && (
+            <Button
+              size="sm"
+              onClick={clearPreview}
+              className="absolute top-1 right-1 h-6 w-6 p-0"
+            >
+              <X className="h-3 w-3" />
+            </Button>
           )}
-          <span className="text-sm">
-            {uploading ? 'Uploading...' : 'Choose Image'}
-          </span>
-        </Label>
-      </div>
-
-      {uploading && progress > 0 && (
-        <div className="space-y-2">
-          <Progress value={progress} className="w-full" />
-          <p className="text-xs text-muted-foreground text-center">
-            {Math.round(progress)}%
-          </p>
-        </div>
-      )}
-
-      {(currentImage || image) && !uploading && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">
-              {image ? 'New Image' : 'Current Image'}
-            </span>
-            <div className="flex gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => view(image?.url || currentImage!)}
-                className="h-8 w-8 p-0"
-              >
-                <Eye className="h-3 w-3" />
-              </Button>
-              {image && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={clear}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          </div>
-          <div className="relative w-32 h-32 border rounded-lg overflow-hidden">
-            <img
-              src={image?.url || currentImage}
-              alt="Organization logo"
-              className="w-full h-full object-cover"
-            />
-          </div>
         </div>
       )}
     </div>

@@ -1,33 +1,48 @@
+// src/organization/organization.controller.ts
 import {
-  Body,
   Controller,
-  Delete,
   Get,
-  Param,
-  Patch,
   Post,
-  Req,
-  ValidationPipe,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
-import { AuthGuard, CurrentUser, CustomUser, Auth } from 'src/auth/auth.guard';
+import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
 
 @Auth()
-@Controller('organization')
+@Controller('organizations')
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
+
+  @Post()
+  create(@CurrentUser() user: CustomUser, @Body() body: CreateOrganizationDto) {
+    try {
+      return this.organizationService.create(user, body);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Internal Server Error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   @Get()
   findAll() {
     return this.organizationService.findAll();
   }
 
-  @Get('/user')
-  findOrganizationByUserId(@CurrentUser() user: CustomUser) {
-    const userId = user.id;
-    return this.organizationService.findOrganizationByUserId(userId);
+  @Get('user')
+  findByUser(@CurrentUser() user: CustomUser) {
+    return this.organizationService.findByUser(user);
   }
 
   @Get(':id')
@@ -35,32 +50,32 @@ export class OrganizationController {
     return this.organizationService.findOne(id);
   }
 
-  @Post()
-  createOrganization(
-    @Body(ValidationPipe) createOrganizationDto: CreateOrganizationDto,
-    @CurrentUser() user: CustomUser,
-  ) {
-    const userId = user.id;
-    console.log('createOrganizationDto', createOrganizationDto);
-    return this.organizationService.createOrganization(
-      createOrganizationDto,
-      userId,
-    );
+  @Get(':id/with-files')
+  findOneWithFiles(@Param('id') id: string) {
+    return this.organizationService.findOneWithFiles(id);
   }
 
   @Patch(':id')
-  updateOrganization(
+  update(
     @Param('id') id: string,
-    @Body(ValidationPipe) updateOrganizationDto: UpdateOrganizationDto,
+    @CurrentUser() user: CustomUser,
+    @Body() body: UpdateOrganizationDto,
   ) {
-    return this.organizationService.updateOrganization(
-      id,
-      updateOrganizationDto,
-    );
+    try {
+      return this.organizationService.update(id, user, body);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Internal Server Error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Delete(':id')
-  deleteOrganization(@Param('id') id: string) {
-    return this.organizationService.deleteOrganization(id);
+  remove(@Param('id') id: string, @CurrentUser() user: CustomUser) {
+    return this.organizationService.delete(id, user);
   }
 }

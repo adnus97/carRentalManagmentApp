@@ -1,17 +1,19 @@
+// components/file-uploader.tsx (updated with dark mode styling)
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { FileText, X, Eye, Loader2 } from 'lucide-react';
 import { toast } from './ui/toast';
-import { useR2Upload, UploadResult } from '../hooks/useR2Upload';
+import { useR2Upload } from '../hooks/useR2Upload';
 import { Progress } from './ui/progress';
+import { File } from '@/api/files';
 
 interface Props {
   label: string;
-  accept: string; // ".pdf" or ".jpg,.jpeg,.png,.webp"
-  folder: string; // "organizations/legal" etc.
-  onUploadSuccess: (file: UploadResult) => void;
+  accept: string;
+  folder: string;
+  onUploadSuccess: (file: File) => void;
   onUploadProgress?: (uploading: boolean) => void;
   currentFile?: string;
   required?: boolean;
@@ -28,7 +30,7 @@ export function FileUploader({
   required,
   description,
 }: Props) {
-  const [uploadedFile, setUploadedFile] = useState<UploadResult | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const { uploadFile, uploading, progress } = useR2Upload();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,14 +51,22 @@ export function FileUploader({
 
     try {
       onUploadProgress?.(true);
-      const result = await uploadFile(file, folder);
-      setUploadedFile(result);
-      onUploadSuccess(result);
-      toast({
-        title: 'Uploaded',
-        type: 'success',
-        description: `${label} uploaded.`,
-      });
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('is_public', 'true');
+      formData.append('type', 'organization');
+      formData.append('ids', JSON.stringify({}));
+
+      const result = await uploadFile(formData);
+      if (result) {
+        setUploadedFile(result);
+        onUploadSuccess(result);
+        toast({
+          title: 'Uploaded',
+          type: 'success',
+          description: `${label} uploaded.`,
+        });
+      }
     } catch (err: any) {
       toast({
         title: 'Upload failed',
@@ -74,7 +84,7 @@ export function FileUploader({
 
   return (
     <div className="space-y-2">
-      <Label className="text-sm font-medium">
+      <Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
         {label} {required && <span className="text-red-500">*</span>}
       </Label>
       {description && (
@@ -87,6 +97,7 @@ export function FileUploader({
           accept={accept}
           onChange={handleFileUpload}
           disabled={uploading}
+          className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
         />
         {uploading && (
           <div className="flex items-center gap-2">
@@ -106,9 +117,9 @@ export function FileUploader({
       )}
 
       {(uploadedFile || currentFile) && !uploading && (
-        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-          <FileText className="h-4 w-4 text-gray-500" />
-          <span className="text-sm flex-1 truncate">
+        <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md">
+          <FileText className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <span className="text-sm flex-1 truncate text-gray-900 dark:text-gray-100">
             {uploadedFile?.name || 'Current file'}
           </span>
           <div className="flex gap-1">
@@ -116,7 +127,7 @@ export function FileUploader({
               variant="ghost"
               size="sm"
               onClick={() => view(uploadedFile?.url || currentFile!)}
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
             >
               <Eye className="h-3 w-3" />
             </Button>
@@ -125,7 +136,7 @@ export function FileUploader({
                 variant="ghost"
                 size="sm"
                 onClick={clear}
-                className="h-6 w-6 p-0"
+                className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
               >
                 <X className="h-3 w-3" />
               </Button>

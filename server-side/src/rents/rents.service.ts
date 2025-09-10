@@ -526,7 +526,7 @@ export class RentsService {
     }
   }
 
-  async getAllRentsWithCarAndCustomer(page = 1, pageSize = 10) {
+  async getAllRentsWithCarAndCustomer(orgId: string, page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
 
     const [{ count }] = await this.dbService.db
@@ -563,7 +563,7 @@ export class RentsService {
       .from(rents)
       .leftJoin(cars, eq(rents.carId, cars.id))
       .leftJoin(customers, eq(rents.customerId, customers.id))
-      .where(eq(rents.isDeleted, false))
+      .where(and(eq(rents.isDeleted, false), eq(rents.orgId, orgId)))
       .orderBy(sql`${rents.startDate} DESC`)
       .offset(offset)
       .limit(pageSize);

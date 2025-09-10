@@ -46,12 +46,15 @@ export function LoginForm({
       {
         onRequest: (ctx: any) => {},
         onSuccess: (ctx: any) => {
-          setUser({ ...user, ...ctx.data.user });
+          setUser(ctx.data.user);
           localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
-          console.log(JSON.stringify(ctx.data.user));
+          console.log('Previous user state:', user);
+          console.log('New user data:', ctx.data.user);
+
           setTimeout(() => {
             navigate({ to: '/dashboard' });
           }, 100); // Give React time to process state
+          console.log('Final user state:', ctx.data.user);
 
           reset();
           //  router.invalidate();

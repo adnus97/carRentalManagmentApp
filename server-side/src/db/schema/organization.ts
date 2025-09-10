@@ -7,6 +7,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { sql } from 'drizzle-orm';
+import { files } from './files';
 
 export const organization = pgTable('organization', {
   id: varchar({ length: 255 }).primaryKey(),
@@ -15,15 +16,22 @@ export const organization = pgTable('organization', {
     .notNull()
     .unique() // Each user can only have one organization
     .references(() => users.id, { onDelete: 'cascade' }),
-  image: text(),
-  fleetList: text('fleet_list'), // PDF
-  modelG: text('model_g'), // PDF
-  rc: text('rc'), // PDF
-  status: text('status'), // PDF
-  identifiantFiscale: text('identifiant_fiscale'), // PDF
-  decision: text('decision'), // PDF
-  ceoIdCard: text('ceo_id_card'), // IMG
-  bilan: text('bilan'), // PDF
+  email: text(),
+  website: text(),
+  phone: text(),
+  address: text(),
+  imageFileId: varchar('image_file_id').references(() => files.id),
+  fleetListFileId: varchar('fleet_list_file_id').references(() => files.id),
+  modelGFileId: varchar('model_g_file_id').references(() => files.id),
+  rcFileId: varchar('rc_file_id').references(() => files.id),
+  statusFileId: varchar('status_file_id').references(() => files.id),
+  identifiantFiscaleFileId: varchar('identifiant_fiscale_file_id').references(
+    () => files.id,
+  ),
+  decisionFileId: varchar('decision_file_id').references(() => files.id),
+  ceoIdCardFileId: varchar('ceo_id_card_file_id').references(() => files.id),
+  bilanFileId: varchar('bilan_file_id').references(() => files.id),
+
   createdAt: timestamp({ withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp({ withTimezone: true }).default(sql`now()`),
 });

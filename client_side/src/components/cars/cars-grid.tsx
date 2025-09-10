@@ -83,13 +83,40 @@ export const CarsGrid = () => {
   }, []);
 
   // Fetch cars
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['cars', page, pageSize],
     queryFn: () => getCars(page, pageSize),
     placeholderData: (prev) => prev,
     refetchOnWindowFocus: false,
+    retry: (failureCount, error: any) => {
+      // Don't retry if user has no organization
+      if (
+        error?.response?.status === 400 &&
+        error?.response?.data?.message?.includes('No organization')
+      ) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
+  // Handle no organization case
+  if (
+    error?.response?.status === 400 &&
+    error?.response?.data?.message?.includes('No organization')
+  ) {
+    return (
+      <div className="p-4 text-center">
+        <h2 className="text-xl mb-4">No Organization Found</h2>
+        <p className="mb-4">
+          You need to create or join an organization first.
+        </p>
+        <Button onClick={() => router.navigate({ to: '/organization' })}>
+          Set Up Organization
+        </Button>
+      </div>
+    );
+  }
   // Helper: can a car be deleted?
   const canBeDeleted = (car: Car): boolean => {
     return car.isAvailable && car.status !== 'deleted';

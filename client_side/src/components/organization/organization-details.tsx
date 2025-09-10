@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';
 import { UpdateOrganizationForm } from './update-organization-form';
 import { getOrganizationByUser, Organization } from '@/api/organization';
+import { getFile } from '@/api/files';
 import {
   FileText,
   Download,
@@ -22,9 +23,8 @@ type DocType = 'pdf' | 'image';
 
 interface OrganizationDocument {
   label: string;
-  field: keyof Organization;
+  fileId?: string;
   type: DocType;
-  url?: string;
 }
 
 export function OrganizationDetails() {
@@ -55,55 +55,52 @@ export function OrganizationDetails() {
 
   const organization = data[0];
 
-  // All items consolidated under Legal Documents
+  // All documents with their file IDs
   const documents: OrganizationDocument[] = [
-    // Legal core
     {
       label: 'RC (Registre de Commerce)',
-      field: 'rc',
+      fileId: organization.rcFileId,
       type: 'pdf',
-      url: organization.rc,
     },
-    { label: 'Status', field: 'status', type: 'pdf', url: organization.status },
+    {
+      label: 'Status',
+      fileId: organization.statusFileId,
+      type: 'pdf',
+    },
     {
       label: 'Decision',
-      field: 'decision',
+      fileId: organization.decisionFileId,
       type: 'pdf',
-      url: organization.decision,
     },
     {
       label: 'CEO ID Card',
-      field: 'ceoIdCard',
+      fileId: organization.ceoIdCardFileId,
       type: 'image',
-      url: organization.ceoIdCard,
     },
-
-    // Previously Fleet
     {
       label: 'Fleet List',
-      field: 'fleetList',
+      fileId: organization.fleetListFileId,
       type: 'pdf',
-      url: organization.fleetList,
     },
     {
       label: 'Model G',
-      field: 'modelG',
+      fileId: organization.modelGFileId,
       type: 'pdf',
-      url: organization.modelG,
     },
-
-    // Previously Financial
     {
       label: 'Identifiant Fiscale',
-      field: 'identifiantFiscale',
+      fileId: organization.identifiantFiscaleFileId,
       type: 'pdf',
-      url: organization.identifiantFiscale,
     },
-    { label: 'Bilan', field: 'bilan', type: 'pdf', url: organization.bilan },
+    {
+      label: 'Bilan',
+      fileId: organization.bilanFileId,
+      type: 'pdf',
+    },
   ];
 
-  const handleView = (url?: string, label?: string) => {
-    if (!url) {
+  const handleView = async (fileId?: string, label?: string) => {
+    if (!fileId) {
       toast({
         title: 'Document not available',
         type: 'error',
@@ -111,11 +108,21 @@ export function OrganizationDetails() {
       });
       return;
     }
-    window.open(url, '_blank');
+
+    try {
+      const file = await getFile(fileId);
+      window.open(file.url, '_blank');
+    } catch (error) {
+      toast({
+        title: 'Error loading file',
+        type: 'error',
+        description: `Could not load ${label}`,
+      });
+    }
   };
 
-  const handleDownload = (url?: string, label?: string) => {
-    if (!url) {
+  const handleDownload = async (fileId?: string, label?: string) => {
+    if (!fileId) {
       toast({
         title: 'Document not available',
         type: 'error',
@@ -123,13 +130,23 @@ export function OrganizationDetails() {
       });
       return;
     }
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${label?.replace(/\s+/g, '_')}.pdf`;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    try {
+      const file = await getFile(fileId);
+      const link = document.createElement('a');
+      link.href = file.url;
+      link.download = file.name;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      toast({
+        title: 'Error downloading file',
+        type: 'error',
+        description: `Could not download ${label}`,
+      });
+    }
   };
 
   if (editMode) {
@@ -146,9 +163,8 @@ export function OrganizationDetails() {
 
   return (
     <div className="container mx-auto px-4 py-10 space-y-8">
-      {/* Header Card with your exact style */}
+      {/* Header Card */}
       <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm dark:border-border dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900 dark:text-gray-100 dark:shadow-lg">
-        {/* Decorative glow in dark mode */}
         <div className="pointer-events-none absolute -right-16 -top-16 hidden h-48 w-48 rounded-full bg-red-500/10 blur-3xl dark:block" />
         <div className="pointer-events-none absolute -left-20 -bottom-20 hidden h-56 w-56 rounded-full bg-amber-400/10 blur-3xl dark:block" />
 
@@ -156,9 +172,9 @@ export function OrganizationDetails() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl border bg-white overflow-hidden flex items-center justify-center dark:bg-gray-950">
-                {organization.image ? (
+                {organization.imageFileId ? (
                   <img
-                    src={organization.image}
+                    src={`/api/v1/files/${organization.imageFileId}/serve`}
                     alt={`${organization.name} logo`}
                     className="w-full h-full object-cover"
                   />
@@ -188,7 +204,7 @@ export function OrganizationDetails() {
         </div>
       </div>
 
-      {/* Single section: Legal Documents (includes all items) */}
+      {/* Legal Documents */}
       <Card className="border-gray-200 dark:border-border">
         <div className="px-6 pt-6">
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -201,15 +217,15 @@ export function OrganizationDetails() {
 
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {documents.map((doc) => (
+            {documents.map((doc, index) => (
               <div
-                key={doc.field as string}
+                key={index}
                 className="border rounded-lg p-4 hover:shadow-sm transition bg-gray-50/60 dark:bg-gray-900/40 dark:border-gray-800"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium text-sm">{doc.label}</h3>
-                  <Badge variant={doc.url ? 'default' : 'secondary'}>
-                    {doc.url ? 'Uploaded' : 'Missing'}
+                  <Badge variant={doc.fileId ? 'default' : 'secondary'}>
+                    {doc.fileId ? 'Uploaded' : 'Missing'}
                   </Badge>
                 </div>
 
@@ -229,8 +245,8 @@ export function OrganizationDetails() {
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    onClick={() => handleView(doc.url, doc.label)}
-                    disabled={!doc.url}
+                    onClick={() => handleView(doc.fileId, doc.label)}
+                    disabled={!doc.fileId}
                   >
                     <Eye className="w-3 h-3 mr-1" />
                     View
@@ -239,8 +255,8 @@ export function OrganizationDetails() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDownload(doc.url, doc.label)}
-                      disabled={!doc.url}
+                      onClick={() => handleDownload(doc.fileId, doc.label)}
+                      disabled={!doc.fileId}
                     >
                       <Download className="w-3 h-3" />
                     </Button>

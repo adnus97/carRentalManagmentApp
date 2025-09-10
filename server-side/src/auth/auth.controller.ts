@@ -2,7 +2,6 @@ import { Controller, Inject, All, Req, Res } from '@nestjs/common';
 import { BetterAuthService } from 'src/utils/better-auth/better-auth.service';
 import { toNestJsController } from 'src/utils/toNestJsController';
 import { Request, Response } from 'express';
-import { Get } from '@nestjs/common';
 
 @Controller('auth')
 export class AuthController {

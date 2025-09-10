@@ -56,10 +56,13 @@ export class RentsController {
   async getAllRentsWithCarAndCustomer(
     @Query('page') page: string,
     @Query('pageSize') pageSize: string,
+    @CurrentUser() user: CustomUser,
   ) {
+    const orgId = user.org_id;
     const pageNum = Math.max(1, parseInt(page || '1', 10));
     const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
     return this.rentsService.getAllRentsWithCarAndCustomer(
+      orgId,
       pageNum,
       pageSizeNum,
     );

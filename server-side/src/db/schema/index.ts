@@ -6,3 +6,4 @@ export * from './organization';
 export * from './cars';
 export * from './customers';
 export * from './rents';
+export * from './files';

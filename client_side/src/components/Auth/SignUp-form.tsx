@@ -71,7 +71,7 @@ export function SignupForm({
         onRequest: (ctx: any) => {},
 
         onSuccess: (ctx: any) => {
-          setUser({ ...user, ...ctx.data.user });
+          setUser(ctx.data.user);
           localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
 
           setTimeout(() => {

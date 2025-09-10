@@ -15,7 +15,7 @@ import {
   getRequestResponseFromContext,
 } from '../utils/better-auth';
 import { fromNodeHeaders } from 'better-auth/node';
-import { DatabaseService, schema } from '../db';
+import { DatabaseService, organization, schema } from '../db';
 import { eq } from 'drizzle-orm';
 
 export interface CustomUser extends User {
@@ -73,8 +73,12 @@ export class AuthGuard implements CanActivate {
       .select()
       .from(schema.session)
       .leftJoin(schema.users, eq(schema.users.id, schema.session.userId))
+      .leftJoin(
+        schema.organization,
+        eq(schema.users.id, schema.organization.userId),
+      )
       .where(eq(schema.session.token, splitSessionToekn));
-    // console.log('betterAuthService', this.betterAuthService);
+
     // const session = await this.betterAuthService.auth.api.getSession;
 
     if (!response.length) {
@@ -82,9 +86,11 @@ export class AuthGuard implements CanActivate {
     }
     const session = response[0];
     if (!req.locals) req.locals = {};
-
     req.locals.user = session.user as unknown as User;
-    req.locals.session = session.session as unknown as Session;
+    req.locals.session = {
+      ...(session.session as unknown as Session),
+      active_organization_id: session.organization?.id || null,
+    };
     return true;
   }
 }

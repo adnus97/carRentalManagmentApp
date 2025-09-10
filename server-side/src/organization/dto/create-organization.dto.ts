@@ -1,45 +1,68 @@
 import { Type } from 'class-transformer';
-import { IsString, IsUrl, IsNotEmpty, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsUrl,
+  IsNotEmpty,
+  IsOptional,
+  IsEmail,
+} from 'class-validator';
 
 export class CreateOrganizationDto {
   @IsString()
   @IsNotEmpty()
   name: string;
 
+  // Contact information
   @IsOptional()
-  @IsUrl()
-  image?: string;
-
-  // ✅ New document fields
-  @IsOptional()
-  @IsUrl()
-  fleetList?: string;
+  @IsEmail()
+  email?: string;
 
   @IsOptional()
   @IsUrl()
-  modelG?: string;
+  website?: string;
 
   @IsOptional()
-  @IsUrl()
-  rc?: string;
+  @IsString()
+  phone?: string;
 
   @IsOptional()
-  @IsUrl()
-  status?: string;
+  @IsString()
+  address?: string;
+
+  // File ID references (all like rcFileId)
+  @IsOptional()
+  @IsString()
+  imageFileId?: string;
 
   @IsOptional()
-  @IsUrl()
-  identifiantFiscale?: string;
+  @IsString()
+  fleetListFileId?: string;
 
   @IsOptional()
-  @IsUrl()
-  decision?: string;
+  @IsString()
+  modelGFileId?: string;
 
   @IsOptional()
-  @IsUrl()
-  ceoIdCard?: string;
+  @IsString()
+  rcFileId?: string;
 
   @IsOptional()
-  @IsUrl()
-  bilan?: string;
+  @IsString()
+  statusFileId?: string;
+
+  @IsOptional()
+  @IsString()
+  identifiantFiscaleFileId?: string;
+
+  @IsOptional()
+  @IsString()
+  decisionFileId?: string;
+
+  @IsOptional()
+  @IsString()
+  ceoIdCardFileId?: string;
+
+  @IsOptional()
+  @IsString()
+  bilanFileId?: string;
 }

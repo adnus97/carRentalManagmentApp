@@ -66,7 +66,12 @@ export class CarsController {
       const pageNum = Math.max(1, parseInt(page || '1', 10));
       const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
       return this.safeReturn(
-        await this.carsService.findCarsByOrgId(user.id, pageNum, pageSizeNum),
+        await this.carsService.findCarsByOrgId(
+          user.org_id,
+          user.id,
+          pageNum,
+          pageSizeNum,
+        ),
       );
     } catch (error) {
       this.handleControllerError(error);

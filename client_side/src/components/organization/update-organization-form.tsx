@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,12 @@ import { Loader } from '@/components/loader';
 import { UploadComponent } from '@/components/image-uploader';
 import { FileUploader } from '@/components/file-uploader';
 
-import { Organization, updateOrganization } from '@/api/organization';
+import { File } from '../../api/files';
+import {
+  Organization,
+  updateOrganization,
+  UpdateOrganizationDto,
+} from '@/api/organization';
 import { Building2, Save, XCircle } from 'lucide-react';
 
 const schema = z.object({
@@ -42,19 +47,18 @@ export function UpdateOrganizationForm({
 }: Props) {
   const [isUploading, setIsUploading] = useState(false);
 
-  // New uploads override existing URLs if provided
-  const [logoUrl, setLogoUrl] = useState<string | undefined>();
-
-  const [rcUrl, setRcUrl] = useState<string | undefined>();
-  const [statusUrl, setStatusUrl] = useState<string | undefined>();
-  const [decisionUrl, setDecisionUrl] = useState<string | undefined>();
-  const [ceoIdUrl, setCeoIdUrl] = useState<string | undefined>();
-
-  const [fleetListUrl, setFleetListUrl] = useState<string | undefined>();
-  const [modelGUrl, setModelGUrl] = useState<string | undefined>();
-
-  const [idfUrl, setIdfUrl] = useState<string | undefined>();
-  const [bilanUrl, setBilanUrl] = useState<string | undefined>();
+  // Store file IDs instead of URLs
+  const [logoFileId, setLogoFileId] = useState<string | undefined>();
+  const [rcFileId, setRcFileId] = useState<string | undefined>();
+  const [statusFileId, setStatusFileId] = useState<string | undefined>();
+  const [decisionFileId, setDecisionFileId] = useState<string | undefined>();
+  const [ceoIdCardFileId, setCeoIdCardFileId] = useState<string | undefined>();
+  const [fleetListFileId, setFleetListFileId] = useState<string | undefined>();
+  const [modelGFileId, setModelGFileId] = useState<string | undefined>();
+  const [identifiantFiscaleFileId, setIdentifiantFiscaleFileId] = useState<
+    string | undefined
+  >();
+  const [bilanFileId, setBilanFileId] = useState<string | undefined>();
 
   const queryClient = useQueryClient();
 
@@ -66,15 +70,15 @@ export function UpdateOrganizationForm({
     resolver: zodResolver(schema),
     defaultValues: {
       name: organization.name,
-      email: '',
-      website: '',
-      phone: '',
-      address: '',
+      email: organization.email || '',
+      website: organization.website || '',
+      phone: organization.phone || '',
+      address: organization.address || '',
     },
   });
 
   const mutation = useMutation({
-    mutationFn: (data: Partial<Organization>) =>
+    mutationFn: (data: UpdateOrganizationDto) =>
       updateOrganization(organization.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organization', 'user'] });
@@ -99,24 +103,32 @@ export function UpdateOrganizationForm({
   const onUploadProgress = (v: boolean) => setIsUploading(v);
 
   const onSubmit = (values: FormFields) => {
-    const payload: Partial<Organization> = {
+    const payload: UpdateOrganizationDto = {
       name: values.name.trim(),
-      image: logoUrl ?? organization.image,
-
-      // All items live under "Legal Documents"
-      rc: rcUrl ?? organization.rc,
-      status: statusUrl ?? organization.status,
-      decision: decisionUrl ?? organization.decision,
-      ceoIdCard: ceoIdUrl ?? organization.ceoIdCard,
-
-      fleetList: fleetListUrl ?? organization.fleetList,
-      modelG: modelGUrl ?? organization.modelG,
-
-      identifiantFiscale: idfUrl ?? organization.identifiantFiscale,
-      bilan: bilanUrl ?? organization.bilan,
+      email: values.email?.trim() || undefined,
+      website: values.website?.trim() || undefined,
+      phone: values.phone?.trim() || undefined,
+      address: values.address?.trim() || undefined,
     };
 
+    // Only include file IDs if they've been updated
+    if (logoFileId) payload.imageFileId = logoFileId;
+    if (rcFileId) payload.rcFileId = rcFileId;
+    if (statusFileId) payload.statusFileId = statusFileId;
+    if (decisionFileId) payload.decisionFileId = decisionFileId;
+    if (ceoIdCardFileId) payload.ceoIdCardFileId = ceoIdCardFileId;
+    if (fleetListFileId) payload.fleetListFileId = fleetListFileId;
+    if (modelGFileId) payload.modelGFileId = modelGFileId;
+    if (identifiantFiscaleFileId)
+      payload.identifiantFiscaleFileId = identifiantFiscaleFileId;
+    if (bilanFileId) payload.bilanFileId = bilanFileId;
+
     mutation.mutate(payload);
+  };
+
+  // Helper function to get file URL from file ID
+  const getFileUrl = (fileId?: string) => {
+    return fileId ? `/api/v1/files/${fileId}/serve` : undefined;
   };
 
   return (
@@ -130,9 +142,9 @@ export function UpdateOrganizationForm({
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="h-16 w-16 overflow-hidden rounded-xl border bg-white dark:bg-gray-950 flex items-center justify-center">
-                {organization.image ? (
+                {organization.imageFileId ? (
                   <img
-                    src={organization.image}
+                    src={getFileUrl(organization.imageFileId)}
                     alt="Logo"
                     className="h-full w-full object-cover"
                   />
@@ -257,9 +269,9 @@ export function UpdateOrganizationForm({
                 </p>
               </div>
               <UploadComponent
-                currentImage={organization.image}
+                currentImage={getFileUrl(organization.imageFileId)}
                 onUploadProgress={onUploadProgress}
-                onUploadSuccess={(img) => setLogoUrl(img.url)}
+                onUploadSuccess={(file) => setLogoFileId(file.id)}
               />
             </CardContent>
           </Card>
@@ -283,76 +295,81 @@ export function UpdateOrganizationForm({
                 label="RC (Registre de Commerce)"
                 accept=".pdf"
                 folder="organizations/legal"
-                currentFile={organization.rc}
+                currentFile={getFileUrl(organization.rcFileId)}
                 onUploadProgress={onUploadProgress}
-                onUploadSuccess={(f) => setRcUrl(f.url)}
+                onUploadSuccess={(file) => setRcFileId(file.id)}
                 description="Official commercial register document (PDF)."
               />
+
               <FileUploader
                 label="Status"
                 accept=".pdf"
                 folder="organizations/legal"
-                currentFile={organization.status}
+                currentFile={getFileUrl(organization.statusFileId)}
                 onUploadProgress={onUploadProgress}
-                onUploadSuccess={(f) => setStatusUrl(f.url)}
+                onUploadSuccess={(file) => setStatusFileId(file.id)}
                 description="Company status document (PDF)."
               />
+
               <FileUploader
                 label="Decision"
                 accept=".pdf"
                 folder="organizations/legal"
-                currentFile={organization.decision}
+                currentFile={getFileUrl(organization.decisionFileId)}
                 onUploadProgress={onUploadProgress}
-                onUploadSuccess={(f) => setDecisionUrl(f.url)}
+                onUploadSuccess={(file) => setDecisionFileId(file.id)}
                 description="Company decision document (PDF)."
               />
+
               <FileUploader
                 label="CEO ID Card"
                 accept=".jpg,.jpeg,.png,.webp"
                 folder="organizations/identity"
-                currentFile={organization.ceoIdCard}
+                currentFile={getFileUrl(organization.ceoIdCardFileId)}
                 onUploadProgress={onUploadProgress}
-                onUploadSuccess={(f) => setCeoIdUrl(f.url)}
+                onUploadSuccess={(file) => setCeoIdCardFileId(file.id)}
                 description="Clear photo/scan of the CEO's ID card."
               />
 
-              {/* Fleet items (still in Legal section by your request) */}
+              {/* Fleet items */}
               <FileUploader
                 label="Fleet List"
                 accept=".pdf"
                 folder="organizations/fleet"
-                currentFile={organization.fleetList}
+                currentFile={getFileUrl(organization.fleetListFileId)}
                 onUploadProgress={onUploadProgress}
-                onUploadSuccess={(f) => setFleetListUrl(f.url)}
+                onUploadSuccess={(file) => setFleetListFileId(file.id)}
                 description="Complete fleet inventory (PDF)."
               />
+
               <FileUploader
                 label="Model G"
                 accept=".pdf"
                 folder="organizations/fleet"
-                currentFile={organization.modelG}
+                currentFile={getFileUrl(organization.modelGFileId)}
                 onUploadProgress={onUploadProgress}
-                onUploadSuccess={(f) => setModelGUrl(f.url)}
+                onUploadSuccess={(file) => setModelGFileId(file.id)}
                 description="Model G document (PDF)."
               />
 
-              {/* Financial items (still in Legal section by your request) */}
+              {/* Financial items */}
               <FileUploader
                 label="Identifiant Fiscale"
                 accept=".pdf"
                 folder="organizations/financial"
-                currentFile={organization.identifiantFiscale}
+                currentFile={getFileUrl(organization.identifiantFiscaleFileId)}
                 onUploadProgress={onUploadProgress}
-                onUploadSuccess={(f) => setIdfUrl(f.url)}
+                onUploadSuccess={(file) => setIdentifiantFiscaleFileId(file.id)}
                 description="Tax identification document (PDF)."
               />
+
               <FileUploader
                 label="Bilan"
                 accept=".pdf"
                 folder="organizations/financial"
-                currentFile={organization.bilan}
+                currentFile={getFileUrl(organization.bilanFileId)}
                 onUploadProgress={onUploadProgress}
-                onUploadSuccess={(f) => setBilanUrl(f.url)}
+                onUploadSuccess={(file) => setBilanFileId(file.id)}
                 description="Financial balance sheet (PDF)."
               />
             </CardContent>

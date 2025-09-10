@@ -223,16 +223,16 @@ export class CarsService {
   }
 
   /** Get cars by organization */
-  async findCarsByOrgId(userId: string, page = 1, pageSize = 20) {
+  async findCarsByOrgId(
+    userOrg: string,
+    userId: string,
+    page = 1,
+    pageSize = 20,
+  ) {
     try {
       if (!userId) throw new BadRequestException('User ID is required');
 
       const offset = (page - 1) * pageSize;
-
-      const userOrg = await this.dbService.db
-        .select({ id: organization.id })
-        .from(organization)
-        .where(eq(organization.userId, userId));
 
       if (!userOrg.length) {
         throw new BadRequestException('No organization found for this user.');

@@ -34,14 +34,17 @@ import { UserDefaultImg } from './user-defaultImg';
 import { authClient } from '@/lib/auth-client';
 import { ConfirmationDialog } from './confirmation-dialog';
 import { navigationConfig } from '@/config/navigation';
-import { NotificationsDropdown } from './notifications/notification-dropdown'; // ✅ import b.ell dropdown
+import { NotificationsDropdown } from './notifications/notification-dropdown';
+import { useQueryClient } from '@tanstack/react-query';
 
 import React from 'react';
+import { Skeleton } from './ui/skeleton';
 
 const navData = navigationConfig;
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useUser();
+  const { user, setUser } = useUser();
+  const queryClient = useQueryClient();
   const router = useRouter();
   const [showSignOutDialog, setShowSignOutDialog] = React.useState(false);
 
@@ -52,19 +55,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const handleSignOut = async () => {
     await authClient.signOut();
+    queryClient.clear();
     localStorage.removeItem('authUser');
+    setUser(null);
     router.navigate({ to: '/login' });
   };
 
   return (
     <>
       <Sidebar {...props} className="bg-gray-3 border-r-gray-4">
-        <SidebarHeader></SidebarHeader>
+        {/* ✅ Completely empty header */}
+        <SidebarHeader className="h-0 p-0 border-0 m-0" />
 
-        <SidebarContent className="gap-1 ml-4 h-full flex flex-col">
-          <SidebarGroup className="flex-1">
-            <SidebarMenu className="flex flex-col h-full">
-              {/* ✅ Render all nav items except the last (Settings) */}
+        <SidebarContent className="px-4 py-2">
+          <SidebarGroup>
+            <SidebarMenu>
               {navData.navMain.slice(0, -1).map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild>
@@ -78,111 +83,110 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-
-              {/* ✅ Replace Settings with Notifications */}
-              <div className="mt-auto flex items-center justify-end p-2">
-                <NotificationsDropdown />
-              </div>
-
-              <Separator className="mb-2" />
-
-              <SidebarFooter className="p-0 border-t border-gray-6 bg-gray-1  rounded-sm">
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <SidebarMenuButton className="h-16 px-4 py-3 hover:bg-gray-3 transition-colors duration-200 group">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            {!isLoading && data?.[0]?.image ? (
-                              <img
-                                src={data[0].image}
-                                alt="Organization"
-                                className="w-10 h-10 rounded-full ring-2 ring-gray-6 group-hover:ring-gray-7 transition-all duration-200 flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 flex-shrink-0">
-                                <UserDefaultImg
-                                  name={user?.name || ''}
-                                  email={user?.email || ''}
-                                />
-                              </div>
-                            )}
-
-                            <div className="flex flex-col justify-center min-w-0 flex-1">
-                              <span className="text-sm font-medium text-gray-12 truncate">
-                                {user?.name || 'User'}
-                              </span>
-                              <span className="text-xs text-gray-10 truncate">
-                                {user?.email || 'user@example.com'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <CaretUpDown
-                            size={16}
-                            className="text-gray-10 group-hover:text-gray-11 transition-colors duration-200 flex-shrink-0"
-                          />
-                        </SidebarMenuButton>
-                      </DropdownMenuTrigger>
-
-                      <DropdownMenuContent
-                        side="top"
-                        align="start"
-                        className="w-64 p-2 bg-white dark:bg-gray-2 border border-gray-6 shadow-lg rounded-lg"
-                        sideOffset={8}
-                      >
-                        {/* User Info Header */}
-                        <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 dark:bg-gray-3 mb-2">
-                          {!isLoading && data?.[0]?.image ? (
-                            <img
-                              src={data[0].image}
-                              alt="Organization"
-                              className="w-10 h-10 rounded-full ring-2 ring-gray-6"
-                            />
-                          ) : (
-                            <div className="w-10 h-10">
-                              <UserDefaultImg
-                                name={user?.name || ''}
-                                email={user?.email || ''}
-                              />
-                            </div>
-                          )}
-
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <span className="text-sm font-medium text-gray-12 truncate">
-                              {user?.name || 'User'}
-                            </span>
-                            <span className="text-xs text-gray-10 truncate">
-                              {user?.email || 'user@example.com'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <Separator className="my-2" />
-
-                        {/* Menu Items */}
-                        <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-md hover:!bg-gray-3 dark:hover:bg-gray-4 transition-colors duration-150 cursor-pointer">
-                          <User size={18} className="text-gray-10" />
-                          <span className="text-sm font-medium text-gray-12">
-                            Account Settings
-                          </span>
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem
-                          onSelect={() => setShowSignOutDialog(true)}
-                          className="flex items-center gap-3 px-3 py-2 rounded-md hover:!bg-red-50  dark:hover:!bg-red-950/20 transition-colors duration-150 cursor-pointer !text-red-600 dark:text-red-400"
-                        >
-                          <SignOut size={18} />
-                          <span className="text-sm font-medium">Sign Out</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarFooter>
             </SidebarMenu>
           </SidebarGroup>
+
+          {/* Push notifications to bottom */}
+          <div className="flex-1" />
+
+          <div className="flex justify-end pb-2">
+            <NotificationsDropdown />
+          </div>
         </SidebarContent>
+
+        {/* ✅ User info ONLY in footer */}
+        <SidebarFooter className="border-t border-gray-6 bg-gray-1 p-0">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton className="h-16 px-4 py-3 hover:bg-gray-3 transition-colors duration-200">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* ✅ Fixed avatar rendering */}
+                      <div className="w-10 h-10 flex-shrink-0">
+                        {!isLoading && data?.[0]?.imageFileId ? (
+                          <img
+                            src={data[0].imageFileId}
+                            alt="Organization"
+                            className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md">
+                            {(user?.name || 'U').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col justify-center min-w-0 flex-1">
+                        <span className="text-sm font-medium text-gray-12 truncate">
+                          {user?.name || 'User'}
+                        </span>
+                        <span className="text-xs text-gray-10 truncate">
+                          {user?.email || 'user@example.com'}
+                        </span>
+                      </div>
+
+                      <CaretUpDown
+                        size={16}
+                        className="text-gray-10 flex-shrink-0"
+                      />
+                    </div>
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent
+                  side="top"
+                  align="start"
+                  className="w-64 p-2"
+                  sideOffset={8}
+                >
+                  {/* Same avatar logic in dropdown */}
+                  <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 mb-2">
+                    <div className="w-10 h-10 flex-shrink-0">
+                      {!isLoading && data?.[0]?.imageFileId ? (
+                        <img
+                          src={data[0].imageFileId}
+                          alt="Organization"
+                          className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                          {(user?.name || 'U').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-sm font-medium text-gray-12 truncate">
+                        {user?.name || 'User'}
+                      </span>
+                      <span className="text-xs text-gray-10 truncate">
+                        {user?.email || 'user@example.com'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Separator className="my-2" />
+
+                  <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-md dark:hover:!bg-gray-4 cursor-pointer">
+                    <User size={18} className="text-gray-10" />
+                    <span className="text-sm font-medium">
+                      Account Settings
+                    </span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onSelect={() => setShowSignOutDialog(true)}
+                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4  cursor-pointer text-red-600"
+                  >
+                    <SignOut size={18} />
+                    <span className="text-sm font-medium">Sign Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
       </Sidebar>
 
       <ConfirmationDialog
@@ -190,10 +194,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         onOpenChange={setShowSignOutDialog}
         onConfirm={handleSignOut}
         title="Sign Out"
-        description="Are you sure you want to sign out of your account?"
+        description="Are you sure you want to sign out?"
         confirmText="Sign Out"
         cancelText="Cancel"
-        loadingText="Signing out..."
         variant="destructive"
       />
     </>
