@@ -8,7 +8,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';
 import { UpdateOrganizationForm } from './update-organization-form';
 import { getOrganizationByUser, Organization } from '@/api/organization';
-import { getFile } from '@/api/files';
+import {
+  getFileServeUrl,
+  getFileDownloadUrl,
+  viewFile,
+  downloadFile,
+} from '@/api/files';
 import {
   FileText,
   Download,
@@ -17,7 +22,9 @@ import {
   Image as ImageIcon,
   CalendarClock,
   Building2,
+  AlertCircle,
 } from 'lucide-react';
+import { useUser } from '@/contexts/user-context';
 
 type DocType = 'pdf' | 'image';
 
@@ -27,8 +34,16 @@ interface OrganizationDocument {
   type: DocType;
 }
 
+// Fixed fallback component for broken images
+const ImageFallback = ({ name }: { name: string }) => (
+  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
+    {name?.charAt(0).toUpperCase() || '?'}
+  </div>
+);
+
 export function OrganizationDetails() {
   const [editMode, setEditMode] = useState(false);
+  const { user } = useUser();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['organization', 'user'],
@@ -38,7 +53,12 @@ export function OrganizationDetails() {
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <Card className="p-10 text-center">Loading organization...</Card>
+        <Card className="p-10 text-center">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mx-auto"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto"></div>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -46,8 +66,14 @@ export function OrganizationDetails() {
   if (isError || !data || data.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <Card className="p-10 text-center text-red-600">
-          No organization found.
+        <Card className="p-10 text-center">
+          <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            No Organization Found
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            You haven't created an organization yet.
+          </p>
         </Card>
       </div>
     );
@@ -59,92 +85,96 @@ export function OrganizationDetails() {
   const documents: OrganizationDocument[] = [
     {
       label: 'RC (Registre de Commerce)',
-      fileId: organization.rcFileId,
+      fileId: organization?.rcFileId,
       type: 'pdf',
     },
     {
       label: 'Status',
-      fileId: organization.statusFileId,
+      fileId: organization?.statusFileId,
       type: 'pdf',
     },
     {
       label: 'Decision',
-      fileId: organization.decisionFileId,
+      fileId: organization?.decisionFileId,
       type: 'pdf',
     },
     {
       label: 'CEO ID Card',
-      fileId: organization.ceoIdCardFileId,
+      fileId: organization?.ceoIdCardFileId,
       type: 'image',
     },
     {
       label: 'Fleet List',
-      fileId: organization.fleetListFileId,
+      fileId: organization?.fleetListFileId,
       type: 'pdf',
     },
     {
       label: 'Model G',
-      fileId: organization.modelGFileId,
+      fileId: organization?.modelGFileId,
       type: 'pdf',
     },
     {
       label: 'Identifiant Fiscale',
-      fileId: organization.identifiantFiscaleFileId,
+      fileId: organization?.identifiantFiscaleFileId,
       type: 'pdf',
     },
     {
       label: 'Bilan',
-      fileId: organization.bilanFileId,
+      fileId: organization?.bilanFileId,
       type: 'pdf',
     },
   ];
 
-  const handleView = async (fileId?: string, label?: string) => {
+  const handleView = (fileId?: string, label?: string) => {
     if (!fileId) {
       toast({
         title: 'Document not available',
         type: 'error',
-        description: `${label} has not been uploaded yet.`,
+        description: `${label || 'Document'} has not been uploaded yet.`,
       });
       return;
     }
 
     try {
-      const file = await getFile(fileId);
-      window.open(file.url, '_blank');
+      viewFile(fileId);
+      toast({
+        title: 'Opening document',
+        type: 'success',
+        description: `Opening ${label || 'document'}...`,
+      });
     } catch (error) {
+      console.error('Error viewing file:', error);
       toast({
         title: 'Error loading file',
         type: 'error',
-        description: `Could not load ${label}`,
+        description: `Could not load ${label || 'document'}. Please try again.`,
       });
     }
   };
 
-  const handleDownload = async (fileId?: string, label?: string) => {
+  const handleDownload = (fileId?: string, label?: string) => {
     if (!fileId) {
       toast({
         title: 'Document not available',
         type: 'error',
-        description: `${label} has not been uploaded yet.`,
+        description: `${label || 'Document'} has not been uploaded yet.`,
       });
       return;
     }
 
     try {
-      const file = await getFile(fileId);
-      const link = document.createElement('a');
-      link.href = file.url;
-      link.download = file.name;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadFile(fileId, label);
+      toast({
+        title: 'Downloading...',
+        type: 'success',
+        description: `Downloading ${label || 'document'}...`,
+      });
     } catch (error) {
+      console.error('Error downloading file:', error);
       toast({
         title: 'Error downloading file',
         type: 'error',
-        description: `Could not download ${label}`,
+        description: `Could not download ${label || 'document'}. Please try again.`,
       });
     }
   };
@@ -172,26 +202,45 @@ export function OrganizationDetails() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-xl border bg-white overflow-hidden flex items-center justify-center dark:bg-gray-950">
-                {organization.imageFileId ? (
+                {organization?.imageFileId ? (
                   <img
-                    src={`/api/v1/files/${organization.imageFileId}/serve`}
-                    alt={`${organization.name} logo`}
+                    src={getFileServeUrl(organization.imageFileId)}
+                    alt={`${organization?.name || 'Organization'} logo`}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      const parent = target.parentElement;
+                      if (parent) {
+                        target.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.className =
+                          'w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold';
+                        fallback.textContent = (organization?.name || '?')
+                          .charAt(0)
+                          .toUpperCase();
+                        parent.appendChild(fallback);
+                      }
+                    }}
                   />
                 ) : (
-                  <Building2 className="w-8 h-8 text-gray-9" />
+                  <ImageFallback name={organization?.name || ''} />
                 )}
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-semibold leading-tight">
-                  {organization.name}
+                  {organization?.name || 'Organization'}
                 </h1>
-                <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                  <CalendarClock className="w-4 h-4" />
-                  <span>
-                    Created{' '}
-                    {new Date(organization.createdAt).toLocaleDateString()}
-                  </span>
+                <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <CalendarClock className="w-4 h-4" />
+                    <span>
+                      Created{' '}
+                      {organization?.createdAt
+                        ? new Date(organization.createdAt).toLocaleDateString()
+                        : 'Unknown'}
+                    </span>
+                  </div>
+                  {organization?.email && <span>{organization.email}</span>}
                 </div>
               </div>
             </div>
@@ -203,6 +252,55 @@ export function OrganizationDetails() {
           </div>
         </div>
       </div>
+
+      {/* Organization Info */}
+      {(organization?.website ||
+        organization?.phone ||
+        organization?.address) && (
+        <Card className="border-gray-200 dark:border-border">
+          <CardContent className="p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Building2 className="w-5 h-5" />
+              Organization Details
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {organization?.website && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Website
+                  </label>
+                  <p className="mt-1">
+                    <a
+                      href={organization.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {organization.website}
+                    </a>
+                  </p>
+                </div>
+              )}
+              {organization?.phone && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Phone
+                  </label>
+                  <p className="mt-1">{organization.phone}</p>
+                </div>
+              )}
+              {organization?.address && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Address
+                  </label>
+                  <p className="mt-1">{organization.address}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Legal Documents */}
       <Card className="border-gray-200 dark:border-border">
@@ -222,14 +320,14 @@ export function OrganizationDetails() {
                 key={index}
                 className="border rounded-lg p-4 hover:shadow-sm transition bg-gray-50/60 dark:bg-gray-900/40 dark:border-gray-800"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-3">
                   <h3 className="font-medium text-sm">{doc.label}</h3>
                   <Badge variant={doc.fileId ? 'default' : 'secondary'}>
                     {doc.fileId ? 'Uploaded' : 'Missing'}
                   </Badge>
                 </div>
 
-                <div className="mt-3 flex items-center gap-2">
+                <div className="flex items-center gap-2 mb-4">
                   {doc.type === 'pdf' ? (
                     <FileText className="w-8 h-8 text-red-500" />
                   ) : (
@@ -240,7 +338,7 @@ export function OrganizationDetails() {
                   </span>
                 </div>
 
-                <div className="mt-4 flex gap-2">
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -251,16 +349,14 @@ export function OrganizationDetails() {
                     <Eye className="w-3 h-3 mr-1" />
                     View
                   </Button>
-                  {doc.type === 'pdf' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(doc.fileId, doc.label)}
-                      disabled={!doc.fileId}
-                    >
-                      <Download className="w-3 h-3" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownload(doc.fileId, doc.label)}
+                    disabled={!doc.fileId}
+                  >
+                    <Download className="w-3 h-3" />
+                  </Button>
                 </div>
               </div>
             ))}

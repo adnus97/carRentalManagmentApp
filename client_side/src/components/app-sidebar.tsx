@@ -106,7 +106,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <div className="w-10 h-10 flex-shrink-0">
                         {!isLoading && data?.[0]?.imageFileId ? (
                           <img
-                            src={data[0].imageFileId}
+                            src={data[0].imageFile?.url}
                             alt="Organization"
                             className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
                           />
@@ -145,7 +145,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <div className="w-10 h-10 flex-shrink-0">
                       {!isLoading && data?.[0]?.imageFileId ? (
                         <img
-                          src={data[0].imageFileId}
+                          src={data[0].imageFile?.url}
                           alt="Organization"
                           className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
                         />

@@ -1,23 +1,24 @@
-// components/file-uploader.tsx (updated with dark mode styling)
+// components/file-uploader.tsx
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { FileText, X, Eye, Loader2 } from 'lucide-react';
+import { FileText, X, Eye, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from './ui/toast';
-import { useR2Upload } from '../hooks/useR2Upload';
+import { useR2Upload, useFileValidation } from '../hooks/useR2Upload';
 import { Progress } from './ui/progress';
-import { File } from '@/api/files';
+import { File as ApiFile, getFileServeUrl, viewFile } from '@/api/files';
 
 interface Props {
   label: string;
   accept: string;
   folder: string;
-  onUploadSuccess: (file: File) => void;
+  onUploadSuccess: (file: ApiFile) => void;
   onUploadProgress?: (uploading: boolean) => void;
   currentFile?: string;
   required?: boolean;
   description?: string;
+  isPublic?: boolean;
 }
 
 export function FileUploader({
@@ -30,24 +31,46 @@ export function FileUploader({
   required,
   description,
 }: Props) {
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const { uploadFile, uploading, progress } = useR2Upload();
+  const [uploadedFile, setUploadedFile] = useState<ApiFile | null>(null);
+  const { uploadFile, uploading, progress, error, reset } = useR2Upload();
+  const { validateFile } = useFileValidation();
+
+  // Determine allowed types based on accept prop
+  const getAllowedTypes = () => {
+    if (accept.includes('.pdf')) return ['application/pdf'];
+    if (
+      accept.includes('.jpg') ||
+      accept.includes('.jpeg') ||
+      accept.includes('.png') ||
+      accept.includes('.webp')
+    ) {
+      return ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    }
+    return [];
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const exts = accept.split(',').map((s) => s.trim());
-    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
-    if (!exts.includes(ext)) {
+    // Validate file before upload
+    const validation = validateFile(file, {
+      maxSize: 25 * 1024 * 1024, // 25MB
+      allowedTypes: getAllowedTypes(),
+      allowedExtensions: accept.split(',').map((ext) => ext.trim()),
+    });
+
+    if (!validation.isValid) {
       toast({
-        title: 'Invalid file type',
+        title: 'Invalid file',
         type: 'error',
-        description: `Allowed: ${accept}`,
+        description: validation.errors.join(', '),
       });
       e.target.value = '';
       return;
     }
+
+    reset();
 
     try {
       onUploadProgress?.(true);
@@ -55,6 +78,7 @@ export function FileUploader({
       formData.append('file', file);
       formData.append('is_public', 'true');
       formData.append('type', 'organization');
+      formData.append('folder', folder);
       formData.append('ids', JSON.stringify({}));
 
       const result = await uploadFile(formData);
@@ -62,16 +86,16 @@ export function FileUploader({
         setUploadedFile(result);
         onUploadSuccess(result);
         toast({
-          title: 'Uploaded',
+          title: 'Success!',
           type: 'success',
-          description: `${label} uploaded.`,
+          description: `${label} uploaded successfully.`,
         });
       }
     } catch (err: any) {
       toast({
         title: 'Upload failed',
         type: 'error',
-        description: err.message || '',
+        description: err.message || 'Failed to upload file. Please try again.',
       });
     } finally {
       onUploadProgress?.(false);
@@ -79,8 +103,21 @@ export function FileUploader({
     }
   };
 
-  const view = (url: string) => window.open(url, '_blank')?.focus();
-  const clear = () => setUploadedFile(null);
+  const handleView = () => {
+    if (uploadedFile) {
+      viewFile(uploadedFile.id);
+    } else if (currentFile) {
+      window.open(currentFile, '_blank');
+    }
+  };
+
+  const clear = () => {
+    setUploadedFile(null);
+    reset();
+  };
+
+  const hasFile = uploadedFile || currentFile;
+  const fileName = uploadedFile?.name || 'Current file';
 
   return (
     <div className="space-y-2">
@@ -107,27 +144,40 @@ export function FileUploader({
         )}
       </div>
 
+      {/* Error display */}
+      {error && (
+        <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+          <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+          <span className="text-sm text-red-700 dark:text-red-400">
+            {error.message}
+          </span>
+        </div>
+      )}
+
+      {/* Progress bar */}
       {uploading && progress > 0 && (
         <div className="space-y-1">
           <Progress value={progress} className="w-full" />
           <p className="text-xs text-muted-foreground text-center">
-            {Math.round(progress)}%
+            {Math.round(progress)}% uploading...
           </p>
         </div>
       )}
 
-      {(uploadedFile || currentFile) && !uploading && (
-        <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md">
-          <FileText className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+      {/* File preview */}
+      {hasFile && !uploading && (
+        <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md">
+          <FileText className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
           <span className="text-sm flex-1 truncate text-gray-900 dark:text-gray-100">
-            {uploadedFile?.name || 'Current file'}
+            {fileName}
           </span>
           <div className="flex gap-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => view(uploadedFile?.url || currentFile!)}
-              className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+              onClick={handleView}
+              className="h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+              title="View file"
             >
               <Eye className="h-3 w-3" />
             </Button>
@@ -136,7 +186,8 @@ export function FileUploader({
                 variant="ghost"
                 size="sm"
                 onClick={clear}
-                className="h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                className="h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                title="Clear file"
               >
                 <X className="h-3 w-3" />
               </Button>

@@ -1,3 +1,4 @@
+// src/rents/dto/create-rent.dto.ts
 import {
   IsOptional,
   IsBoolean,
@@ -6,6 +7,7 @@ import {
   IsEnum,
   IsDateString,
   IsDate,
+  IsArray,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
@@ -99,4 +101,21 @@ export class CreateRentDto {
   @IsOptional()
   @IsBoolean()
   isDeleted?: boolean;
+
+  // 🆕 Car image IDs (will be populated after upload)
+  @IsOptional()
+  @IsString()
+  carImg1Id?: string;
+
+  @IsOptional()
+  @IsString()
+  carImg2Id?: string;
+
+  @IsOptional()
+  @IsString()
+  carImg3Id?: string;
+
+  @IsOptional()
+  @IsString()
+  carImg4Id?: string;
 }

@@ -1,3 +1,5 @@
+// Update components/customers/edit-client-form.tsx
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -9,8 +11,8 @@ import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Separator } from '@/components/ui/separator';
-import { useEffect } from 'react';
-import { updateCustomer, Customer } from '@/api/customers';
+import { useEffect, useState } from 'react';
+import { updateCustomer, CustomerWithFiles } from '@/api/customers'; // Use CustomerWithFiles
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/toast';
 import {
@@ -20,6 +22,8 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
+import { FileUploader } from '@/components/file-uploader';
+import { File as ApiFile } from '@/api/files';
 
 const schema = z.object({
   firstName: z.string().min(2, 'First name is required'),
@@ -30,6 +34,8 @@ const schema = z.object({
   documentType: z.enum(['passport', 'driver_license', 'id_card'], {
     required_error: 'Document type is required',
   }),
+  idCardId: z.string().optional(),
+  driversLicenseId: z.string().optional(),
 });
 
 type FormFields = z.infer<typeof schema>;
@@ -41,14 +47,24 @@ export function EditClientDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  customer: Customer | null;
+  customer: CustomerWithFiles | null; // Use CustomerWithFiles
 }) {
+  const [idCardFile, setIdCardFile] = useState<ApiFile | null>(null);
+  const [driversLicenseFile, setDriversLicenseFile] = useState<ApiFile | null>(
+    null,
+  );
+
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (data: Partial<Customer>) => updateCustomer(customer!.id, data),
+    mutationFn: (data: Partial<CustomerWithFiles>) =>
+      updateCustomer(customer!.id, data),
     onSuccess: () => {
+      // Invalidate both the customers list and the specific customer details
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({
+        queryKey: ['customerDetails', customer?.id],
+      });
       onOpenChange(false);
       toast({
         type: 'success',
@@ -75,6 +91,7 @@ export function EditClientDialog({
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    setValue,
   } = useForm<FormFields>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -84,17 +101,53 @@ export function EditClientDialog({
       phone: '',
       documentId: '',
       documentType: undefined,
+      idCardId: undefined,
+      driversLicenseId: undefined,
     },
   });
 
   // Reset form when customer changes
   useEffect(() => {
-    if (customer) reset(customer);
+    if (customer) {
+      reset({
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        email: customer.email || '',
+        phone: customer.phone,
+        documentId: customer.documentId || '',
+        documentType: customer.documentType,
+        idCardId: customer.idCardId || undefined,
+        driversLicenseId: customer.driversLicenseId || undefined,
+      });
+
+      // Reset file states
+      setIdCardFile(null);
+      setDriversLicenseFile(null);
+    }
   }, [customer, reset]);
 
   const onSubmit = (data: FormFields) => {
     if (!customer) return;
-    mutation.mutate(data);
+
+    const payload = {
+      ...data,
+      // Use the new uploaded file IDs if available, otherwise keep existing ones
+      idCardId: idCardFile?.id || customer.idCardId || undefined,
+      driversLicenseId:
+        driversLicenseFile?.id || customer.driversLicenseId || undefined,
+    };
+
+    mutation.mutate(payload);
+  };
+
+  const handleIdCardUpload = (file: ApiFile) => {
+    setIdCardFile(file);
+    setValue('idCardId', file.id);
+  };
+
+  const handleDriversLicenseUpload = (file: ApiFile) => {
+    setDriversLicenseFile(file);
+    setValue('driversLicenseId', file.id);
   };
 
   return (
@@ -102,10 +155,14 @@ export function EditClientDialog({
       open={open}
       onOpenChange={(open) => {
         onOpenChange(open);
-        if (!open && customer) reset(customer);
+        if (!open && customer) {
+          reset(customer);
+          setIdCardFile(null);
+          setDriversLicenseFile(null);
+        }
       }}
     >
-      <DialogContent className="sm:max-w-[400px] pt-8">
+      <DialogContent className="sm:max-w-[500px] pt-8 max-h-[80vh] overflow-y-auto">
         <DialogTitle className="pb-1 text-lg font-semibold">
           Edit Client
         </DialogTitle>
@@ -114,27 +171,27 @@ export function EditClientDialog({
         </p>
         <Separator className="mb-4" />
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-          {/* First Name */}
-          <div>
-            <Label>First Name *</Label>
-            <Input {...register('firstName')} />
-            {errors.firstName && (
-              <span className="text-red-500 text-xs">
-                {errors.firstName.message}
-              </span>
-            )}
-          </div>
-
-          {/* Last Name */}
-          <div>
-            <Label>Last Name *</Label>
-            <Input {...register('lastName')} />
-            {errors.lastName && (
-              <span className="text-red-500 text-xs">
-                {errors.lastName.message}
-              </span>
-            )}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Basic Info */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>First Name *</Label>
+              <Input {...register('firstName')} />
+              {errors.firstName && (
+                <span className="text-red-500 text-xs">
+                  {errors.firstName.message}
+                </span>
+              )}
+            </div>
+            <div>
+              <Label>Last Name *</Label>
+              <Input {...register('lastName')} />
+              {errors.lastName && (
+                <span className="text-red-500 text-xs">
+                  {errors.lastName.message}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Email */}
@@ -159,7 +216,7 @@ export function EditClientDialog({
             )}
           </div>
 
-          {/* Document ID + Type side by side */}
+          {/* Document ID + Type */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Document ID *</Label>
@@ -198,6 +255,33 @@ export function EditClientDialog({
                   {errors.documentType.message}
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* File Uploads */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Document Images
+            </h3>
+
+            <div className="grid grid-cols-1 gap-4">
+              <FileUploader
+                label="ID Card Image"
+                accept=".jpg,.jpeg,.png,.webp"
+                folder="customers/id-cards"
+                onUploadSuccess={handleIdCardUpload}
+                currentFile={customer?.idCardFile?.url}
+                description="Upload a clear photo of the ID card"
+              />
+
+              <FileUploader
+                label="Driver's License Image"
+                accept=".jpg,.jpeg,.png,.webp"
+                folder="customers/drivers-licenses"
+                onUploadSuccess={handleDriversLicenseUpload}
+                currentFile={customer?.driversLicenseFile?.url}
+                description="Upload a clear photo of the driver's license"
+              />
             </div>
           </div>
 

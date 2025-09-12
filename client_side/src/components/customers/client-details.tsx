@@ -5,7 +5,8 @@ import {
   getCustomerById,
   getCustomerRatings,
   getBlacklist,
-  Customer,
+  getCustomerWithFiles,
+  CustomerWithFiles,
 } from '@/api/customers';
 import { getRentsByCustomer } from '@/api/customers';
 import { useLayoutContext } from '@/contexts/layout-context';
@@ -17,7 +18,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Trash, Hammer, IdCard, Mail } from 'lucide-react';
+import {
+  ArrowLeft,
+  Trash,
+  Hammer,
+  IdCard,
+  Mail,
+  Eye,
+  Download,
+} from 'lucide-react';
 import {
   Calendar,
   CheckCircle,
@@ -26,6 +35,7 @@ import {
   ProhibitInset,
   User,
 } from '@phosphor-icons/react';
+import { getFileServeUrl, viewFile, downloadFile } from '@/api/files';
 
 import { ConfirmationDialog } from '@/components/confirmation-dialog';
 import { toast } from '@/components/ui/toast';
@@ -35,6 +45,131 @@ import { EditClientDialog } from '@/components/customers/edit-client-form';
 import { ClientRentalsGrid } from './client-rental-grid';
 import { ClientSpendingChart } from './client-spending-chart';
 import { format } from 'date-fns';
+import { Separator } from '../../components/ui/separator';
+
+type DocCardProps = {
+  title: string;
+  fileId: string;
+  onDownload?: () => void;
+  onView?: () => void;
+};
+
+function DocCard({ title, fileId, onDownload, onView }: DocCardProps) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div
+      className={[
+        'group relative overflow-hidden rounded-xl',
+        'border border-gray-200 bg-white shadow-sm',
+        'dark:border-gray-800 dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
+        'transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5',
+      ].join(' ')}
+    >
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 py-2">
+        <span className="text-[10px] font-medium text-muted-foreground">
+          {title}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[8px] font-semibold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+            Uploaded
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDownload?.();
+            }}
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs text-muted-foreground hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800"
+            title="Download"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 3v12m0 0l4-4m-4 4l-4-4M5 21h14"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Media area */}
+      <button
+        onClick={() => onView?.()}
+        className="relative block w-full overflow-hidden"
+        style={{ aspectRatio: '16 / 9' }}
+        aria-label={`View ${title}`}
+      >
+        {!failed && (
+          <img
+            src={getFileServeUrl(fileId)}
+            alt={title}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            onError={() => setFailed(true)}
+          />
+        )}
+
+        {/* Fallback only when image failed */}
+        {failed && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 dark:from-slate-900 dark:to-slate-950">
+            <div className="text-center">
+              <div className="mx-auto mb-2 h-12 w-12 rounded-full border border-dashed border-slate-400/40 p-3">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-full w-full opacity-70"
+                  fill="none"
+                >
+                  <path
+                    d="M4 17V7a3 3 0 013-3h7l6 6v7a3 3 0 01-3 3H7a3 3 0 01-3-3z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              </div>
+              <p className="text-xs opacity-70">
+                Preview not available. Click to view.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Hover overlay + eye always */}
+        <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/35" />
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div
+            className={[
+              'grid place-items-center rounded-full backdrop-blur',
+              'bg-white/70 text-slate-800 shadow-lg ring-1 ring-black/5',
+              'h-14 w-14 opacity-0 scale-90',
+              'transition-all duration-300 group-hover:opacity-100 group-hover:scale-100',
+              'dark:bg-white/15 dark:text-white dark:ring-white/10',
+            ].join(' ')}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle
+                cx="12"
+                cy="12"
+                r="3"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+            </svg>
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
 
 export function ClientDetailsPage({ customerId }: { customerId: string }) {
   const { headerHeight } = useLayoutContext();
@@ -54,11 +189,11 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
     data: customer,
     isLoading,
     isError,
-  } = useQuery<Customer>({
+  } = useQuery<CustomerWithFiles>({
     queryKey: ['customerDetails', customerId],
-    queryFn: () => getCustomerById(customerId),
+    queryFn: () => getCustomerWithFiles(customerId),
+    placeholderData: (previousData) => previousData,
   });
-
   // ✅ Fetch ratings (all, then slice client-side)
   const { data: ratings } = useQuery({
     queryKey: ['customerRatings', customerId],
@@ -89,6 +224,58 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
 
+  const handleViewDocument = (fileId?: string, title?: string) => {
+    if (!fileId) {
+      toast({
+        type: 'error',
+        title: 'Document not available',
+        description: `${title || 'Document'} has not been uploaded yet.`,
+      });
+      return;
+    }
+
+    try {
+      viewFile(fileId);
+      toast({
+        type: 'success',
+        title: 'Opening document',
+        description: `Opening ${title || 'document'}...`,
+      });
+    } catch (error) {
+      console.error('Error viewing file:', error);
+      toast({
+        type: 'error',
+        title: 'Error loading file',
+        description: `Could not load ${title || 'document'}. Please try again.`,
+      });
+    }
+  };
+  const handleDownloadDocument = (fileId?: string, title?: string) => {
+    if (!fileId) {
+      toast({
+        type: 'error',
+        title: 'Document not available',
+        description: `${title || 'Document'} has not been uploaded yet.`,
+      });
+      return;
+    }
+
+    try {
+      downloadFile(fileId, title);
+      toast({
+        type: 'success',
+        title: 'Downloading...',
+        description: `Downloading ${title || 'document'}...`,
+      });
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast({
+        type: 'error',
+        title: 'Error downloading file',
+        description: `Could not download ${title || 'document'}. Please try again.`,
+      });
+    }
+  };
   useEffect(() => {
     if (ratings?.data?.length) {
       const total = ratings.data.length;
@@ -126,7 +313,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
 
   return (
     <div className="w-full mx-auto px-3 sm:px-4 lg:px-6 space-y-8">
-      {/* Sticky Action Bar */}
+      {/* Sticky Action Bar - remains the same */}
       <div
         className="z-40 bg-background py-4 flex flex-wrap gap-2 items-center justify-between top-0 border-b border-border"
         style={{ top: headerHeight }}
@@ -200,6 +387,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
           {/* Dark-mode glow orbs */}
           <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
           <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
+
           <div className="flex items-center gap-3 border-b pb-4 mb-4">
             <User className="w-6 h-6 text-muted-foreground" />
             <div>
@@ -286,6 +474,42 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               </div>
             </div>
           </div>
+          <div className="w-full flex justify-center">
+            <Separator className="my-2 w-1/2" />
+          </div>
+          {/* ✅ Updated Document Images Section */}
+          {(customer?.idCardFile || customer?.driversLicenseFile) && (
+            <div className="col-span-full pt-2">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3">
+                Document Images
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {customer?.idCardFile && (
+                  <DocCard
+                    title="ID Card"
+                    fileId={customer.idCardFile.id}
+                    onView={() => viewFile(customer.idCardFile!.id)}
+                    onDownload={() =>
+                      downloadFile(customer.idCardFile!.id, 'ID Card')
+                    }
+                  />
+                )}
+                {customer?.driversLicenseFile && (
+                  <DocCard
+                    title="Driver's License"
+                    fileId={customer.driversLicenseFile.id}
+                    onView={() => viewFile(customer.driversLicenseFile!.id)}
+                    onDownload={() =>
+                      downloadFile(
+                        customer.driversLicenseFile!.id,
+                        "Driver's License",
+                      )
+                    }
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Spending Chart */}
@@ -294,6 +518,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
         </div>
       </div>
 
+      {/* Rest of the component remains the same... */}
       {/* ✅ Tabs Section */}
       <Card className="shadow-sm border border-border">
         <CardContent className="pt-4 sm:pt-6">

@@ -1,18 +1,25 @@
 // src/organization/organization.service.ts
-import { Injectable, HttpException, HttpStatus, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Logger,
+} from '@nestjs/common';
 import { OrganizationRepository } from './organization.repository';
 import { CustomUser } from 'src/auth/auth.guard';
 import { FilesService } from 'src/files/files.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { DatabaseService } from 'src/db';
 
 @Injectable()
 export class OrganizationService {
+  private readonly logger = new Logger(OrganizationService.name);
   constructor(
-    @Inject(OrganizationRepository)
     private organizationRepository: OrganizationRepository,
-    @Inject(FilesService)
     private filesService: FilesService,
+    private dbService: DatabaseService,
   ) {}
 
   async create(user: CustomUser, body: CreateOrganizationDto) {
@@ -107,65 +114,82 @@ export class OrganizationService {
   }
 
   async update(id: string, user: CustomUser, body: UpdateOrganizationDto) {
-    try {
-      if (!id || typeof id !== 'string') {
-        throw new HttpException(
-          'Invalid organization ID',
-          HttpStatus.BAD_REQUEST,
+    const transaction = this.dbService.db.transaction(async (tx) => {
+      try {
+        this.logger.log(`Updating organization ${id} by user ${user.id}`);
+
+        // Validate organization exists and user has permission
+        const organization = await this.organizationRepository.findOne(id);
+        if (!organization) {
+          throw new HttpException(
+            'Organization not found',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+
+        if (organization.userId !== user.id && user.role !== 'admin') {
+          throw new HttpException(
+            'You do not have permission to update this organization',
+            HttpStatus.FORBIDDEN,
+          );
+        }
+
+        // Validate all file IDs exist before updating
+        await this.validateFileIds(body);
+
+        // Prepare update data (only defined fields)
+        const updateData = this.sanitizeUpdateData(body);
+
+        // Perform update
+        const updated = await this.organizationRepository.update(
+          id,
+          updateData,
         );
-      }
 
-      const organization = await this.organizationRepository.findOne(id);
-      if (!organization) {
-        throw new HttpException('Organization not found', HttpStatus.NOT_FOUND);
-      }
-
-      // Ensure user owns this organization or has admin rights
-      if (organization.userId !== user.id && user.role !== 'admin') {
-        throw new HttpException(
-          'You do not have permission to update this organization',
-          HttpStatus.FORBIDDEN,
-        );
-      }
-
-      // Filter out undefined values to only update provided fields
-      const updateData: any = {};
-      if (body.name !== undefined) updateData.name = body.name;
-      if (body.email !== undefined) updateData.email = body.email;
-      if (body.website !== undefined) updateData.website = body.website;
-      if (body.phone !== undefined) updateData.phone = body.phone;
-      if (body.address !== undefined) updateData.address = body.address;
-      if (body.imageFileId !== undefined)
-        updateData.imageFileId = body.imageFileId;
-      if (body.fleetListFileId !== undefined)
-        updateData.fleetListFileId = body.fleetListFileId;
-      if (body.modelGFileId !== undefined)
-        updateData.modelGFileId = body.modelGFileId;
-      if (body.rcFileId !== undefined) updateData.rcFileId = body.rcFileId;
-      if (body.statusFileId !== undefined)
-        updateData.statusFileId = body.statusFileId;
-      if (body.identifiantFiscaleFileId !== undefined)
-        updateData.identifiantFiscaleFileId = body.identifiantFiscaleFileId;
-      if (body.decisionFileId !== undefined)
-        updateData.decisionFileId = body.decisionFileId;
-      if (body.ceoIdCardFileId !== undefined)
-        updateData.ceoIdCardFileId = body.ceoIdCardFileId;
-      if (body.bilanFileId !== undefined)
-        updateData.bilanFileId = body.bilanFileId;
-
-      const updated = await this.organizationRepository.update(id, updateData);
-      return updated;
-    } catch (error) {
-      if (error instanceof HttpException) {
+        this.logger.log(`Organization ${id} updated successfully`);
+        return updated;
+      } catch (error) {
+        this.logger.error(`Failed to update organization ${id}:`, error);
         throw error;
       }
-      throw new HttpException(
-        'Failed to update organization',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
+    });
 
+    return transaction;
+  }
+  private sanitizeUpdateData(body: UpdateOrganizationDto): any {
+    const updateData: any = {};
+
+    // Only include defined values
+    const fields = [
+      'name',
+      'email',
+      'website',
+      'phone',
+      'address',
+      'imageFileId',
+      'fleetListFileId',
+      'modelGFileId',
+      'rcFileId',
+      'statusFileId',
+      'identifiantFiscaleFileId',
+      'decisionFileId',
+      'ceoIdCardFileId',
+      'bilanFileId',
+    ];
+
+    for (const field of fields) {
+      if (body[field] !== undefined) {
+        // Sanitize string values
+        if (typeof body[field] === 'string') {
+          updateData[field] = body[field].trim() || null;
+        } else {
+          updateData[field] = body[field];
+        }
+      }
+    }
+
+    return updateData;
+  }
   async delete(id: string, user: CustomUser) {
     try {
       if (!id || typeof id !== 'string') {
@@ -206,22 +230,35 @@ export class OrganizationService {
     try {
       const organization = await this.findOne(id);
 
-      // Create populated organization object
-      const populatedOrg: any = { ...organization };
+      // Small helper: pick a safe URL for any file
+      const toSafeUrl = (f?: {
+        id?: string;
+        url?: string | null;
+        isPublic?: boolean;
+      }) => {
+        if (!f?.id) return undefined;
+        if (f.isPublic && f.url) return f.url; // already public
+        return `/api/v1/files/${f.id}/serve`; // private or missing -> serve route
+      };
 
-      // Helper function to safely get file data
-      const getFileData = async (fileId: string | null) => {
+      // Helper to fetch file and normalize its URL
+      const getFileData = async (fileId?: string | null) => {
         if (!fileId) return null;
         try {
-          const fileData = await this.filesService.findOne(fileId);
-          return fileData;
-        } catch (error) {
-          console.warn(`Failed to fetch file ${fileId}:`, error.message);
+          const f = await this.filesService.findOne(fileId);
+          return { ...f, url: toSafeUrl(f) };
+        } catch (error: any) {
+          console.warn(
+            `Failed to fetch file ${fileId}:`,
+            error?.message || error,
+          );
           return null;
         }
       };
 
-      // Populate all file fields
+      const populatedOrg: any = { ...organization };
+
+      // All file ID fields you store on the org
       const fileFields = [
         'imageFileId',
         'fleetListFileId',
@@ -232,14 +269,16 @@ export class OrganizationService {
         'decisionFileId',
         'ceoIdCardFileId',
         'bilanFileId',
-      ];
+      ] as const;
 
+      // Fetch in sequence (simple + readable). If you want faster, use Promise.all.
       for (const field of fileFields) {
-        const fileId = organization[field];
+        const fileId = (organization as any)[field] as string | undefined;
         if (fileId) {
           const fileData = await getFileData(fileId);
           if (fileData) {
-            populatedOrg[field.replace('FileId', 'File')] = fileData;
+            const targetKey = field.replace('FileId', 'File');
+            populatedOrg[targetKey] = fileData;
           }
         }
       }
@@ -257,7 +296,7 @@ export class OrganizationService {
   }
 
   // Helper method to validate file IDs exist
-  async validateFileIds(body: CreateOrganizationDto | UpdateOrganizationDto) {
+  private async validateFileIds(body: UpdateOrganizationDto): Promise<void> {
     const fileIds = [
       body.imageFileId,
       body.fleetListFileId,
@@ -268,9 +307,11 @@ export class OrganizationService {
       body.decisionFileId,
       body.ceoIdCardFileId,
       body.bilanFileId,
-    ].filter((id) => id); // Filter out undefined/null values
+    ].filter(Boolean);
 
-    for (const fileId of fileIds) {
+    if (fileIds.length === 0) return;
+
+    const validationPromises = fileIds.map(async (fileId) => {
       try {
         await this.filesService.findOne(fileId);
       } catch (error) {
@@ -279,7 +320,9 @@ export class OrganizationService {
           HttpStatus.BAD_REQUEST,
         );
       }
-    }
+    });
+
+    await Promise.all(validationPromises);
   }
 
   // Get organization statistics

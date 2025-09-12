@@ -17,6 +17,8 @@ import {
   deleteCustomer,
   unblacklistCustomer,
   Customer,
+  CustomerWithFiles,
+  getCustomerWithFiles,
 } from '@/api/customers';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, Hammer, Trash, Prohibit } from '@phosphor-icons/react';
@@ -51,10 +53,12 @@ export const ClientsGrid = () => {
   const [pageSize] = useState(() =>
     typeof window !== 'undefined' && window.innerWidth < 1700 ? 7 : 12,
   );
+
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null,
-  );
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<CustomerWithFiles | null>(null);
+  const [isLoadingCustomer, setIsLoadingCustomer] = useState(false);
+
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -108,7 +112,23 @@ export const ClientsGrid = () => {
     }
     setShowDeleteDialog(false);
   };
-
+  const handleEditCustomer = async (customer: Customer) => {
+    setIsLoadingCustomer(true);
+    try {
+      const customerWithFiles = await getCustomerWithFiles(customer.id);
+      setSelectedCustomer(customerWithFiles);
+      setEditDialogOpen(true);
+    } catch (error) {
+      console.error('Failed to load customer with files:', error);
+      toast({
+        type: 'error',
+        title: 'Error',
+        description: 'Failed to load customer details for editing',
+      });
+    } finally {
+      setIsLoadingCustomer(false);
+    }
+  };
   const colDefs: ColDef<Customer>[] = [
     {
       headerName: '',

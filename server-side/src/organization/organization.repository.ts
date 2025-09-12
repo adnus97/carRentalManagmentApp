@@ -1,6 +1,6 @@
 // src/organization/organization.repository.ts
 import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../db';
+import { DatabaseService, files } from '../db';
 import { organization } from '../db/schema/organization';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
@@ -73,8 +73,37 @@ export class OrganizationRepository {
 
   async findByUserId(userId: string) {
     return this.dbService.db
-      .select()
+      .select({
+        // Organization fields
+        id: organization.id,
+        name: organization.name,
+        userId: organization.userId,
+        email: organization.email,
+        website: organization.website,
+        phone: organization.phone,
+        address: organization.address,
+        imageFileId: organization.imageFileId,
+        fleetListFileId: organization.fleetListFileId,
+        modelGFileId: organization.modelGFileId,
+        rcFileId: organization.rcFileId,
+        statusFileId: organization.statusFileId,
+        identifiantFiscaleFileId: organization.identifiantFiscaleFileId,
+        decisionFileId: organization.decisionFileId,
+        ceoIdCardFileId: organization.ceoIdCardFileId,
+        bilanFileId: organization.bilanFileId,
+        createdAt: organization.createdAt,
+        updatedAt: organization.updatedAt,
+        // Image file fields
+        imageFile: {
+          id: files.id,
+          name: files.name,
+          url: files.url,
+          type: files.type,
+          size: files.size,
+        },
+      })
       .from(organization)
+      .leftJoin(files, eq(organization.imageFileId, files.id))
       .where(eq(organization.userId, userId));
   }
 

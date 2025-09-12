@@ -1,3 +1,4 @@
+// src/customers/dto/create-customer.dto.ts
 import {
   IsString,
   IsOptional,
@@ -27,12 +28,12 @@ export class CreateCustomerDto {
 
   @IsString()
   @IsNotEmpty({ message: 'Document ID is required' })
-  documentId: string; // ✅ required, uniqueness enforced in DB + service
+  documentId: string;
 
   @IsEnum(['passport', 'driver_license', 'id_card'], {
     message: 'Document type must be passport, driver_license, or id_card',
   })
-  documentType: 'passport' | 'driver_license' | 'id_card'; // ✅ required
+  documentType: 'passport' | 'driver_license' | 'id_card';
 
   @IsOptional()
   @IsNumber()
@@ -43,4 +44,13 @@ export class CreateCustomerDto {
   @IsNumber()
   @Min(0, { message: 'Rating count must be a positive number' })
   ratingCount?: number = 0;
+
+  // New optional file ID fields
+  @IsOptional()
+  @IsString()
+  idCardId?: string;
+
+  @IsOptional()
+  @IsString()
+  driversLicenseId?: string;
 }

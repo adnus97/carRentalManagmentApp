@@ -12,6 +12,8 @@ import { rentCounters, rents } from 'src/db/schema/rents';
 import { customers } from 'src/db/schema/customers';
 import { RentStatus } from 'src/types/rent-status.type';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { FilesService } from 'src/files/files.service';
+import { CreateRentData, RentsRepository } from './rents.repository';
 
 function ensureDate(value: any): Date | undefined {
   if (!value) return undefined;
@@ -46,6 +48,8 @@ export class RentsService {
   constructor(
     private readonly dbService: DatabaseService,
     private readonly notificationsService: NotificationsService,
+    private filesService: FilesService,
+    private readonly rentsRepository: RentsRepository,
   ) {}
   private async generateRentId(orgId: string): Promise<{
     id: string;
@@ -532,14 +536,14 @@ export class RentsService {
     const [{ count }] = await this.dbService.db
       .select({ count: sql<number>`count(*)` })
       .from(rents)
-      .where(eq(rents.isDeleted, false));
+      .where(and(eq(rents.isDeleted, false), eq(rents.orgId, orgId)));
 
     const rawData = await this.dbService.db
       .select({
         id: rents.id,
-        rentContractId: rents.rentContractId, // ✅ Add this field
-        rentNumber: rents.rentNumber, // ✅ Add this field
-        year: rents.year, // ✅ Add this field
+        rentContractId: rents.rentContractId,
+        rentNumber: rents.rentNumber,
+        year: rents.year,
         carId: rents.carId,
         customerId: rents.customerId,
         startDate: rents.startDate,
@@ -559,6 +563,11 @@ export class RentsService {
         pricePerDay: cars.pricePerDay,
         customerName: sql<string>`CONCAT(${customers.firstName}, ' ', ${customers.lastName})`,
         customerEmail: customers.email,
+        // 🆕 Add car image IDs
+        carImg1Id: rents.carImg1Id,
+        carImg2Id: rents.carImg2Id,
+        carImg3Id: rents.carImg3Id,
+        carImg4Id: rents.carImg4Id,
       })
       .from(rents)
       .leftJoin(cars, eq(rents.carId, cars.id))
@@ -576,6 +585,13 @@ export class RentsService {
         rent.expectedEndDate,
         rent.status,
       ),
+      // 🆕 Add car images count for frontend display
+      carImagesCount: [
+        rent.carImg1Id,
+        rent.carImg2Id,
+        rent.carImg3Id,
+        rent.carImg4Id,
+      ].filter(Boolean).length,
     }));
 
     return {
@@ -620,12 +636,81 @@ export class RentsService {
 
   async findOne(id: string) {
     const result = await this.dbService.db
-      .select()
+      .select({
+        // Rent data
+        id: rents.id,
+        rentContractId: rents.rentContractId,
+        rentNumber: rents.rentNumber,
+        year: rents.year,
+        orgId: rents.orgId,
+        carId: rents.carId,
+        customerId: rents.customerId,
+        startDate: rents.startDate,
+        expectedEndDate: rents.expectedEndDate,
+        returnedAt: rents.returnedAt,
+        isOpenContract: rents.isOpenContract,
+        totalPrice: rents.totalPrice,
+        deposit: rents.deposit,
+        guarantee: rents.guarantee,
+        lateFee: rents.lateFee,
+        totalPaid: rents.totalPaid,
+        isFullyPaid: rents.isFullyPaid,
+        status: rents.status,
+        damageReport: rents.damageReport,
+        isDeleted: rents.isDeleted,
+        // 🆕 Car image IDs
+        carImg1Id: rents.carImg1Id,
+        carImg2Id: rents.carImg2Id,
+        carImg3Id: rents.carImg3Id,
+        carImg4Id: rents.carImg4Id,
+        // Car data
+        carMake: cars.make,
+        carModel: cars.model,
+        pricePerDay: cars.pricePerDay,
+        // Customer data
+        customerName: sql<string>`CONCAT(${customers.firstName}, ' ', ${customers.lastName})`,
+        customerFirstName: customers.firstName,
+        customerLastName: customers.lastName,
+        customerEmail: customers.email,
+        customerPhone: customers.phone,
+      })
       .from(rents)
+      .leftJoin(cars, eq(rents.carId, cars.id))
+      .leftJoin(customers, eq(rents.customerId, customers.id))
       .where(and(eq(rents.id, id), eq(rents.isDeleted, false)));
 
     if (result.length > 0) {
       const rent = result[0];
+
+      // 🆕 Build car images array with URLs
+      const carImages = [];
+      const imageIds = [
+        rent.carImg1Id,
+        rent.carImg2Id,
+        rent.carImg3Id,
+        rent.carImg4Id,
+      ];
+
+      for (const imageId of imageIds) {
+        if (imageId) {
+          try {
+            const imageFile = await this.filesService.findOne(imageId);
+            if (imageFile) {
+              carImages.push({
+                id: imageFile.id,
+                name: imageFile.name,
+                url: imageFile.url || `/api/v1/files/${imageFile.id}/serve`,
+                size: imageFile.size,
+                path: imageFile.path,
+              });
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch car image ${imageId}:`, error);
+            // Continue with other images, don't fail the entire request
+          }
+        }
+      }
+
       return [
         {
           ...rent,
@@ -635,13 +720,15 @@ export class RentsService {
             rent.expectedEndDate,
             rent.status,
           ),
+          // 🆕 Add car images data
+          carImages,
+          carImagesCount: carImages.length,
         },
       ];
     }
 
     return result;
   }
-
   async update(id: string, updateRentDto: Partial<CreateRentDto>) {
     try {
       // 1) Load current rent
@@ -1160,6 +1247,483 @@ export class RentsService {
         throw error;
       }
       throw new BadRequestException('Unable to fetch contract details');
+    }
+  }
+  async createWithImages(
+    createRentDto: CreateRentDto,
+    userId: string,
+    carImages?: Express.Multer.File[],
+  ) {
+    const uploadedImageIds: string[] = [];
+
+    try {
+      // Validate user and get organization
+      const currentUserOrgId = await this.dbService.db
+        .select({ id: organization.id })
+        .from(organization)
+        .where(eq(organization.userId, userId));
+
+      if (!currentUserOrgId.length) {
+        throw new BadRequestException('Organization not found for this user');
+      }
+
+      const orgId = currentUserOrgId[0].id;
+
+      // Upload car images first
+      if (carImages && carImages.length > 0) {
+        const imagesToUpload = carImages.slice(0, 4); // Limit to 4 images
+
+        for (let i = 0; i < imagesToUpload.length; i++) {
+          const image = imagesToUpload[i];
+          try {
+            const uploadResult = await this.filesService.uploadFile(
+              image,
+              { id: userId, org_id: orgId } as any, // Cast to match your CustomUser interface
+              {
+                type: 'image',
+                isPublic: false,
+                folder: 'rent-car-images',
+                organizationId: orgId,
+              },
+            );
+            uploadedImageIds.push(uploadResult.id);
+          } catch (error) {
+            console.warn(`Failed to upload car image ${i + 1}:`, error);
+            // Continue with other images, don't fail the entire process
+          }
+        }
+      }
+      // Generate rent ID and contract ID
+      const { id, rentContractId, rentNumber, year } =
+        await this.generateRentId(orgId);
+
+      // Validate and convert dates (your existing logic)
+      const startDate = ensureDate(createRentDto.startDate);
+      const expectedEndDate = ensureDate(createRentDto.expectedEndDate);
+      const returnedAt = ensureDate(createRentDto.returnedAt);
+
+      if (!startDate) {
+        throw new BadRequestException('Please provide a valid start date');
+      }
+
+      // Your existing validation logic here...
+      const endDate = returnedAt || expectedEndDate;
+      if (!endDate) {
+        throw new BadRequestException(
+          'Please provide either a return date or expected end date',
+        );
+      }
+
+      if (startDate >= endDate) {
+        throw new BadRequestException('Start date must be before the end date');
+      }
+
+      // Your existing car and customer validation...
+      const carExists = await this.dbService.db
+        .select()
+        .from(cars)
+        .where(
+          and(eq(cars.id, createRentDto.carId), ne(cars.status, 'deleted')),
+        );
+
+      if (!carExists.length) {
+        throw new BadRequestException(
+          'Selected car not found or is no longer available',
+        );
+      }
+
+      if (carExists[0].orgId !== orgId) {
+        throw new BadRequestException(
+          'Selected car does not belong to your organization',
+        );
+      }
+
+      const customerExists = await this.dbService.db
+        .select({ id: customers.id, orgId: customers.orgId })
+        .from(customers)
+        .where(eq(customers.id, createRentDto.customerId));
+
+      if (!customerExists.length) {
+        throw new BadRequestException('Selected customer not found');
+      }
+
+      if (customerExists[0].orgId !== orgId) {
+        throw new BadRequestException(
+          'Selected customer does not belong to your organization',
+        );
+      }
+
+      // Check availability
+      const available = await this.isCarAvailableForRange(
+        createRentDto.carId,
+        startDate,
+        endDate,
+      );
+
+      if (!available) {
+        throw new BadRequestException(
+          'This car is already rented during the selected time period. Please choose different dates or another car.',
+        );
+      }
+
+      // Your existing financial validation...
+      if (
+        createRentDto.totalPrice !== undefined &&
+        createRentDto.totalPrice < 0
+      ) {
+        throw new BadRequestException('Total price cannot be negative');
+      }
+
+      if (createRentDto.deposit !== undefined && createRentDto.deposit < 0) {
+        throw new BadRequestException('Deposit amount cannot be negative');
+      }
+
+      if (
+        createRentDto.guarantee !== undefined &&
+        createRentDto.guarantee < 0
+      ) {
+        throw new BadRequestException('Guarantee amount cannot be negative');
+      }
+
+      if (
+        createRentDto.totalPaid !== undefined &&
+        createRentDto.totalPaid < 0
+      ) {
+        throw new BadRequestException('Amount paid cannot be negative');
+      }
+
+      if (
+        !createRentDto.isOpenContract &&
+        createRentDto.totalPrice !== undefined &&
+        createRentDto.totalPaid !== undefined &&
+        createRentDto.totalPaid > createRentDto.totalPrice
+      ) {
+        throw new BadRequestException(
+          'Amount paid cannot exceed the total price for fixed contracts',
+        );
+      }
+
+      const autoStatus: RentStatus = this.getAutoStatus(
+        startDate,
+        returnedAt || null,
+        expectedEndDate || null,
+        'reserved',
+      );
+      // Prepare rent data with image IDs
+      const rentData: CreateRentData = {
+        id,
+        rentContractId,
+        rentNumber,
+        year,
+        orgId,
+        status: autoStatus,
+        carId: createRentDto.carId,
+        customerId: createRentDto.customerId,
+        startDate,
+        expectedEndDate,
+        returnedAt,
+        isOpenContract: createRentDto.isOpenContract ?? false,
+        totalPrice: createRentDto.totalPrice,
+        deposit: createRentDto.deposit,
+        guarantee: createRentDto.guarantee,
+        lateFee: createRentDto.lateFee,
+        totalPaid: createRentDto.totalPaid,
+        isFullyPaid: createRentDto.isFullyPaid ?? false,
+        damageReport: createRentDto.damageReport,
+        isDeleted: false,
+        // 🆕 Add uploaded image IDs
+        carImg1Id: uploadedImageIds[0] || null,
+        carImg2Id: uploadedImageIds[1] || null,
+        carImg3Id: uploadedImageIds[2] || null,
+        carImg4Id: uploadedImageIds[3] || null,
+      };
+
+      // Create the rent using repository
+      const createdRent = await this.rentsRepository.create(rentData);
+
+      // Your existing notifications logic...
+      const orgOwner = await this.getOrgOwner(orgId);
+      if (orgOwner) {
+        const [customer] = await this.dbService.db
+          .select({
+            firstName: customers.firstName,
+            lastName: customers.lastName,
+          })
+          .from(customers)
+          .where(eq(customers.id, createRentDto.customerId));
+
+        const [car] = await this.dbService.db
+          .select({ make: cars.make, model: cars.model })
+          .from(cars)
+          .where(eq(cars.id, createRentDto.carId));
+
+        await this.notificationsService.createNotification({
+          userId: orgOwner.userId,
+          orgId,
+          category: 'RENTAL',
+          type: 'RENT_STARTED',
+          priority: 'MEDIUM',
+          title: 'New Rental Created',
+          message: `${customer?.firstName} ${customer?.lastName} rented ${car?.make} ${car?.model} - Contract #${rentContractId}${uploadedImageIds.length > 0 ? ` (${uploadedImageIds.length} photos)` : ''}`,
+          actionUrl: `/rentals/${id}`,
+          actionLabel: 'View Rental',
+          metadata: {
+            rentalId: id,
+            rentContractId,
+            customerId: createRentDto.customerId,
+            carId: createRentDto.carId,
+            totalPrice: createRentDto.totalPrice,
+            carImagesCount: uploadedImageIds.length,
+          },
+        });
+      }
+      return {
+        success: true,
+        message: `Rental contract created successfully${uploadedImageIds.length > 0 ? ` with ${uploadedImageIds.length} car images` : ''}`,
+        data: {
+          ...createdRent,
+          carImagesCount: uploadedImageIds.length,
+          carImageIds: uploadedImageIds,
+        },
+      };
+    } catch (error) {
+      // Cleanup uploaded images if rent creation fails
+      if (uploadedImageIds.length > 0) {
+        await this.cleanupUploadedImages(uploadedImageIds, userId);
+      }
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      // Handle other database errors
+      if (error.code === '23505') {
+        throw new BadRequestException(
+          'A rental contract with these details already exists. Please check your input and try again.',
+        );
+      }
+
+      if (error.code === '23503') {
+        throw new BadRequestException(
+          'The selected car or customer is no longer available. Please refresh and try again.',
+        );
+      }
+
+      if (error.code === '23514') {
+        throw new BadRequestException(
+          'Some of the provided information is invalid. Please check your input and try again.',
+        );
+      }
+
+      if (error.code === '23502') {
+        throw new BadRequestException(
+          'Required information is missing. Please fill in all required fields.',
+        );
+      }
+
+      throw new BadRequestException(
+        'Unable to create rental contract. Please try again or contact support if the problem persists.',
+      );
+    }
+  }
+  // 🆕 Get rent with images
+  async getRentWithImages(rentId: string) {
+    try {
+      const rent = await this.rentsRepository.findOneWithImages(rentId);
+
+      if (!rent) {
+        throw new BadRequestException('Rental contract not found');
+      }
+
+      // Build car images array
+      const carImages = [];
+
+      if (rent.carImg1Id && rent.img1Name) {
+        carImages.push({
+          id: rent.carImg1Id,
+          name: rent.img1Name,
+          path: rent.img1Path,
+          url: rent.img1Url || `/api/v1/files/${rent.carImg1Id}/serve`,
+        });
+      }
+
+      if (rent.carImg2Id && rent.img2Name) {
+        carImages.push({
+          id: rent.carImg2Id,
+          name: rent.img2Name,
+          path: rent.img2Path,
+          url: rent.img2Url || `/api/v1/files/${rent.carImg2Id}/serve`,
+        });
+      }
+
+      if (rent.carImg3Id && rent.img3Name) {
+        carImages.push({
+          id: rent.carImg3Id,
+          name: rent.img3Name,
+          path: rent.img3Path,
+          url: rent.img3Url || `/api/v1/files/${rent.carImg3Id}/serve`,
+        });
+      }
+
+      if (rent.carImg4Id && rent.img4Name) {
+        carImages.push({
+          id: rent.carImg4Id,
+          name: rent.img4Name,
+          path: rent.img4Path,
+          url: rent.img4Url || `/api/v1/files/${rent.carImg4Id}/serve`,
+        });
+      }
+
+      return {
+        ...rent,
+        carImages,
+        status: this.getAutoStatus(
+          rent.startDate,
+          rent.returnedAt,
+          rent.expectedEndDate,
+          rent.status as RentStatus,
+        ),
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Unable to fetch rental contract details');
+    }
+  }
+
+  // 🆕 Update rent images
+  async updateRentImages(
+    rentId: string,
+    userId: string,
+    carImages?: Express.Multer.File[],
+  ) {
+    const uploadedImageIds: string[] = [];
+
+    try {
+      // Verify rent exists and get organization
+      const existingRent = await this.dbService.db
+        .select({ orgId: rents.orgId })
+        .from(rents)
+        .where(and(eq(rents.id, rentId), eq(rents.isDeleted, false)));
+
+      if (!existingRent.length) {
+        throw new BadRequestException('Rental contract not found');
+      }
+
+      const orgId = existingRent[0].orgId;
+
+      // Upload new images
+      if (carImages && carImages.length > 0) {
+        const imagesToUpload = carImages.slice(0, 4);
+
+        for (let i = 0; i < imagesToUpload.length; i++) {
+          const image = imagesToUpload[i];
+          try {
+            const uploadResult = await this.filesService.uploadFile(
+              image,
+              { id: userId, org_id: orgId } as any,
+              {
+                type: 'image',
+                isPublic: false,
+                folder: 'rent-car-images',
+                organizationId: orgId,
+              },
+            );
+            uploadedImageIds.push(uploadResult.id);
+          } catch (error) {
+            console.warn(`Failed to upload car image ${i + 1}:`, error);
+          }
+        }
+      }
+
+      // Update rent with new image IDs
+      const imageUpdateData = {
+        carImg1Id: uploadedImageIds[0] || null,
+        carImg2Id: uploadedImageIds[1] || null,
+        carImg3Id: uploadedImageIds[2] || null,
+        carImg4Id: uploadedImageIds[3] || null,
+      };
+
+      const updatedRent = await this.rentsRepository.updateImages(
+        rentId,
+        imageUpdateData,
+      );
+
+      return {
+        success: true,
+        message: `Car images updated successfully (${uploadedImageIds.length} images)`,
+        data: {
+          ...updatedRent,
+          carImagesCount: uploadedImageIds.length,
+          carImageIds: uploadedImageIds,
+        },
+      };
+    } catch (error) {
+      // Cleanup uploaded images if update fails
+      if (uploadedImageIds.length > 0) {
+        await this.cleanupUploadedImages(uploadedImageIds, userId);
+      }
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(
+        'Unable to update car images. Please try again.',
+      );
+    }
+  }
+
+  // 🆕 Get all rents with image info
+  async getAllRentsWithCarAndCustomerAndImages(
+    orgId: string,
+    page = 1,
+    pageSize = 10,
+  ) {
+    try {
+      const result = await this.rentsRepository.getAllWithImages(
+        orgId,
+        page,
+        pageSize,
+      );
+
+      // Add auto-calculated status and image counts
+      const dataWithStatus = result.data.map((rent) => ({
+        ...rent,
+        status: this.getAutoStatus(
+          rent.startDate,
+          rent.returnedAt,
+          rent.expectedEndDate,
+          rent.status as RentStatus,
+        ),
+        carImagesCount: [
+          rent.carImg1Id,
+          rent.carImg2Id,
+          rent.carImg3Id,
+          rent.carImg4Id,
+        ].filter(Boolean).length,
+      }));
+
+      return {
+        ...result,
+        data: dataWithStatus,
+      };
+    } catch (error) {
+      throw new BadRequestException('Unable to fetch rental contracts');
+    }
+  }
+  // 🆕 Helper method to cleanup uploaded images on failure
+  private async cleanupUploadedImages(
+    imageIds: string[],
+    userId: string,
+  ): Promise<void> {
+    for (const imageId of imageIds) {
+      try {
+        await this.filesService.deleteFile(imageId, { id: userId } as any);
+      } catch (error) {
+        console.warn(`Failed to cleanup uploaded image ${imageId}:`, error);
+      }
     }
   }
 }

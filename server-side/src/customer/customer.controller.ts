@@ -178,4 +178,13 @@ export class CustomerController extends BaseController {
       this.handleControllerError(error);
     }
   }
+
+  @Get(':id/with-files')
+  async findOneWithFiles(@Param('id') id: string) {
+    try {
+      return await this.customerService.findOneWithFiles(id);
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
 }

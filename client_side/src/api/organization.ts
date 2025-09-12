@@ -9,7 +9,13 @@ export interface Organization {
   website?: string;
   phone?: string;
   address?: string;
-
+  imageFile?: {
+    id?: string;
+    name?: string;
+    size?: number;
+    type?: string;
+    url?: string;
+  };
   // File ID fields (what's actually stored in DB)
   imageFileId?: string;
   fleetListFileId?: string;

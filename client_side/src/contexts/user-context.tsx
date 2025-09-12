@@ -53,8 +53,6 @@ const useAuthProvider = (): UserContextType => {
 
   useEffect(() => {
     const localUser = localStorage.getItem(AUTH_KEY);
-    console.log(localUser);
-
     if (!user && localUser) {
       const parsedUser = JSON.parse(localUser) as User;
       setUser(parsedUser);

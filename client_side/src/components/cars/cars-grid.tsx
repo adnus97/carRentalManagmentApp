@@ -356,7 +356,7 @@ export const CarsGrid = () => {
       },
     },
     {
-      headerName: 'Technical Visit Expiry', // ✅ New column
+      headerName: 'Technical Inspection Expiry', // ✅ New column
       field: 'technicalVisiteExpiryDate',
       width: 150,
       cellRenderer: (params: { value: string }) => {

@@ -15,6 +15,27 @@ export interface Customer {
   isDeleted: boolean;
   isBlacklisted?: boolean;
   blacklistReason?: string | null;
+  // New file ID fields
+  idCardId?: string;
+  driversLicenseId?: string;
+}
+
+// Extended interface for populated file data (similar to Organization)
+export interface CustomerWithFiles extends Customer {
+  idCardFile?: {
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+    size: number;
+  };
+  driversLicenseFile?: {
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+    size: number;
+  };
 }
 
 export interface CustomerRating {
@@ -133,5 +154,12 @@ export const getRentsByCustomer = async (
   const response = await api.get(`/customers/customer/${customerId}`, {
     params: { page, pageSize },
   });
+  return response.data;
+};
+
+export const getCustomerWithFiles = async (
+  id: string,
+): Promise<CustomerWithFiles> => {
+  const response = await api.get(`/customers/${id}/with-files`);
   return response.data;
 };

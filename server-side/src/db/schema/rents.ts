@@ -9,6 +9,7 @@ import {
 import { organization } from './organization';
 import { cars } from './cars';
 import { customers } from './customers';
+import { files } from './files';
 
 export const rents = pgTable('rents', {
   id: varchar('id', { length: 255 }).primaryKey().notNull(), // ✅ Normal UUID
@@ -41,6 +42,22 @@ export const rents = pgTable('rents', {
   }).default('reserved'),
   damageReport: text('damage_report').default(''),
   isDeleted: boolean('is_deleted').default(false).notNull(),
+  carImg1Id: varchar('car_img1_id', { length: 255 }).references(
+    () => files.id,
+    { onDelete: 'set null' },
+  ),
+  carImg2Id: varchar('car_img2_id', { length: 255 }).references(
+    () => files.id,
+    { onDelete: 'set null' },
+  ),
+  carImg3Id: varchar('car_img3_id', { length: 255 }).references(
+    () => files.id,
+    { onDelete: 'set null' },
+  ),
+  carImg4Id: varchar('car_img4_id', { length: 255 }).references(
+    () => files.id,
+    { onDelete: 'set null' },
+  ),
 });
 export const rentCounters = pgTable('rent_counters', {
   id: varchar('id', { length: 255 }).primaryKey(),

@@ -16,7 +16,7 @@ import { Loader } from '@/components/loader';
 import { UploadComponent } from '@/components/image-uploader';
 import { FileUploader } from '@/components/file-uploader';
 
-import { File } from '../../api/files';
+import { File, getFileServeUrl } from '../../api/files';
 import {
   Organization,
   updateOrganization,
@@ -127,8 +127,8 @@ export function UpdateOrganizationForm({
   };
 
   // Helper function to get file URL from file ID
-  const getFileUrl = (fileId?: string) => {
-    return fileId ? `/api/v1/files/${fileId}/serve` : undefined;
+  const getCurrentFileUrl = (fileId?: string): string | undefined => {
+    return fileId ? getFileServeUrl(fileId) : undefined;
   };
 
   return (
@@ -144,12 +144,26 @@ export function UpdateOrganizationForm({
               <div className="h-16 w-16 overflow-hidden rounded-xl border bg-white dark:bg-gray-950 flex items-center justify-center">
                 {organization.imageFileId ? (
                   <img
-                    src={getFileUrl(organization.imageFileId)}
+                    src={getCurrentFileUrl(organization.imageFileId)}
                     alt="Logo"
                     className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      const parent = target.parentElement;
+                      if (parent) {
+                        target.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.className =
+                          'h-8 w-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-sm font-bold';
+                        fallback.textContent = (organization?.name || '?')
+                          .charAt(0)
+                          .toUpperCase();
+                        parent.appendChild(fallback);
+                      }
+                    }}
                   />
                 ) : (
-                  <Building2 className="h-8 w-8 text-gray-9" />
+                  <Building2 className="h-8 w-8 text-gray-500" />
                 )}
               </div>
               <div>
@@ -269,7 +283,7 @@ export function UpdateOrganizationForm({
                 </p>
               </div>
               <UploadComponent
-                currentImage={getFileUrl(organization.imageFileId)}
+                currentImage={getCurrentFileUrl(organization.imageFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setLogoFileId(file.id)}
               />
@@ -295,7 +309,7 @@ export function UpdateOrganizationForm({
                 label="RC (Registre de Commerce)"
                 accept=".pdf"
                 folder="organizations/legal"
-                currentFile={getFileUrl(organization.rcFileId)}
+                currentFile={getCurrentFileUrl(organization.rcFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setRcFileId(file.id)}
                 description="Official commercial register document (PDF)."
@@ -305,7 +319,7 @@ export function UpdateOrganizationForm({
                 label="Status"
                 accept=".pdf"
                 folder="organizations/legal"
-                currentFile={getFileUrl(organization.statusFileId)}
+                currentFile={getCurrentFileUrl(organization.statusFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setStatusFileId(file.id)}
                 description="Company status document (PDF)."
@@ -315,7 +329,7 @@ export function UpdateOrganizationForm({
                 label="Decision"
                 accept=".pdf"
                 folder="organizations/legal"
-                currentFile={getFileUrl(organization.decisionFileId)}
+                currentFile={getCurrentFileUrl(organization.decisionFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setDecisionFileId(file.id)}
                 description="Company decision document (PDF)."
@@ -325,7 +339,7 @@ export function UpdateOrganizationForm({
                 label="CEO ID Card"
                 accept=".jpg,.jpeg,.png,.webp"
                 folder="organizations/identity"
-                currentFile={getFileUrl(organization.ceoIdCardFileId)}
+                currentFile={getCurrentFileUrl(organization.ceoIdCardFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setCeoIdCardFileId(file.id)}
                 description="Clear photo/scan of the CEO's ID card."
@@ -336,7 +350,7 @@ export function UpdateOrganizationForm({
                 label="Fleet List"
                 accept=".pdf"
                 folder="organizations/fleet"
-                currentFile={getFileUrl(organization.fleetListFileId)}
+                currentFile={getCurrentFileUrl(organization.fleetListFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setFleetListFileId(file.id)}
                 description="Complete fleet inventory (PDF)."
@@ -346,7 +360,7 @@ export function UpdateOrganizationForm({
                 label="Model G"
                 accept=".pdf"
                 folder="organizations/fleet"
-                currentFile={getFileUrl(organization.modelGFileId)}
+                currentFile={getCurrentFileUrl(organization.modelGFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setModelGFileId(file.id)}
                 description="Model G document (PDF)."
@@ -357,7 +371,9 @@ export function UpdateOrganizationForm({
                 label="Identifiant Fiscale"
                 accept=".pdf"
                 folder="organizations/financial"
-                currentFile={getFileUrl(organization.identifiantFiscaleFileId)}
+                currentFile={getCurrentFileUrl(
+                  organization.identifiantFiscaleFileId,
+                )}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setIdentifiantFiscaleFileId(file.id)}
                 description="Tax identification document (PDF)."
@@ -367,7 +383,7 @@ export function UpdateOrganizationForm({
                 label="Bilan"
                 accept=".pdf"
                 folder="organizations/financial"
-                currentFile={getFileUrl(organization.bilanFileId)}
+                currentFile={getCurrentFileUrl(organization.bilanFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setBilanFileId(file.id)}
                 description="Financial balance sheet (PDF)."

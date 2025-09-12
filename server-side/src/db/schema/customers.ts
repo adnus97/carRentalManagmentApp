@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { organization } from './organization';
+import { files } from './files'; // Import files table for foreign key reference
 
 export const customers = pgTable(
   'customers',
@@ -33,6 +34,15 @@ export const customers = pgTable(
     isDeleted: boolean('is_deleted').default(false),
     isBlacklisted: boolean('is_blacklisted').default(false),
     blacklistReason: text('blacklist_reason'),
+    // New file ID columns
+    idCardId: varchar('id_card_id', { length: 255 }).references(
+      () => files.id,
+      { onDelete: 'set null' },
+    ),
+    driversLicenseId: varchar('drivers_license_id', { length: 255 }).references(
+      () => files.id,
+      { onDelete: 'set null' },
+    ),
   },
   (table) => {
     return {
@@ -45,7 +55,7 @@ export const customers = pgTable(
   },
 );
 
-//  Blacklist table
+//  Blacklist table (unchanged)
 export const customerBlacklist = pgTable('customer_blacklist', {
   id: varchar('id', { length: 255 }).primaryKey().notNull(),
   customerId: varchar('customer_id', { length: 255 })
@@ -56,7 +66,7 @@ export const customerBlacklist = pgTable('customer_blacklist', {
   createdAt: timestamp().defaultNow(),
 });
 
-//  Ratings table (optional, if you want per-rental ratings)
+//  Ratings table (unchanged)
 export const customerRatings = pgTable('customer_ratings', {
   id: varchar('id', { length: 255 }).primaryKey().notNull(),
   customerId: varchar('customer_id', { length: 255 })

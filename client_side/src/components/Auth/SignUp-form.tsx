@@ -75,7 +75,7 @@ export function SignupForm({
           localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
 
           setTimeout(() => {
-            navigate({ to: '/organization' });
+            navigate({ to: '/organizationForm' });
           }, 100); // Give React time to process state
           reset();
         },

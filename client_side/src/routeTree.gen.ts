@@ -12,6 +12,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as SignupImport } from './routes/signup'
+import { Route as OrganizationFormImport } from './routes/organizationForm'
 import { Route as LoginImport } from './routes/login'
 import { Route as AboutImport } from './routes/about'
 import { Route as LayoutImport } from './routes/_layout'
@@ -31,6 +32,12 @@ import { Route as LayoutCarDetailsIdImport } from './routes/_layout.carDetails.$
 const SignupRoute = SignupImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const OrganizationFormRoute = OrganizationFormImport.update({
+  id: '/organizationForm',
+  path: '/organizationForm',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -140,6 +147,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginImport
+      parentRoute: typeof rootRoute
+    }
+    '/organizationForm': {
+      id: '/organizationForm'
+      path: '/organizationForm'
+      fullPath: '/organizationForm'
+      preLoaderRoute: typeof OrganizationFormImport
       parentRoute: typeof rootRoute
     }
     '/signup': {
@@ -254,6 +268,7 @@ export interface FileRoutesByFullPath {
   '': typeof LayoutRouteWithChildren
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
+  '/organizationForm': typeof OrganizationFormRoute
   '/signup': typeof SignupRoute
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
@@ -270,6 +285,7 @@ export interface FileRoutesByTo {
   '': typeof LayoutRouteWithChildren
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
+  '/organizationForm': typeof OrganizationFormRoute
   '/signup': typeof SignupRoute
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
@@ -288,6 +304,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/about': typeof AboutRoute
   '/login': typeof LoginRoute
+  '/organizationForm': typeof OrganizationFormRoute
   '/signup': typeof SignupRoute
   '/_layout/clients': typeof LayoutClientsRoute
   '/_layout/dashboard': typeof LayoutDashboardRoute
@@ -306,6 +323,7 @@ export interface FileRouteTypes {
     | ''
     | '/about'
     | '/login'
+    | '/organizationForm'
     | '/signup'
     | '/clients'
     | '/dashboard'
@@ -321,6 +339,7 @@ export interface FileRouteTypes {
     | ''
     | '/about'
     | '/login'
+    | '/organizationForm'
     | '/signup'
     | '/clients'
     | '/dashboard'
@@ -337,6 +356,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/about'
     | '/login'
+    | '/organizationForm'
     | '/signup'
     | '/_layout/clients'
     | '/_layout/dashboard'
@@ -355,6 +375,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   AboutRoute: typeof AboutRoute
   LoginRoute: typeof LoginRoute
+  OrganizationFormRoute: typeof OrganizationFormRoute
   SignupRoute: typeof SignupRoute
   ContractsIdRoute: typeof ContractsIdRoute
 }
@@ -364,6 +385,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   AboutRoute: AboutRoute,
   LoginRoute: LoginRoute,
+  OrganizationFormRoute: OrganizationFormRoute,
   SignupRoute: SignupRoute,
   ContractsIdRoute: ContractsIdRoute,
 }
@@ -382,6 +404,7 @@ export const routeTree = rootRoute
         "/_layout",
         "/about",
         "/login",
+        "/organizationForm",
         "/signup",
         "/contracts/$id"
       ]
@@ -409,6 +432,9 @@ export const routeTree = rootRoute
     },
     "/login": {
       "filePath": "login.tsx"
+    },
+    "/organizationForm": {
+      "filePath": "organizationForm.tsx"
     },
     "/signup": {
       "filePath": "signup.tsx"

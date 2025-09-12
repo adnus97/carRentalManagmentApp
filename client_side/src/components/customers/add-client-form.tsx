@@ -1,3 +1,4 @@
+// Update components/customers/add-client-dialog.tsx
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,8 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
+import { FileUploader } from '@/components/file-uploader';
+import { File as ApiFile } from '@/api/files';
 
 const schema = z.object({
   firstName: z.string().min(2, 'First name is required'),
@@ -35,12 +38,19 @@ const schema = z.object({
   documentType: z.enum(['passport', 'driver_license', 'id_card'], {
     required_error: 'Document type is required',
   }),
+  idCardId: z.string().optional(),
+  driversLicenseId: z.string().optional(),
 });
 
 type FormFields = z.infer<typeof schema>;
 
 export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [idCardFile, setIdCardFile] = useState<ApiFile | null>(null);
+  const [driversLicenseFile, setDriversLicenseFile] = useState<ApiFile | null>(
+    null,
+  );
+
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -49,6 +59,8 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setIsOpen(false);
       reset();
+      setIdCardFile(null);
+      setDriversLicenseFile(null);
       toast({
         type: 'success',
         title: 'Success!',
@@ -74,6 +86,7 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    setValue,
   } = useForm<FormFields>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -83,11 +96,28 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
       phone: '',
       documentId: '',
       documentType: undefined,
+      idCardId: undefined,
+      driversLicenseId: undefined,
     },
   });
 
   const onSubmit = (data: FormFields) => {
-    mutation.mutate(data);
+    const payload = {
+      ...data,
+      idCardId: idCardFile?.id,
+      driversLicenseId: driversLicenseFile?.id,
+    };
+    mutation.mutate(payload);
+  };
+
+  const handleIdCardUpload = (file: ApiFile) => {
+    setIdCardFile(file);
+    setValue('idCardId', file.id);
+  };
+
+  const handleDriversLicenseUpload = (file: ApiFile) => {
+    setDriversLicenseFile(file);
+    setValue('driversLicenseId', file.id);
   };
 
   return (
@@ -95,7 +125,11 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open) reset();
+        if (!open) {
+          reset();
+          setIdCardFile(null);
+          setDriversLicenseFile(null);
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -108,7 +142,7 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[400px] pt-8">
+      <DialogContent className="sm:max-w-[500px] pt-8 max-h-[80vh] overflow-y-auto">
         <DialogTitle className="pb-1 hidden sm:block">
           Add a new Client
         </DialogTitle>
@@ -117,27 +151,27 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
         </p>
         <Separator className="mb-2 hidden sm:block" />
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-          {/* First Name */}
-          <div>
-            <Label>First Name *</Label>
-            <Input {...register('firstName')} placeholder="e.g. John" />
-            {errors.firstName && (
-              <span className="text-red-500 text-xs">
-                {errors.firstName.message}
-              </span>
-            )}
-          </div>
-
-          {/* Last Name */}
-          <div>
-            <Label>Last Name *</Label>
-            <Input {...register('lastName')} placeholder="e.g. Doe" />
-            {errors.lastName && (
-              <span className="text-red-500 text-xs">
-                {errors.lastName.message}
-              </span>
-            )}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Basic Info */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>First Name *</Label>
+              <Input {...register('firstName')} placeholder="e.g. John" />
+              {errors.firstName && (
+                <span className="text-red-500 text-xs">
+                  {errors.firstName.message}
+                </span>
+              )}
+            </div>
+            <div>
+              <Label>Last Name *</Label>
+              <Input {...register('lastName')} placeholder="e.g. Doe" />
+              {errors.lastName && (
+                <span className="text-red-500 text-xs">
+                  {errors.lastName.message}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Email */}
@@ -162,7 +196,7 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
             )}
           </div>
 
-          {/* Document ID + Type side by side */}
+          {/* Document ID + Type */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Document ID *</Label>
@@ -201,6 +235,31 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
                   {errors.documentType.message}
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* File Uploads */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Document Images
+            </h3>
+
+            <div className="grid grid-cols-1 gap-4">
+              <FileUploader
+                label="ID Card Image"
+                accept=".jpg,.jpeg,.png,.webp"
+                folder="customers/id-cards"
+                onUploadSuccess={handleIdCardUpload}
+                description="Upload a clear photo of the ID card"
+              />
+
+              <FileUploader
+                label="Driver's License Image"
+                accept=".jpg,.jpeg,.png,.webp"
+                folder="customers/drivers-licenses"
+                onUploadSuccess={handleDriversLicenseUpload}
+                description="Upload a clear photo of the driver's license"
+              />
             </div>
           </div>
 

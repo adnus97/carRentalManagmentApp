@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { cars, DatabaseService, organization, rents } from 'src/db';
 import {
@@ -17,14 +19,62 @@ import { BlacklistCustomerDto } from './dto/blacklist.dto';
 import { RateCustomerDto } from './dto/rating.dto';
 import { createId } from '@paralleldrive/cuid2';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { FilesService } from 'src/files/files.service';
 
 @Injectable()
 export class CustomerService {
   constructor(
     private readonly dbService: DatabaseService,
     private readonly notificationsService: NotificationsService,
+    private readonly filesService: FilesService, // Add this
   ) {}
+  async findOneWithFiles(id: string) {
+    try {
+      const customer = await this.findOne(id);
 
+      // Helper to get file data
+      const getFileData = async (fileId?: string | null) => {
+        if (!fileId) return null;
+        try {
+          const f = await this.filesService.findOne(fileId);
+          return { ...f, url: f?.url || `/api/v1/files/${f?.id}/serve` };
+        } catch (error: any) {
+          console.warn(
+            `Failed to fetch file ${fileId}:`,
+            error?.message || error,
+          );
+          return null;
+        }
+      };
+
+      const populatedCustomer: any = { ...customer };
+
+      // Fetch file data for document images
+      if (customer.idCardId) {
+        const fileData = await getFileData(customer.idCardId);
+        if (fileData) {
+          populatedCustomer.idCardFile = fileData;
+        }
+      }
+
+      if (customer.driversLicenseId) {
+        const fileData = await getFileData(customer.driversLicenseId);
+        if (fileData) {
+          populatedCustomer.driversLicenseFile = fileData;
+        }
+      }
+
+      return populatedCustomer;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to fetch customer with files',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
   private safeReturn<T>(data: T): T {
     return JSON.parse(JSON.stringify(data));
   }
