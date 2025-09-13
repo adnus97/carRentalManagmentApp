@@ -5,20 +5,31 @@ import {
   IsString,
   IsNumber,
   IsEnum,
-  IsDateString,
   IsDate,
-  IsArray,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
-// Custom date transformer
 const DateTransform = Transform(({ value }) => {
-  if (!value) return undefined;
+  if (value === '' || value === null || value === undefined) return undefined;
   if (value instanceof Date) return value;
-
-  // Handle various date formats
-  const date = new Date(value);
-  return isNaN(date.getTime()) ? undefined : date;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? undefined : d;
+});
+const BoolTransform = Transform(({ value }) => {
+  if (value === '' || value === null || value === undefined) return undefined;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+  }
+  return undefined;
+});
+const NumTransform = Transform(({ value }) => {
+  if (value === '' || value === null || value === undefined) return undefined;
+  if (typeof value === 'number') return value;
+  const n = Number(value);
+  return isNaN(n) ? undefined : n;
 });
 
 export class CreateRentDto {
@@ -28,65 +39,57 @@ export class CreateRentDto {
   @IsString()
   customerId: string;
 
-  @Transform(({ value }) => {
-    if (!value) return undefined;
-    if (value instanceof Date) return value;
-    const date = new Date(value);
-    return isNaN(date.getTime()) ? undefined : date;
-  })
+  @DateTransform
   @IsDate()
   startDate: Date;
 
   @IsOptional()
-  @Transform(({ value }) => {
-    if (!value) return undefined;
-    if (value instanceof Date) return value;
-    const date = new Date(value);
-    return isNaN(date.getTime()) ? undefined : date;
-  })
+  @DateTransform
   @IsDate()
   expectedEndDate?: Date;
 
   @IsOptional()
+  @BoolTransform
   @IsBoolean()
   isOpenContract?: boolean;
 
   @IsOptional()
-  @Transform(({ value }) => {
-    if (!value) return undefined;
-    if (value instanceof Date) return value;
-    const date = new Date(value);
-    return isNaN(date.getTime()) ? undefined : date;
-  })
+  @DateTransform
   @IsDate()
   returnedAt?: Date;
 
   @IsOptional()
+  @NumTransform
   @IsNumber()
   @Type(() => Number)
   totalPrice?: number;
 
   @IsOptional()
+  @NumTransform
   @IsNumber()
   @Type(() => Number)
   deposit?: number;
 
   @IsOptional()
+  @NumTransform
   @IsNumber()
   @Type(() => Number)
   guarantee?: number;
 
   @IsOptional()
+  @NumTransform
   @IsNumber()
   @Type(() => Number)
   lateFee?: number;
 
   @IsOptional()
+  @NumTransform
   @IsNumber()
   @Type(() => Number)
   totalPaid?: number;
 
   @IsOptional()
+  @BoolTransform
   @IsBoolean()
   isFullyPaid?: boolean;
 
@@ -99,10 +102,10 @@ export class CreateRentDto {
   damageReport?: string;
 
   @IsOptional()
+  @BoolTransform
   @IsBoolean()
   isDeleted?: boolean;
 
-  // 🆕 Car image IDs (will be populated after upload)
   @IsOptional()
   @IsString()
   carImg1Id?: string;

@@ -17,7 +17,11 @@ import { DatePickerDemo } from '../date-picker';
 import { toast } from '../ui/toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader } from '../loader';
-import { createRent, CreateRentResponse } from '@/api/rents';
+import {
+  createRentWithImages,
+  buildCreateRentFormData,
+  CreateRentResponse,
+} from '@/api/rents';
 import {
   Select,
   SelectTrigger,
@@ -26,10 +30,22 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { getCustomers } from '@/api/customers';
-import { Separator } from '../ui/separator';
 import { RentStatus } from '@/types/rent-status.type';
 import { AddClientDialog } from '../customers/add-client-form';
-import { Plus } from '@phosphor-icons/react';
+import {
+  Plus,
+  Car,
+  User,
+  Camera,
+  Calendar,
+  Check,
+  WarningCircle,
+} from '@phosphor-icons/react';
+
+import { CarImageUpload } from './car-image-upload';
+import { Badge } from '@/components/ui/badge';
+
+import { Checkbox } from '@/components/ui/checkbox';
 
 const rentSchema = z
   .object({
@@ -63,7 +79,6 @@ const rentSchema = z
     isFullyPaid: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
-    // ✅ Only validate expectedEndDate if NOT open contract
     if (!data.isOpenContract) {
       if (!data.expectedEndDate) {
         ctx.addIssue({
@@ -82,7 +97,6 @@ const rentSchema = z
       }
     }
 
-    // ✅ Start date not too far in the past
     if (data.startDate) {
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -96,7 +110,6 @@ const rentSchema = z
       }
     }
 
-    // ✅ Total paid vs total price (only for fixed contracts)
     if (
       !data.isOpenContract &&
       data.totalPrice != null &&
@@ -109,22 +122,8 @@ const rentSchema = z
         path: ['totalPaid'],
       });
     }
-
-    // ✅ Fully paid logic (only for fixed contracts)
-    if (
-      !data.isOpenContract &&
-      data.isFullyPaid &&
-      data.totalPrice != null &&
-      data.totalPaid !== data.totalPrice
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          'Total paid must equal total price when marked as fully paid (fixed contracts only)',
-        path: ['isFullyPaid'],
-      });
-    }
   });
+
 type RentFormFields = z.infer<typeof rentSchema>;
 
 type RentFormDialogProps = {
@@ -143,31 +142,49 @@ export function RentFormDialog({
   pricePerDay,
 }: RentFormDialogProps) {
   const queryClient = useQueryClient();
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [carImages, setCarImages] = useState<File[]>([]);
+
   const { data: customers, isLoading: customersLoading } = useQuery({
     queryKey: ['customers'],
     queryFn: () => getCustomers(1, 100),
   });
 
   const mutation = useMutation({
-    mutationFn: createRent,
+    mutationFn: async (payload: RentFormFields) => {
+      const fd = buildCreateRentFormData(
+        {
+          carId: payload.carId,
+          customerId: payload.customerId,
+          startDate: payload.startDate,
+          expectedEndDate: payload.expectedEndDate ?? null,
+          returnedAt: payload.returnedAt ?? null,
+          totalPrice: payload.totalPrice ?? 0,
+          deposit: payload.deposit ?? 0,
+          guarantee: payload.guarantee ?? 0,
+          lateFee: 0,
+          totalPaid: payload.totalPaid ?? 0,
+          isFullyPaid: payload.isFullyPaid ?? false,
+          isOpenContract: payload.isOpenContract,
+          status: 'reserved' as RentStatus,
+          damageReport: '',
+        },
+        carImages,
+      );
+      return createRentWithImages(fd);
+    },
     onSuccess: (response: CreateRentResponse) => {
       queryClient.invalidateQueries({ queryKey: ['rents'] });
       queryClient.invalidateQueries({ queryKey: ['cars'] });
       onOpenChange(false);
       reset();
+      setCarImages([]);
 
       toast({
         type: 'success',
         title: 'Success!',
-        description: `Rent contract ${response.data?.rentContractId || 'created'} successfully.`,
-      });
-
-      // 🆕 Optionally show contract actions
-      console.log('Contract created:', {
-        id: response.data.id,
-        contractId: response.data.rentContractId,
-        contractUrl: response.contractUrl,
+        description: `Rent contract ${
+          response.data?.rentContractId || 'created'
+        } successfully.`,
       });
     },
     onError: (error: any) => {
@@ -222,20 +239,17 @@ export function RentFormDialog({
   const expectedEndDate = watch('expectedEndDate');
   const deposit = watch('deposit');
   const totalPrice = watch('totalPrice');
-  const totalPaid = watch('totalPaid');
   const isFullyPaid = watch('isFullyPaid');
 
-  // Handle open contract toggle
   useEffect(() => {
     if (isOpenContract) {
       setValue('totalPrice', 0);
       setValue('expectedEndDate', null, { shouldValidate: false });
       setValue('returnedAt', null, { shouldValidate: false });
-      clearErrors('expectedEndDate'); // ✅ clear lingering error
+      clearErrors('expectedEndDate');
     }
   }, [isOpenContract, setValue, clearErrors]);
 
-  // Calculate total price based on dates and price per day
   useEffect(() => {
     if (
       !isOpenContract &&
@@ -256,7 +270,6 @@ export function RentFormDialog({
     }
   }, [startDate, expectedEndDate, pricePerDay, isOpenContract, setValue]);
 
-  // Set returned date same as expected end date for fixed contracts
   useEffect(() => {
     if (!isOpenContract && expectedEndDate) {
       setValue('returnedAt', expectedEndDate);
@@ -266,32 +279,14 @@ export function RentFormDialog({
     }
   }, [isOpenContract, expectedEndDate, setValue]);
 
-  // Handle fully paid checkbox
   useEffect(() => {
-    if (
-      isFullyPaid &&
-      !isOpenContract &&
-      totalPrice !== undefined &&
-      totalPrice !== null
-    ) {
-      // For fixed contracts, set total paid to total price
+    if (isFullyPaid && !isOpenContract && totalPrice != null) {
       setValue('totalPaid', totalPrice);
-    } else if (isFullyPaid && isOpenContract) {
-      // For open contracts, don't automatically set total paid
-      // User can manually enter any amount
     } else if (!isFullyPaid) {
-      // If not fully paid, set to deposit amount
       setValue('totalPaid', deposit || 0);
     }
     trigger(['totalPaid', 'isFullyPaid']);
   }, [isFullyPaid, totalPrice, deposit, isOpenContract, setValue, trigger]);
-
-  // Update total paid when deposit changes (if not fully paid)
-  useEffect(() => {
-    if (!isFullyPaid) {
-      setValue('totalPaid', deposit || 0);
-    }
-  }, [deposit, isFullyPaid, setValue]);
 
   const onSubmit = (data: RentFormFields) => {
     const selectedCustomer = customers?.data?.find(
@@ -306,315 +301,428 @@ export function RentFormDialog({
       });
       return;
     }
-    if (!data.carId) {
-      toast({
-        type: 'error',
-        title: 'Validation Error',
-        description: 'Please select a car.',
-      });
-      return;
-    }
 
-    if (!data.customerId) {
-      toast({
-        type: 'error',
-        title: 'Validation Error',
-        description: 'Please select a customer.',
-      });
-      return;
-    }
-
-    mutation.mutate({
-      carId: data.carId,
-      customerId: data.customerId,
-      startDate: data.startDate,
-      expectedEndDate: data.expectedEndDate || undefined,
-      returnedAt: data.returnedAt || undefined,
-      totalPrice: data.totalPrice ?? 0,
-      deposit: data.deposit ?? 0,
-      guarantee: data.guarantee ?? 0,
-      isOpenContract: data.isOpenContract,
-      totalPaid: data.totalPaid ?? 0,
-      isFullyPaid: data.isFullyPaid,
-      status: 'reserved' as RentStatus,
-      lateFee: 0,
-      damageReport: '',
-    });
+    mutation.mutate(data);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-full sm:max-w-[500px]">
-        <DialogTitle className="hidden sm:block">
-          Create Rent Contract
-        </DialogTitle>
-        <DialogDescription className="hidden sm:block">
-          Fill out the form below to create a new rent contract for the selected
-          vehicle.
-        </DialogDescription>
-        <Separator className="my-2 hidden sm:block" />
-
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-3 w-full"
-          noValidate
+      <DialogContent
+        className="
+          w-full max-w-4xl
+          max-h-[92vh] md:max-h-[90vh] lg:max-h-[88vh]
+          overflow-hidden
+          flex flex-col
+          bg-gray-1
+          border border-gray-200 dark:border-slate-700
+          rounded-2xl shadow-xl
+        "
+      >
+        {/* Header – no extra X button here to avoid duplication */}
+        <div
+          className="
+            flex items-center justify-between
+            px-5 py-3
+            border-b border-gray-200 dark:border-slate-700
+            bg-gray-1
+          "
         >
-          {/* Car Model and Customer */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1">
-              <Label>Car Model</Label>
-              <Input
-                value={defaultCarModel || ''}
-                disabled
-                className="mt-1 w-full"
-              />
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-md bg-blue-600 text-white">
+              <Car className="h-4 w-4" />
             </div>
-            <div className="flex-1">
-              <Label htmlFor="customerId">Customer * </Label>
-              <Controller
-                control={control}
-                name="customerId"
-                render={({ field }) => (
-                  <div className="flex items-center gap-2 pt-1">
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value || ''}
-                      disabled={customersLoading}
-                    >
-                      <SelectTrigger
-                        className={errors.customerId ? 'border-red-500' : ''}
-                      >
-                        <SelectValue placeholder="Select a customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers?.data
-                          ?.filter((customer: any) => {
-                            if (customer.isBlacklisted) {
-                              return false;
+            <div className="leading-tight">
+              <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">
+                Create Rental Contract
+              </DialogTitle>
+              {defaultCarModel && (
+                <DialogDescription className="text-xs text-gray-500 dark:text-slate-400">
+                  {defaultCarModel} • Available
+                </DialogDescription>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto bg-gray-1 p-3 sm:p-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+            {/* Left – Main */}
+            <div className="lg:col-span-2 flex flex-col gap-3 sm:gap-4">
+              {/* Vehicle & Customer */}
+              <section
+                className="
+                  bg-white dark:bg-gray-1
+                  border border-gray-200 dark:border-slate-700
+                  rounded-xl p-3 sm:p-4
+                "
+              >
+                <div className="mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4 text-blue-500" />
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                    Vehicle & Customer
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-gray-600 dark:text-slate-300">
+                      Vehicle
+                    </Label>
+                    <div className="mt-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-sm text-gray-900 dark:text-white">
+                      <div className="flex items-center gap-2">
+                        <Car className="h-4 w-4 text-gray-400" />
+                        <span>{defaultCarModel || 'Selected Vehicle'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-gray-600 dark:text-slate-300">
+                      Customer *
+                    </Label>
+                    <Controller
+                      control={control}
+                      name="customerId"
+                      render={({ field }) => (
+                        <div className="mt-1 flex items-center gap-2">
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ''}
+                            disabled={customersLoading}
+                          >
+                            <SelectTrigger
+                              className={`
+                                h-9 rounded-lg px-3
+                                border border-gray-200 dark:border-slate-700
+                                text-sm text-gray-900 dark:text-white
+                                ${errors.customerId ? 'border-red-500' : ''}
+                              `}
+                            >
+                              <SelectValue placeholder="Select customer" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg">
+                              {customers?.data
+                                ?.filter((c: any) => !c.isBlacklisted)
+                                .map((c: any) => (
+                                  <SelectItem
+                                    key={c.id}
+                                    value={c.id}
+                                    className="text-sm text-gray-900 dark:text-white"
+                                  >
+                                    {`${c.firstName || ''} ${c.lastName || ''}`.trim() ||
+                                      c.email ||
+                                      c.id}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+
+                          <AddClientDialog
+                            trigger={
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="
+                                  h-9 w-9 rounded-lg
+                                  border border-gray-200 dark:border-slate-700
+                                  text-gray-700 dark:text-slate-300
+                                  hover:bg-gray-100 dark:hover:bg-slate-800
+                                "
+                              >
+                                <Plus size={16} />
+                              </Button>
                             }
-                            return true;
-                          })
-                          .map((customer: any) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              {`${customer.firstName || ''} ${customer.lastName || ''}`.trim() ||
-                                customer.email ||
-                                customer.id}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-
-                    <AddClientDialog
-                      trigger={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="hover:bg-accent-4"
-                          onClick={() => setShowAddDialog(true)}
-                        >
-                          <Plus size={40} />
-                        </Button>
-                      }
+                          />
+                        </div>
+                      )}
                     />
+                    {errors.customerId && (
+                      <p className="text-[11px] text-red-500 mt-1">
+                        {errors.customerId.message}
+                      </p>
+                    )}
                   </div>
-                )}
-              />
-              {errors.customerId && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.customerId.message}
-                </p>
-              )}
-            </div>
-          </div>
+                </div>
+              </section>
 
-          {/* Dates */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1">
-              <Label>Start Date *</Label>
-              <Controller
-                control={control}
-                name="startDate"
-                render={({ field }) => (
-                  <div className="w-full">
-                    <DatePickerDemo
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
+              {/* Schedule */}
+              <section
+                className="
+                  border border-gray-200 dark:border-slate-700
+                  rounded-xl p-3 sm:p-4
+                "
+              >
+                <div className="mb-3 flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-green-500" />
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                    Schedule
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-gray-600 dark:text-slate-300">
+                      Start Date *
+                    </Label>
+                    <div className="mt-1">
+                      <Controller
+                        control={control}
+                        name="startDate"
+                        render={({ field }) => (
+                          <DatePickerDemo
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        )}
+                      />
+                    </div>
+                    {errors.startDate && (
+                      <p className="text-[11px] text-red-500 mt-1">
+                        {errors.startDate.message}
+                      </p>
+                    )}
                   </div>
-                )}
-              />
-              {errors.startDate && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.startDate.message}
-                </p>
-              )}
-            </div>
-            <div className="flex-1">
-              <Label>Expected End Date {!isOpenContract && '*'}</Label>
-              <Controller
-                control={control}
-                name="expectedEndDate"
-                render={({ field }) => (
-                  <DatePickerDemo
-                    value={field.value ?? undefined}
-                    onChange={(date) => {
-                      field.onChange(date ?? null);
-                      trigger('expectedEndDate'); // ✅ revalidate immediately when user picks a date
-                    }}
-                    disabled={isOpenContract}
+
+                  <div>
+                    <Label className="text-xs text-gray-600 dark:text-slate-300">
+                      Expected End Date {!isOpenContract && '*'}
+                    </Label>
+                    <div className="mt-1">
+                      <Controller
+                        control={control}
+                        name="expectedEndDate"
+                        render={({ field }) => (
+                          <DatePickerDemo
+                            value={field.value ?? undefined}
+                            onChange={(d) => {
+                              field.onChange(d ?? null);
+                              trigger('expectedEndDate');
+                            }}
+                            disabled={isOpenContract}
+                          />
+                        )}
+                      />
+                    </div>
+                    {errors.expectedEndDate && (
+                      <p className="text-[11px] text-red-500 mt-1">
+                        {errors.expectedEndDate.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <Controller
+                    control={control}
+                    name="isOpenContract"
+                    render={({ field }) => (
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        id="isOpenContract"
+                        className="h-4 w-4"
+                      />
+                    )}
                   />
-                )}
-              />
-              {errors.expectedEndDate && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.expectedEndDate.message}
-                </p>
-              )}
-            </div>
-          </div>
+                  <Label
+                    htmlFor="isOpenContract"
+                    className="text-xs text-gray-700 dark:text-slate-300 cursor-pointer"
+                  >
+                    Open Contract (no fixed end date)
+                  </Label>
+                </div>
+              </section>
 
-          {/* Open Contract */}
-          <div className="flex items-center space-x-2">
-            <Controller
-              control={control}
-              name="isOpenContract"
-              render={({ field }) => (
-                <input
-                  type="checkbox"
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                  id="isOpenContract"
-                  className="rounded"
+              {/* Car Images */}
+              <section
+                className="
+                  border border-gray-200 dark:border-slate-700
+                  rounded-xl p-3 sm:p-4
+                "
+              >
+                <div className="mb-3 flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-purple-500" />
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                    Car Images
+                  </h3>
+                  <Badge variant="outline" className="text-[10px]">
+                    Optional
+                  </Badge>
+                </div>
+                <CarImageUpload
+                  onImagesChange={setCarImages}
+                  maxImages={4}
+                  disabled={isSubmitting}
                 />
-              )}
-            />
-            <Label htmlFor="isOpenContract" className="cursor-pointer">
-              Open Contract (no fixed end date)
-            </Label>
-          </div>
-
-          {/* Pricing and Fees */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1">
-              <Label htmlFor="totalPrice">Total Price (DHS)</Label>
-              <Input
-                id="totalPrice"
-                type="number"
-                {...register('totalPrice', { valueAsNumber: true })}
-                placeholder="Total price"
-                className={`mt-1 w-full ${errors.totalPrice ? 'border-red-500' : ''}`}
-                disabled={isOpenContract}
-                readOnly={!isOpenContract}
-              />
-              {errors.totalPrice && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.totalPrice.message}
-                </p>
-              )}
+              </section>
             </div>
-            <div className="flex-1">
-              <Label htmlFor="deposit">Deposit (DHS) *</Label>
-              <Input
-                id="deposit"
-                type="number"
-                {...register('deposit', { valueAsNumber: true })}
-                placeholder="Deposit amount"
-                className={`mt-1 w-full ${errors.deposit ? 'border-red-500' : ''}`}
-                min="0"
-              />
-              {errors.deposit && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.deposit.message}
-                </p>
-              )}
-            </div>
-            <div className="flex-1">
-              <Label htmlFor="guarantee">Guarantee (DHS)</Label>
-              <Input
-                id="guarantee"
-                type="number"
-                {...register('guarantee', { valueAsNumber: true })}
-                placeholder="Guarantee amount"
-                className={`mt-1 w-full ${errors.guarantee ? 'border-red-500' : ''}`}
-                min="0"
-              />
-              {errors.guarantee && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.guarantee.message}
-                </p>
-              )}
-            </div>
-          </div>
 
-          {/* Mark as fully paid */}
-          <div className="flex items-center space-x-2">
-            <Controller
-              control={control}
-              name="isFullyPaid"
-              render={({ field }) => (
-                <input
-                  type="checkbox"
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                  id="isFullyPaid"
-                  className="rounded"
-                  disabled={!isOpenContract && !totalPrice}
-                />
-              )}
-            />
-            <Label htmlFor="isFullyPaid" className="cursor-pointer">
-              Mark as fully paid
-            </Label>
-            {errors.isFullyPaid && (
-              <p className="text-red-500 text-sm">
-                {errors.isFullyPaid.message}
-              </p>
-            )}
-          </div>
-
-          {/* Total Paid */}
-          <div className="flex">
-            <div className="w-1/3">
-              <Label htmlFor="totalPaid">Total Paid (DHS)</Label>
-              <Input
-                id="totalPaid"
-                type="number"
-                {...register('totalPaid', { valueAsNumber: true })}
-                className={`mt-1 w-full ${errors.totalPaid ? 'border-red-500' : ''}`}
-                disabled={!isOpenContract && isFullyPaid}
-                readOnly={!isOpenContract && isFullyPaid}
-                min="0"
-                placeholder="Amount paid"
-              />
-              {errors.totalPaid && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.totalPaid.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex justify-end gap-2 pt-4">
-            <p className="text-[11px] text-[#EC6142] italic h-full flex items-center mr-auto ">
-              Blacklisted clients are not visible here
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+            {/* Right – Finance */}
+            <section
+              className="
+                border border-gray-200 dark:border-slate-700
+                rounded-xl p-3 sm:p-4
+                flex flex-col gap-4
+              "
             >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting} className="px-6 py-2">
-              {isSubmitting ? (
-                <Loader className="animate-spin mr-2 inline-block" />
-              ) : null}
-              Create Rent
-            </Button>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                  Financial Details
+                </h3>
+                {totalPrice != null && totalPrice > 0 && (
+                  <Badge className="text-[11px] font-semibold">
+                    {totalPrice.toLocaleString()} DHS
+                  </Badge>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-gray-600 dark:text-slate-300">
+                    Total Price (DHS)
+                  </Label>
+                  <Input
+                    type="number"
+                    {...register('totalPrice', { valueAsNumber: true })}
+                    placeholder="Auto"
+                    className={`
+                      mt-1 h-9 rounded-lg text-sm
+                      border border-gray-200 dark:border-slate-700
+                      ${errors.totalPrice ? 'border-red-500' : ''}
+                    `}
+                    disabled={isOpenContract}
+                    readOnly={!isOpenContract}
+                  />
+                  {errors.totalPrice && (
+                    <p className="text-[11px] text-red-500 mt-1">
+                      {errors.totalPrice.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-gray-600 dark:text-slate-300">
+                      Deposit *
+                    </Label>
+                    <Input
+                      type="number"
+                      {...register('deposit', { valueAsNumber: true })}
+                      placeholder="0"
+                      className="mt-1 h-9 rounded-lg text-sm border-gray-200 dark:border-slate-700"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-gray-600 dark:text-slate-300">
+                      Guarantee
+                    </Label>
+                    <Input
+                      type="number"
+                      {...register('guarantee', { valueAsNumber: true })}
+                      placeholder="0"
+                      className="mt-1 h-9 rounded-lg text-sm border-gray-200 dark:border-slate-700"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-gray-600 dark:text-slate-300">
+                    Total Paid (DHS)
+                  </Label>
+                  <Input
+                    type="number"
+                    {...register('totalPaid', { valueAsNumber: true })}
+                    placeholder="0"
+                    className={`
+                      mt-1 h-9 rounded-lg text-sm
+                      border border-gray-200 dark:border-slate-700
+                      ${errors.totalPaid ? 'border-red-500' : ''}
+                    `}
+                    disabled={!isOpenContract && isFullyPaid}
+                    readOnly={!isOpenContract && isFullyPaid}
+                  />
+                  {errors.totalPaid && (
+                    <p className="text-[11px] text-red-500 mt-1">
+                      {errors.totalPaid.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 rounded-lg px-3 py-2 border border-gray-200 dark:border-slate-700 cursor-pointer">
+                  <Controller
+                    control={control}
+                    name="isFullyPaid"
+                    render={({ field }) => (
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        id="isFullyPaid"
+                        className="h-4 w-4"
+                        disabled={
+                          !isOpenContract &&
+                          (totalPrice == null || totalPrice === 0)
+                        }
+                      />
+                    )}
+                  />
+                  <Label
+                    htmlFor="isFullyPaid"
+                    className="text-xs text-gray-700 dark:text-slate-300"
+                  >
+                    Mark as fully paid
+                  </Label>
+                </div>
+              </div>
+
+              <div className="mt-1 space-y-2">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  onClick={handleSubmit(onSubmit)}
+                  variant="default"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader className="animate-spin mr-2 h-4 w-4" />
+                      Creating
+                      <Loader />
+                    </>
+                  ) : (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Create Rental Contract
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSubmitting}
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+
+                <div className="pt-1">
+                  <div className="flex space-x-1 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                    <WarningCircle
+                      size={16}
+                      className="text-amber-800 dark:text-amber-300"
+                    />
+                    <p className="text-[10px] text-amber-800 dark:text-amber-300">
+                      Blacklisted customers are hidden from selection.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

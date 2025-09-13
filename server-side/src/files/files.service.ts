@@ -125,6 +125,9 @@ export class FilesService {
         url,
         checksum: savedFile.checksum,
       };
+      console.log('📤 FilesService.uploadFile called:');
+      console.log('   File:', file.originalname, file.size, 'bytes');
+      console.log('   User:', user.id);
 
       this.logger.log(`File upload completed ${uploadId}`);
       return result;

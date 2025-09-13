@@ -17,9 +17,17 @@ import {
   removeRent,
   getAllRentsWithCarAndCustomer,
   downloadRentContractPDF,
+  getRentImages,
 } from '@/api/rents'; // 🆕 Added downloadRentContractPDF
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PencilSimple, Trash, FileText, Download } from '@phosphor-icons/react'; // 🆕 Added FileText and Download icons
+import {
+  PencilSimple,
+  Trash,
+  FileText,
+  Download,
+  Camera,
+  Image,
+} from '@phosphor-icons/react'; // 🆕 Added FileText and Download icons
 import { ConfirmationDialog } from '../confirmation-dialog';
 import { toast } from '@/components/ui/toast';
 import React from 'react';
@@ -34,6 +42,15 @@ import {
   PaginationEllipsis,
 } from '@/components/ui/pagination';
 import { RentStatus } from '@/types/rent-status.type';
+import { ImageCarousel } from '../../components/ui/image-carousel';
+
+import { format } from 'date-fns';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -63,7 +80,50 @@ type RentRow = {
   guarantee?: number;
   lateFee?: number;
 };
+const createDateCellRenderer = (
+  shortFormat: string = 'dd/MM/yyyy',
+  fullFormat: string = 'dd/MM/yyyy HH:mm:ss',
+) => {
+  return (params: { value: string | Date | null | undefined }) => {
+    if (!params.value) {
+      return <span className="text-muted-foreground">—</span>;
+    }
 
+    try {
+      const parsed = new Date(params.value);
+
+      // Check if date is valid
+      if (isNaN(parsed.getTime())) {
+        return <span className="text-muted-foreground">—</span>;
+      }
+
+      // Check for open contract dates (year 9999)
+      if (parsed.getFullYear() === 9999) {
+        return <span className="text-muted-foreground">Open</span>;
+      }
+
+      const shortDate = format(parsed, shortFormat);
+      const fullDate = format(parsed, fullFormat);
+
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help underline decoration-dotted">
+                {shortDate}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="font-mono text-xs">
+              {fullDate}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    } catch (error) {
+      return <span className="text-muted-foreground">—</span>;
+    }
+  };
+};
 export const RentsGrid = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -85,7 +145,9 @@ export const RentsGrid = () => {
     }
     return 10;
   });
-
+  const [carouselOpen, setCarouselOpen] = useState(false);
+  const [carouselImages, setCarouselImages] = useState<any[]>([]);
+  const [carouselTitle, setCarouselTitle] = useState('');
   useEffect(() => {
     const handleResize = () => {
       setPageSize(window.innerWidth < 1700 ? 7 : 12);
@@ -500,6 +562,7 @@ export const RentsGrid = () => {
       sortable: true,
       filter: 'agDateColumnFilter',
       valueFormatter: formatDateToDDMMYYYY,
+      cellRenderer: createDateCellRenderer(),
     },
     {
       field: 'expectedEndDate',
@@ -507,6 +570,7 @@ export const RentsGrid = () => {
       width: 150,
       sortable: true,
       filter: 'agDateColumnFilter',
+      cellRenderer: createDateCellRenderer(),
       valueFormatter: (params) =>
         params.data?.expectedEndDate
           ? formatDateToDDMMYYYY({ value: params.data.expectedEndDate })
@@ -518,6 +582,7 @@ export const RentsGrid = () => {
       width: 141,
       sortable: true,
       filter: 'agDateColumnFilter',
+      cellRenderer: createDateCellRenderer(),
       valueFormatter: (params) => {
         if (!params.data?.returnedAt) return 'Open';
         const date = new Date(params.data.returnedAt);
@@ -656,6 +721,67 @@ export const RentsGrid = () => {
       filter: 'agSetColumnFilter',
       filterParams: { values: ['Yes', 'No'] },
       valueFormatter: (params: any) => (params.value ? 'Yes' : 'No'),
+    },
+    {
+      headerName: 'Images',
+      width: 100,
+      cellRenderer: (params: any) => {
+        const imageCount = [
+          params.data.carImg1Id,
+          params.data.carImg2Id,
+          params.data.carImg3Id,
+          params.data.carImg4Id,
+        ].filter(Boolean).length;
+
+        if (imageCount === 0) {
+          return (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <Camera className="h-4 w-4" />
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex items-center justify-center h-full ">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                try {
+                  const images = await getRentImages(params.data.id);
+                  console.log('Images returned from API:', images); // 🆕 Debug log
+
+                  if (images.length > 0) {
+                    console.log('Setting carousel images:', images); // 🆕 Debug log
+                    setCarouselImages(images);
+                    setCarouselOpen(true);
+                    setCarouselTitle(
+                      `${params.data.carMake} ${params.data.carModel} - Images`,
+                    );
+                  } else {
+                    toast({
+                      type: 'info',
+                      title: 'No Images',
+                      description: 'No images found for this rental.',
+                    });
+                  }
+                } catch (error) {
+                  console.error('Error loading images:', error); // 🆕 Debug log
+                  toast({
+                    type: 'error',
+                    title: 'Error',
+                    description: 'Failed to load images.',
+                  });
+                }
+              }}
+              className="h-8 px-2 text-blue-600 hover:text-blue-700"
+            >
+              <Image />
+              {imageCount}
+            </Button>
+          </div>
+        );
+      },
     },
     {
       headerName: 'Actions',
@@ -891,6 +1017,12 @@ export const RentsGrid = () => {
         </>
       )}
 
+      <ImageCarousel
+        images={carouselImages}
+        open={carouselOpen}
+        onOpenChange={setCarouselOpen}
+        title={carouselTitle}
+      />
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}

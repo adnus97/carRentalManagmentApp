@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../db';
 import { files } from '../db/schema/files';
 import { eq, and, desc } from 'drizzle-orm';
+import type { File as FileRow } from '../db/schema/files'; // <-- import the inferred row type
 
 export interface CreateFileData {
   id: string;
@@ -13,16 +14,15 @@ export interface CreateFileData {
   isPublic: boolean;
   checksum: string;
   createdBy: string;
-  orgId?: string;
-  metadata?: any;
+  orgId?: string | null;
+  metadata?: unknown | null;
 }
 
 @Injectable()
 export class FilesRepository {
   constructor(private dbService: DatabaseService) {}
 
-  async create(data: CreateFileData) {
-    // Fix: Properly handle the returning result
+  async create(data: CreateFileData): Promise<FileRow> {
     const result = await this.dbService.db
       .insert(files)
       .values({
@@ -37,44 +37,51 @@ export class FilesRepository {
         isPublic: data.isPublic,
         checksum: data.checksum,
         createdBy: data.createdBy,
-        orgId: data.orgId,
-        metadata: data.metadata,
+        orgId: data.orgId ?? null,
+        metadata: data.metadata ?? null,
       })
       .returning();
 
-    // Return the first item from the array result
+    // Drizzle returns FileRow[]; pick the first row
     return result[0];
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<FileRow | null> {
     const result = await this.dbService.db
       .select()
       .from(files)
       .where(eq(files.id, id))
       .limit(1);
 
-    return result[0];
+    // result is FileRow[]; return FileRow | null
+    return result.length ? (result[0] as FileRow) : null;
   }
 
-  async findByUser(userId: string) {
-    return this.dbService.db
+  async findByUser(userId: string): Promise<FileRow[]> {
+    const rows = await this.dbService.db
       .select()
       .from(files)
       .where(eq(files.createdBy, userId))
       .orderBy(desc(files.createdAt));
+
+    // rows is FileRow[]
+    return rows as FileRow[];
   }
 
-  async findByChecksum(checksum: string, userId: string) {
+  async findByChecksum(
+    checksum: string,
+    userId: string,
+  ): Promise<FileRow | null> {
     const result = await this.dbService.db
       .select()
       .from(files)
       .where(and(eq(files.checksum, checksum), eq(files.createdBy, userId)))
       .limit(1);
 
-    return result[0];
+    return result.length ? (result[0] as FileRow) : null;
   }
 
-  async delete(id: string) {
+  async delete(id: string): Promise<void> {
     await this.dbService.db.delete(files).where(eq(files.id, id));
   }
 }

@@ -20,13 +20,11 @@ import { FilesService } from './files.service';
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request, Response } from 'express'; // Add Request import
-import { Readable } from 'stream';
 
 @Auth()
 @Controller('files')
 export class FilesController {
   private readonly logger = new Logger(FilesController.name);
-
   constructor(private readonly fileService: FilesService) {}
 
   @UseInterceptors(FileInterceptor('file'))

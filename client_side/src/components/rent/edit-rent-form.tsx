@@ -18,9 +18,15 @@ import { DatePickerDemo } from '../date-picker';
 import { toast } from '../ui/toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader } from '../loader';
-import { updateRent, getRentById } from '@/api/rents';
+import {
+  updateRent,
+  getRentById,
+  getRentImages,
+  updateRentImages,
+} from '@/api/rents';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '../ui/separator';
+import { CarImageUpload } from './car-image-upload';
 import {
   Car,
   User,
@@ -30,6 +36,8 @@ import {
   XCircle,
   Lock,
   Clock,
+  Camera,
+  Calendar,
 } from 'lucide-react';
 import { RentStatus } from '@/types/rent-status.type';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +49,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-// MAD Currency Icon Component
+// MAD Currency Icon Component (unchanged)
 const MADIcon = ({ className = 'h-3 w-3' }: { className?: string }) => (
   <div
     className={`inline-flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold text-xs px-5 py-1 ${className}`}
@@ -50,7 +58,7 @@ const MADIcon = ({ className = 'h-3 w-3' }: { className?: string }) => (
   </div>
 );
 
-// Schema - Removed status field
+// Schema - unchanged
 const editRentSchema = z.object({
   returnedAt: z
     .date({ required_error: 'Return date is required' })
@@ -72,7 +80,7 @@ const editRentSchema = z.object({
 type EditRentFormFields = z.infer<typeof editRentSchema>;
 type ValidFieldName = keyof EditRentFormFields;
 
-// Status config
+// Status config (unchanged)
 const statusConfig = {
   reserved: { color: 'bg-blue-500', icon: Clock, label: 'Reserved' },
   active: { color: 'bg-green-500', icon: CheckCircle2, label: 'Active' },
@@ -80,7 +88,7 @@ const statusConfig = {
   canceled: { color: 'bg-red-500', icon: XCircle, label: 'Canceled' },
 };
 
-// Updated permissions without status field
+// Updated permissions (unchanged)
 const getFieldPermissions = (status: RentStatus, isOpenContract: boolean) => {
   const permissions: Record<
     RentStatus,
@@ -142,7 +150,10 @@ const getFieldPermissions = (status: RentStatus, isOpenContract: boolean) => {
   return permissions[status] || permissions.reserved;
 };
 
-// Updated tooltip messages without status
+const getImagePermissions = (status: RentStatus) => {
+  return status !== 'completed' && status !== 'canceled';
+};
+
 const getTooltipMessage = (
   field: ValidFieldName,
   status: RentStatus,
@@ -255,9 +266,18 @@ export function EditRentFormDialog({
   const queryClient = useQueryClient();
   const originalTotalPriceRef = useRef<number>(initialTotalPrice ?? null);
 
+  const [newImages, setNewImages] = useState<File[]>([]);
+  const [hasImageChanges, setHasImageChanges] = useState(false);
+
   const { data: rentArray, isLoading: rentLoading } = useQuery({
     queryKey: ['rent', rentId],
     queryFn: () => getRentById(rentId),
+    enabled: open && !!rentId,
+  });
+
+  const { data: existingImages = [], isLoading: imagesLoading } = useQuery({
+    queryKey: ['rent-images', rentId],
+    queryFn: () => getRentImages(rentId),
     enabled: open && !!rentId,
   });
 
@@ -297,19 +317,32 @@ export function EditRentFormDialog({
 
   const currentStatus = initialStatus || 'reserved';
 
-  // Memoize permissions to prevent re-renders
   const permissions = useMemo(
     () => getFieldPermissions(currentStatus, isOpenContract),
     [currentStatus, isOpenContract],
   );
 
-  // Memoize status config to prevent re-renders
+  const canEditImages = useMemo(
+    () => getImagePermissions(currentStatus),
+    [currentStatus],
+  );
+
   const currentStatusConfig = useMemo(
     () => statusConfig[currentStatus],
     [currentStatus],
   );
 
-  // Memoize FieldWrapper component
+  const handleImagesChange = useCallback((images: File[]) => {
+    console.log('🖼️ Images changed in edit form:', images.length);
+    setNewImages(images);
+    setHasImageChanges(true);
+  }, []);
+
+  const resetImageState = useCallback(() => {
+    setNewImages([]);
+    setHasImageChanges(false);
+  }, []);
+
   const FieldWrapper = useCallback(
     ({
       children,
@@ -385,8 +418,9 @@ export function EditRentFormDialog({
         isOpenContract: rentData.isOpenContract ?? isOpenContract,
       });
       setTotalPrice(priceToUse);
+      resetImageState();
     }
-  }, [open, rentData, reset]);
+  }, [open, rentData, reset, resetImageState]);
 
   useEffect(() => {
     if (
@@ -417,11 +451,24 @@ export function EditRentFormDialog({
     setValue('totalPaid', (deposit || 0) + (lateFee || 0));
   }, [deposit, lateFee, setValue]);
 
+  const imagesMutation = useMutation({
+    mutationFn: (images: File[]) => updateRentImages(rentId, images),
+    onError: (error: any) => {
+      toast({
+        type: 'error',
+        title: 'Image Update Failed',
+        description:
+          error?.response?.data?.message || 'Failed to update images.',
+      });
+    },
+  });
+
   const cancelMutation = useMutation({
     mutationFn: () =>
       updateRent(rentId, { status: 'canceled' }, currentStatus, isOpenContract),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rents'] });
+      queryClient.invalidateQueries({ queryKey: ['rent-images', rentId] });
       if (onRentUpdated) {
         onRentUpdated();
       }
@@ -445,7 +492,7 @@ export function EditRentFormDialog({
   });
 
   const mutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       data,
       status,
       isOpenContract,
@@ -453,17 +500,27 @@ export function EditRentFormDialog({
       data: Record<string, any>;
       status: RentStatus;
       isOpenContract: boolean;
-    }) => updateRent(rentId, data, status, isOpenContract),
+    }) => {
+      const rentResult = await updateRent(rentId, data, status, isOpenContract);
+      if (hasImageChanges) {
+        await imagesMutation.mutateAsync(newImages);
+      }
+      return rentResult;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rents'] });
+      queryClient.invalidateQueries({ queryKey: ['rent-images', rentId] });
       if (onRentUpdated) {
         onRentUpdated();
       }
       onOpenChange(false);
+      resetImageState();
       toast({
         type: 'success',
         title: 'Success!',
-        description: 'Rental contract updated successfully.',
+        description: hasImageChanges
+          ? 'Rental contract and images updated successfully.'
+          : 'Rental contract updated successfully.',
       });
     },
     onError: (error: any) => {
@@ -486,7 +543,7 @@ export function EditRentFormDialog({
         field === 'damageReport' && value === '' ? null : value;
     });
 
-    if (Object.keys(filteredData).length === 0) {
+    if (Object.keys(filteredData).length === 0 && !hasImageChanges) {
       toast({
         type: 'info',
         title: 'No Changes',
@@ -510,8 +567,8 @@ export function EditRentFormDialog({
     switch (currentStatus) {
       case 'active':
         return isOpenContract
-          ? 'Active open contracts: update return date, payments, and damage reports.'
-          : 'Active closed contracts: update payments and damage reports only.';
+          ? 'Active open contracts: update return date, payments, images, and damage reports.'
+          : 'Active closed contracts: update payments, images, and damage reports only.';
       case 'completed':
         return 'Completed rentals: update payment records and damage reports only.';
       case 'canceled':
@@ -524,49 +581,75 @@ export function EditRentFormDialog({
   const hasEditableFields = permissions.editable.length > 0;
   const canCancel =
     currentStatus !== 'canceled' && currentStatus !== 'completed';
+  const hasAnyChanges = hasEditableFields || (canEditImages && hasImageChanges);
+  const isLoading = mutation.isPending || imagesMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[500px] max-h-[96vh] overflow-y-auto p-4">
-        <div className="space-y-2 pb-2">
-          <DialogTitle className="flex items-center gap-2 text-lg flex-wrap">
-            <span>Edit Rental Contract</span>
-            {rentData?.rentContractId && (
-              <Badge variant="outline" className="text-xs">
-                {rentData.rentContractId}
-              </Badge>
-            )}
-            <Badge
-              variant="secondary"
-              className={`${currentStatusConfig.color} text-white flex items-center gap-1 text-xs`}
-            >
-              <currentStatusConfig.icon className="h-3 w-3" />
-              {currentStatusConfig.label}
-            </Badge>
-            {isOpenContract && (
-              <Badge variant="outline" className="text-xs">
-                Open
-              </Badge>
-            )}
-          </DialogTitle>
-
-          {(carModel || customerName) && (
-            <div className="flex flex-wrap items-center gap-2">
-              {carModel && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <Car className="h-3 w-3" />
-                  {carModel}
+    <Dialog
+      open={open}
+      onOpenChange={(open) => {
+        onOpenChange(open);
+        if (!open) {
+          resetImageState();
+        }
+      }}
+    >
+      <DialogContent className="w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col bg-gray-1 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-1">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-md bg-blue-600 text-white">
+              <Car className="h-4 w-4" />
+            </div>
+            <div className="leading-tight">
+              <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
+                <span>Edit Rental Contract</span>
+                {rentData?.rentContractId && (
+                  <Badge variant="outline" className="text-xs">
+                    {rentData.rentContractId}
+                  </Badge>
+                )}
+                <Badge
+                  variant="secondary"
+                  className={`${currentStatusConfig.color} text-white flex items-center gap-1 text-xs`}
+                >
+                  <currentStatusConfig.icon className="h-3 w-3" />
+                  {currentStatusConfig.label}
                 </Badge>
-              )}
-              {customerName && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <User className="h-3 w-3" />
-                  {customerName}
-                </Badge>
+                {isOpenContract && (
+                  <Badge variant="outline" className="text-xs">
+                    Open
+                  </Badge>
+                )}
+              </DialogTitle>
+              {(carModel || customerName) && (
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  {carModel && (
+                    <Badge
+                      variant="secondary"
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <Car className="h-3 w-3" />
+                      {carModel}
+                    </Badge>
+                  )}
+                  {customerName && (
+                    <Badge
+                      variant="secondary"
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <User className="h-3 w-3" />
+                      {customerName}
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
-          )}
+          </div>
+        </div>
 
+        {/* Status Alert */}
+        <div className="px-5 py-2">
           <Alert className="py-2">
             <AlertCircle className="h-3 w-3" />
             <AlertDescription className="text-xs leading-tight">
@@ -575,232 +658,323 @@ export function EditRentFormDialog({
           </Alert>
         </div>
 
-        <Separator />
-
-        {rentLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Loader className="animate-spin h-6 w-6" />
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-            <div className="space-y-2">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Schedule
-              </h3>
-              <div className="grid grid-cols-1 gap-3">
-                <FieldWrapper field="returnedAt" label="Return Date">
-                  <Controller
-                    control={control}
-                    name="returnedAt"
-                    render={({ field }) => (
-                      <DatePickerDemo
-                        value={field.value ?? undefined}
-                        onChange={field.onChange}
-                        disabled={!permissions.editable.includes('returnedAt')}
-                        placeholder="Open"
-                      />
-                    )}
-                  />
-                  {errors.returnedAt && (
-                    <p className="text-red-500 text-xs">
-                      {errors.returnedAt.message}
-                    </p>
-                  )}
-                </FieldWrapper>
-              </div>
+        {/* Content */}
+        <div className="flex-1 overflow-auto bg-gray-1 p-3 sm:p-4">
+          {rentLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader className="animate-spin h-6 w-6" />
             </div>
-
-            <div className="space-y-2">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                Financial Details <MADIcon />
-              </h3>
-
-              <div className="grid grid-cols-2 gap-3">
-                <FieldWrapper field="deposit" label="Deposit">
-                  <Controller
-                    control={control}
-                    name="deposit"
-                    render={({ field }) => (
-                      <Input
-                        type="number"
-                        min={0}
-                        value={field.value ?? ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val === '' ? 0 : Number(val));
-                        }}
-                        disabled={!permissions.editable.includes('deposit')}
-                        className="text-right h-8 text-xs"
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+                {/* Left Column - Main Content */}
+                <div className="lg:col-span-2 flex flex-col gap-3 sm:gap-4">
+                  {/* Schedule Section */}
+                  <section className="bg-white dark:bg-gray-1 border border-gray-200 dark:border-slate-700 rounded-xl p-3 sm:p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-green-500" />
+                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                        Schedule
+                      </h3>
+                    </div>
+                    <FieldWrapper field="returnedAt" label="Return Date">
+                      <Controller
+                        control={control}
+                        name="returnedAt"
+                        render={({ field }) => (
+                          <DatePickerDemo
+                            value={field.value ?? undefined}
+                            onChange={field.onChange}
+                            disabled={
+                              !permissions.editable.includes('returnedAt') ||
+                              isLoading
+                            }
+                            placeholder="Open"
+                          />
+                        )}
                       />
-                    )}
-                  />
-                </FieldWrapper>
-                <FieldWrapper field="lateFee" label="Late Fee">
-                  <Controller
-                    control={control}
-                    name="lateFee"
-                    render={({ field }) => (
-                      <Input
-                        type="number"
-                        min={0}
-                        value={field.value ?? ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val === '' ? 0 : Number(val));
-                        }}
-                        disabled={!permissions.editable.includes('lateFee')}
-                        className="text-right h-8 text-xs"
-                      />
-                    )}
-                  />
-                </FieldWrapper>
-              </div>
+                      {errors.returnedAt && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.returnedAt.message}
+                        </p>
+                      )}
+                    </FieldWrapper>
+                  </section>
 
-              <div className="grid grid-cols-2 gap-3">
-                <FieldWrapper field="totalPaid" label="Total Paid">
-                  <div className="relative">
-                    <Controller
-                      control={control}
-                      name="totalPaid"
-                      render={({ field }) => (
-                        <Input
-                          type="number"
-                          value={field.value || 0}
-                          readOnly
-                          disabled
-                          className="text-right bg-muted h-8 text-xs"
+                  {/* Car Images Section */}
+                  {canEditImages && (
+                    <section className="border border-gray-200 dark:border-slate-700 rounded-xl p-3 sm:p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Camera className="h-4 w-4 text-purple-500" />
+                        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                          Car Images
+                        </h3>
+                        {hasImageChanges && (
+                          <Badge variant="outline" className="text-xs">
+                            Modified
+                          </Badge>
+                        )}
+                      </div>
+
+                      {imagesLoading ? (
+                        <div className="flex items-center justify-center py-4 border rounded-lg">
+                          <Loader className="animate-spin mr-2 h-4 w-4" />
+                          <span className="text-sm text-muted-foreground">
+                            Loading images...
+                          </span>
+                        </div>
+                      ) : (
+                        <CarImageUpload
+                          onImagesChange={handleImagesChange}
+                          existingImages={existingImages.map((img: any) => ({
+                            id: img.id,
+                            url: img.url,
+                            name: img.name,
+                            path: img.path,
+                          }))}
+                          maxImages={4}
+                          disabled={isLoading}
                         />
                       )}
-                    />
-                    <Calculator className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                  </div>
-                </FieldWrapper>
-                <FieldWrapper field="guarantee" label="Guarantee">
-                  <Controller
-                    control={control}
-                    name="guarantee"
-                    render={({ field }) => (
-                      <Input
-                        type="number"
-                        min={0}
-                        value={field.value ?? ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val === '' ? 0 : Number(val));
-                        }}
-                        disabled={!permissions.editable.includes('guarantee')}
-                        className="text-right h-8 text-xs"
-                      />
-                    )}
-                  />
-                </FieldWrapper>
-              </div>
+                    </section>
+                  )}
 
-              <div className="bg-blue-50 dark:bg-blue-950/20 rounded-md p-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-medium">Total Price</span>
+                  {/* Notes Section */}
+                  <section className="border border-gray-200 dark:border-slate-700 rounded-xl p-3 sm:p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                        Notes
+                      </h3>
+                    </div>
+                    <FieldWrapper field="damageReport" label="Damage Report">
+                      <Controller
+                        control={control}
+                        name="damageReport"
+                        render={({ field }) => (
+                          <Textarea
+                            {...field}
+                            value={field.value || ''}
+                            placeholder="Damages, issues, or notes..."
+                            disabled={
+                              !permissions.editable.includes('damageReport') ||
+                              isLoading
+                            }
+                            rows={3}
+                            className="text-xs resize-none rounded-lg border border-gray-200 dark:border-slate-700"
+                          />
+                        )}
+                      />
+                    </FieldWrapper>
+                  </section>
+                </div>
+
+                {/* Right Column - Financial Details */}
+                <section className="border border-gray-200 dark:border-slate-700 rounded-xl p-3 sm:p-4 flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                      Financial Details
+                    </h3>
                     <MADIcon />
+                  </div>
+
+                  {/* Total Price Display */}
+                  <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">Total Price</span>
+                        {isOpenContract && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-1 py-0"
+                          >
+                            Auto
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-lg font-bold text-blue-600">
+                        {totalPrice !== null && Number.isFinite(totalPrice)
+                          ? totalPrice.toLocaleString()
+                          : 'Open'}
+                      </span>
+                    </div>
                     {isOpenContract && (
-                      <Badge variant="outline" className="text-xs px-1 py-0">
-                        Auto
-                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {pricePerDay}/day × days
+                      </p>
                     )}
                   </div>
-                  <span className="text-lg font-bold text-blue-600">
-                    {totalPrice !== null && Number.isFinite(totalPrice)
-                      ? totalPrice.toLocaleString()
-                      : 'Open'}
-                  </span>
-                </div>
-                {isOpenContract && (
-                  <p className="text-xs text-muted-foreground">
-                    {pricePerDay}/day × days
-                  </p>
-                )}
-              </div>
 
-              <FieldWrapper field="isFullyPaid" label="Payment Status">
-                <div className="flex items-center space-x-2">
-                  <Controller
-                    control={control}
-                    name="isFullyPaid"
-                    render={({ field }) => (
-                      <input
-                        type="checkbox"
-                        checked={!!field.value}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                        disabled={!permissions.editable.includes('isFullyPaid')}
-                        className="h-3 w-3"
+                  {/* Financial Fields */}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <FieldWrapper field="deposit" label="Deposit">
+                        <Controller
+                          control={control}
+                          name="deposit"
+                          render={({ field }) => (
+                            <Input
+                              type="number"
+                              min={0}
+                              value={field.value ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? 0 : Number(val));
+                              }}
+                              disabled={
+                                !permissions.editable.includes('deposit') ||
+                                isLoading
+                              }
+                              className="text-right h-9 text-sm rounded-lg border-gray-200 dark:border-slate-700"
+                            />
+                          )}
+                        />
+                      </FieldWrapper>
+
+                      <FieldWrapper field="guarantee" label="Guarantee">
+                        <Controller
+                          control={control}
+                          name="guarantee"
+                          render={({ field }) => (
+                            <Input
+                              type="number"
+                              min={0}
+                              value={field.value ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? 0 : Number(val));
+                              }}
+                              disabled={
+                                !permissions.editable.includes('guarantee') ||
+                                isLoading
+                              }
+                              className="text-right h-9 text-sm rounded-lg border-gray-200 dark:border-slate-700"
+                            />
+                          )}
+                        />
+                      </FieldWrapper>
+                    </div>
+
+                    <FieldWrapper field="lateFee" label="Late Fee">
+                      <Controller
+                        control={control}
+                        name="lateFee"
+                        render={({ field }) => (
+                          <Input
+                            type="number"
+                            min={0}
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === '' ? 0 : Number(val));
+                            }}
+                            disabled={
+                              !permissions.editable.includes('lateFee') ||
+                              isLoading
+                            }
+                            className="text-right h-9 text-sm rounded-lg border-gray-200 dark:border-slate-700"
+                          />
+                        )}
                       />
+                    </FieldWrapper>
+
+                    <FieldWrapper field="totalPaid" label="Total Paid">
+                      <div className="relative">
+                        <Controller
+                          control={control}
+                          name="totalPaid"
+                          render={({ field }) => (
+                            <Input
+                              type="number"
+                              value={field.value || 0}
+                              readOnly
+                              disabled
+                              className="text-right bg-muted h-9 text-sm rounded-lg"
+                            />
+                          )}
+                        />
+                        <Calculator className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </FieldWrapper>
+
+                    <FieldWrapper field="isFullyPaid" label="Payment Status">
+                      <div className="flex items-center space-x-2 rounded-lg px-3 py-2 border border-gray-200 dark:border-slate-700">
+                        <Controller
+                          control={control}
+                          name="isFullyPaid"
+                          render={({ field }) => (
+                            <input
+                              type="checkbox"
+                              checked={!!field.value}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              disabled={
+                                !permissions.editable.includes('isFullyPaid') ||
+                                isLoading
+                              }
+                              className="h-4 w-4"
+                            />
+                          )}
+                        />
+                        <Label className="text-xs text-gray-700 dark:text-slate-300">
+                          Fully paid
+                        </Label>
+                      </div>
+                    </FieldWrapper>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2 mt-auto">
+                    {hasAnyChanges && (
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full"
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader className="animate-spin mr-2 h-4 w-4" />
+                            {hasImageChanges ? 'Updating...' : 'Saving...'}
+                          </>
+                        ) : (
+                          'Save Changes'
+                        )}
+                      </Button>
                     )}
-                  />
-                  <Label className="text-xs">Fully paid</Label>
-                </div>
-              </FieldWrapper>
-            </div>
 
-            <div className="space-y-2">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Notes
-              </h3>
-              <FieldWrapper field="damageReport" label="Damage Report">
-                <Controller
-                  control={control}
-                  name="damageReport"
-                  render={({ field }) => (
-                    <Textarea
-                      {...field}
-                      value={field.value || ''}
-                      placeholder="Damages, issues, or notes..."
-                      disabled={!permissions.editable.includes('damageReport')}
-                      rows={2}
-                      className="text-xs resize-none"
-                    />
-                  )}
-                />
-              </FieldWrapper>
-            </div>
+                    {canCancel && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancel}
+                        disabled={cancelMutation.isPending || isLoading}
+                        className="w-full"
+                      >
+                        {cancelMutation.isPending ? (
+                          <>
+                            <Loader className="animate-spin mr-1 h-3 w-3" />
+                            Canceling...
+                          </>
+                        ) : (
+                          'Cancel Contract'
+                        )}
+                      </Button>
+                    )}
 
-            <div className="flex justify-between pt-2">
-              {canCancel && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleCancel}
-                  disabled={cancelMutation.isPending}
-                  className="h-8 px-4 text-xs bg-red-700 text-white"
-                >
-                  {cancelMutation.isPending ? (
-                    <>
-                      <Loader className="animate-spin mr-1 h-3 w-3" />
-                      Canceling...
-                    </>
-                  ) : (
-                    'Cancel Contract'
-                  )}
-                </Button>
-              )}
-
-              {hasEditableFields && (
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="h-8 px-4 text-xs ml-auto"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader className="animate-spin mr-1 h-3 w-3" />
-                      Updating...
-                    </>
-                  ) : (
-                    'Save Changes'
-                  )}
-                </Button>
-              )}
-            </div>
-          </form>
-        )}
+                    {/* Progress indicator */}
+                    {hasImageChanges && (
+                      <div className="text-center">
+                        <Badge variant="outline" className="text-xs">
+                          📷 {newImages.length} image
+                          {newImages.length !== 1 ? 's' : ''} ready
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            </form>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

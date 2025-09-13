@@ -16,6 +16,7 @@ import {
   UseInterceptors,
   BadRequestException,
   UploadedFiles,
+  Req,
 } from '@nestjs/common';
 import { RentsService } from './rents.service';
 import { CreateRentDto } from './dto/create-rent.dto';
@@ -41,64 +42,122 @@ export class RentsController {
   @UseInterceptors(
     FilesInterceptor('carImages', 4, {
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB per file
-        files: 4, // Maximum 4 files
+        fileSize: 10 * 1024 * 1024,
+        files: 4,
       },
-      fileFilter: (req, file, callback) => {
-        // Only allow image files
-        if (!file.mimetype.match(/^image\/(jpeg|jpg|png|webp|gif)$/)) {
-          return callback(
+      fileFilter: (req, file, cb) => {
+        console.log('🔍 FileFilter called with file:', {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          encoding: file.encoding,
+          mimetype: file.mimetype,
+          size: file.size,
+        });
+
+        if (!/^image\/(jpeg|jpg|png|webp|gif)$/.test(file.mimetype)) {
+          console.log('❌ File rejected - invalid type:', file.mimetype);
+          return cb(
             new BadRequestException(
-              `File ${file.originalname} is not a valid image. Only JPEG, PNG, WEBP, and GIF are allowed.`,
+              `Invalid image type ${file.mimetype}. Allowed: jpeg, jpg, png, webp, gif`,
             ),
             false,
           );
         }
-        callback(null, true);
+        console.log('✅ File accepted by filter');
+        cb(null, true);
       },
     }),
   )
   async create(
-    @Body(ValidationPipe) createRentDto: CreateRentDto,
+    @Body() body: any,
     @CurrentUser() user: CustomUser,
     @UploadedFiles() carImages?: Express.Multer.File[],
+    @Req() req?: any,
   ) {
-    try {
-      const userId = user.id;
+    console.log('🔍 Controller Debug:');
+    console.log('   Content-Type:', req.headers['content-type']);
+    console.log('   Content-Length:', req.headers['content-length']);
+    console.log('   Files received by interceptor:', carImages?.length || 0);
+    console.log('   Body keys:', Object.keys(body || {}));
+    console.log('   Raw body type:', typeof body);
 
-      // Validate images if provided
-      if (carImages && carImages.length > 0) {
-        // Additional validation
-        for (const image of carImages) {
-          if (image.size > 10 * 1024 * 1024) {
-            throw new BadRequestException(
-              `Image ${image.originalname} is too large. Maximum size is 10MB.`,
-            );
-          }
-        }
+    // Check if images are in body instead of files
+    if (body.carImages) {
+      console.log('   ⚠️ Images found in body (not as files):', {
+        type: typeof body.carImages,
+        isArray: Array.isArray(body.carImages),
+        content: body.carImages,
+      });
+    }
+
+    // Log received files
+    if (carImages && carImages.length > 0) {
+      console.log('   ✅ Files processed by interceptor:');
+      carImages.forEach((file, idx) => {
+        console.log(`      File ${idx + 1}:`, {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          hasBuffer: !!file.buffer,
+        });
+      });
+    }
+
+    // Manual transformation and validation
+    try {
+      const createRentDto: CreateRentDto = {
+        carId: body.carId,
+        customerId: body.customerId,
+        startDate: new Date(body.startDate),
+        expectedEndDate: body.expectedEndDate
+          ? new Date(body.expectedEndDate)
+          : undefined,
+        returnedAt: body.returnedAt ? new Date(body.returnedAt) : undefined,
+        isOpenContract:
+          body.isOpenContract === 'true' || body.isOpenContract === true,
+        totalPrice: body.totalPrice ? Number(body.totalPrice) : undefined,
+        deposit: body.deposit ? Number(body.deposit) : 0,
+        guarantee: body.guarantee ? Number(body.guarantee) : 0,
+        lateFee: body.lateFee ? Number(body.lateFee) : 0,
+        totalPaid: body.totalPaid ? Number(body.totalPaid) : 0,
+        isFullyPaid: body.isFullyPaid === 'true' || body.isFullyPaid === true,
+        status: body.status || 'reserved',
+        damageReport: body.damageReport || '',
+        isDeleted: false,
+      };
+
+      // Validate required fields
+      if (!createRentDto.carId) {
+        throw new BadRequestException('Car ID is required');
+      }
+      if (!createRentDto.customerId) {
+        throw new BadRequestException('Customer ID is required');
+      }
+      if (
+        !createRentDto.startDate ||
+        isNaN(createRentDto.startDate.getTime())
+      ) {
+        throw new BadRequestException('Valid start date is required');
       }
 
-      const result = await this.rentsService.createWithImages(
+      console.log('✅ Calling createWithImages with:', {
+        dto: createRentDto,
+        userId: user.id,
+        imageCount: carImages?.length || 0,
+      });
+
+      return await this.rentsService.createWithImages(
         createRentDto,
-        userId,
+        user.id,
         carImages,
       );
-
-      return {
-        ...result,
-        contractUrl: `/contracts/${result.data.id}`,
-      };
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      console.error('Create rent with images error:', error);
-      throw new BadRequestException(
-        'Failed to create rental contract. Please try again.',
-      );
+      console.log('❌ Controller error:', error);
+      throw error;
     }
   }
+
   @Get()
   findAll() {
     return this.rentsService.findAll({});
@@ -233,5 +292,18 @@ export class RentsController {
   @Get(':id/with-images')
   async getRentWithImages(@Param('id') id: string) {
     return this.rentsService.getRentWithImages(id);
+  }
+
+  @Get(':id/images')
+  async getRentImages(@Param('id') id: string) {
+    try {
+      const images = await this.rentsService.getRentImages(id);
+      return {
+        success: true,
+        data: images,
+      };
+    } catch (error) {
+      throw new BadRequestException('Failed to retrieve rent images');
+    }
   }
 }

@@ -7,9 +7,9 @@ export interface CreateRentResponse {
   message: string;
   data: {
     id: string;
-    rentContractId: string; // 🆕 New field
-    rentNumber: number; // 🆕 New field
-    year: number; // 🆕 New field
+    rentContractId: string;
+    rentNumber: number;
+    year: number;
     carId: string;
     customerId: string;
     startDate: string;
@@ -27,14 +27,14 @@ export interface CreateRentResponse {
     isDeleted: boolean;
     orgId: string;
   };
-  contractUrl?: string; // Added by backend
+  contractUrl?: string;
 }
 
 export interface RentWithDetails {
   id: string;
-  rentContractId: string; // 🆕 New field
-  rentNumber: number; // 🆕 New field
-  year: number; // 🆕 New field
+  rentContractId: string;
+  rentNumber: number;
+  year: number;
   carId: string;
   customerId: string;
   startDate: string;
@@ -49,12 +49,17 @@ export interface RentWithDetails {
   isFullyPaid: boolean;
   status: RentStatus;
   damageReport?: string;
-  // Related data from joins
   carModel: string;
   carMake: string;
   pricePerDay: number;
   customerName: string;
   customerEmail: string;
+  // image ids from backend pagination endpoint
+  carImg1Id?: string | null;
+  carImg2Id?: string | null;
+  carImg3Id?: string | null;
+  carImg4Id?: string | null;
+  carImagesCount?: number;
 }
 
 export interface GetRentsWithDetailsResponse {
@@ -84,12 +89,9 @@ export const createRent = async (data: {
 }): Promise<CreateRentResponse> => {
   let returnedAt = data.returnedAt;
 
-  // If open contract and no returnedAt, set far future date
   if (data.isOpenContract && !returnedAt) {
     returnedAt = new Date('9999-12-31');
   }
-
-  // If expectedEndDate is provided and returnedAt is missing, use it
   if (!returnedAt && data.expectedEndDate) {
     returnedAt = data.expectedEndDate;
   }
@@ -105,6 +107,7 @@ export const createRent = async (data: {
 
   const response = await api.post('/rents', dataToSend, {
     headers: { 'Content-Type': 'application/json' },
+    withCredentials: true,
   });
   return response.data as CreateRentResponse;
 };
@@ -134,7 +137,6 @@ export const updateRent = async (
   currentStatus?: RentStatus,
   isOpenContract?: boolean,
 ) => {
-  // Allowed fields per status (must match backend rules)
   const allowedFieldsByStatus: Record<RentStatus, string[]> = {
     reserved: [
       'carId',
@@ -165,25 +167,19 @@ export const updateRent = async (
     canceled: ['status'],
   };
 
-  // Filter updateData to only allowed fields
   const allowedFields = currentStatus
     ? allowedFieldsByStatus[currentStatus]
     : Object.keys(updateData);
 
   const filteredData: Record<string, any> = {};
-
   for (const key of allowedFields) {
     const value = updateData[key];
     if (value !== undefined) {
-      if (key === 'damageReport') {
-        filteredData[key] = value === '' ? null : value;
-      } else {
-        filteredData[key] = value;
-      }
+      filteredData[key] =
+        key === 'damageReport' ? (value === '' ? null : value) : value;
     }
   }
 
-  // Handle date formatting
   if (filteredData.startDate instanceof Date) {
     filteredData.startDate = filteredData.startDate.toISOString();
   }
@@ -193,6 +189,7 @@ export const updateRent = async (
 
   const response = await api.put(`/rents/${id}`, filteredData, {
     headers: { 'Content-Type': 'application/json' },
+    withCredentials: true,
   });
 
   return response.data;
@@ -208,7 +205,7 @@ export const getAllRentsWithCarAndCustomer = async (
   return response.data;
 };
 
-// 🆕 Contract-related functions
+// Contract-related
 export const getRentContract = async (id: string) => {
   const response = await api.get(`/rents/${id}/contract`);
   return response.data;
@@ -219,22 +216,18 @@ export const getRentContractHTML = async (id: string) => {
   return response.data;
 };
 
-// Uses your preconfigured `api` instance (Axios)
 export async function downloadRentContractPDF(id: string) {
-  // 1) Request the PDF as a blob
   const res = await api.get(`/rents/${id}/contract-pdf`, {
     responseType: 'blob',
     headers: { Accept: 'application/pdf' },
-    withCredentials: true, // keep if your API uses cookies/session
+    withCredentials: true,
   });
 
-  // 2) Validate content-type (optional but helpful)
   const ct =
     (res.headers?.['content-type'] as string) ||
     (res.headers?.['Content-Type'] as string) ||
     '';
   if (!ct.toLowerCase().includes('pdf')) {
-    // Try to read as text for better error details
     try {
       const text = await (res.data as Blob).text();
       throw new Error(
@@ -247,7 +240,6 @@ export async function downloadRentContractPDF(id: string) {
     }
   }
 
-  // 3) Derive filename from headers, fallback to contract-{id}.pdf
   const cd =
     (res.headers?.['content-disposition'] as string) ||
     (res.headers?.['Content-Disposition'] as string) ||
@@ -255,7 +247,6 @@ export async function downloadRentContractPDF(id: string) {
   const match = cd.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
   const filename = match ? decodeURIComponent(match[1]) : `contract-${id}.pdf`;
 
-  // 4) Create a blob URL and download
   const blob = res.data as Blob;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -266,3 +257,124 @@ export async function downloadRentContractPDF(id: string) {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+// =======================
+// Car images (multipart)
+// =======================
+
+export interface RentWithImages {
+  id: string;
+  rentContractId: string;
+  carId: string;
+  customerId: string;
+  startDate: string;
+  expectedEndDate?: string | null;
+  returnedAt?: string | null;
+  isOpenContract: boolean;
+  status: RentStatus;
+  totalPrice?: number | null;
+
+  carImg1Id?: string | null;
+  carImg2Id?: string | null;
+  carImg3Id?: string | null;
+  carImg4Id?: string | null;
+
+  carImages?: Array<{
+    id: string;
+    name: string;
+    url: string;
+    size?: number;
+    path?: string;
+  }>;
+  carImagesCount?: number;
+}
+
+export const createRentWithImages = async (
+  formData: FormData,
+): Promise<
+  CreateRentResponse & {
+    data: CreateRentResponse['data'] & {
+      carImagesCount?: number;
+      carImageIds?: string[];
+    };
+  }
+> => {
+  const response = await api.post('/rents', formData, {
+    withCredentials: true,
+    // Do not set Content-Type; browser sets boundary.
+  });
+  return response.data;
+};
+
+export const updateRentImages = async (
+  rentId: string,
+  images: File[],
+): Promise<{
+  success: boolean;
+  message: string;
+  data: { carImagesCount: number; carImageIds: string[] };
+}> => {
+  const fd = new FormData();
+  images.slice(0, 4).forEach((img) => fd.append('carImages', img));
+  const res = await api.patch(`/rents/${rentId}/images`, fd, {
+    withCredentials: true,
+  });
+  return res.data;
+};
+
+export const getRentWithImages = async (
+  rentId: string,
+): Promise<RentWithImages> => {
+  const res = await api.get(`/rents/${rentId}/with-images`, {
+    withCredentials: true,
+  });
+  return res.data;
+};
+
+// Helper to build multipart payload if you want to switch dynamically
+export function buildCreateRentFormData(
+  payload: {
+    carId: string;
+    customerId: string;
+    startDate: Date;
+    expectedEndDate?: Date | null;
+    returnedAt?: Date | null;
+    totalPrice?: number | null;
+    deposit?: number | null;
+    guarantee?: number | null;
+    lateFee?: number | null;
+    totalPaid?: number | null;
+    isFullyPaid?: boolean;
+    isOpenContract: boolean;
+    status: RentStatus;
+    damageReport?: string | null;
+  },
+  images: File[],
+): FormData {
+  const fd = new FormData();
+
+  const entries: Record<string, any> = {
+    ...payload,
+    startDate: payload.startDate?.toISOString(),
+    expectedEndDate: payload.expectedEndDate
+      ? payload.expectedEndDate.toISOString()
+      : '',
+    returnedAt: payload.returnedAt ? payload.returnedAt.toISOString() : '',
+  };
+
+  Object.entries(entries).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    fd.append(
+      k,
+      typeof v === 'boolean' || typeof v === 'number' ? String(v) : v,
+    );
+  });
+
+  images.slice(0, 4).forEach((img) => fd.append('carImages', img));
+  return fd;
+}
+
+export const getRentImages = async (rentId: string) => {
+  const response = await api.get(`/rents/${rentId}/images`);
+  return response.data.data;
+};
