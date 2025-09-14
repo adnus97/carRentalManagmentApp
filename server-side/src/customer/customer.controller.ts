@@ -187,4 +187,42 @@ export class CustomerController extends BaseController {
       this.handleControllerError(error);
     }
   }
+  @Get('blacklist/org')
+  async getOrgBlacklist(
+    @CurrentUser() user: CustomUser,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    try {
+      const pageNum = Math.max(1, parseInt(page || '1', 10));
+      const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
+
+      return await this.customerService.getBlacklistByOrg(
+        user.id,
+        pageNum,
+        pageSizeNum,
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
+
+  /** Get global blacklist */
+  @Get('blacklist/global')
+  async getGlobalBlacklist(
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+  ) {
+    try {
+      const pageNum = Math.max(1, parseInt(page || '1', 10));
+      const pageSizeNum = Math.max(1, parseInt(pageSize || '20', 10));
+
+      return await this.customerService.getGlobalBlacklist(
+        pageNum,
+        pageSizeNum,
+      );
+    } catch (error) {
+      this.handleControllerError(error);
+    }
+  }
 }

@@ -12,6 +12,8 @@ import { OverdueMetrics } from './metrics/overdue.metrics';
 import { TopCarsMetrics } from './metrics/topCars.metrics';
 import { TrendsMetrics } from './metrics/trends.metrics';
 import { TargetsMetrics } from './metrics/targets.metrics';
+import { MaintenanceMetrics } from './metrics/maintenance.metrics';
+import { TechnicalVisitMetrics } from './metrics/technicalVisit.metrics';
 import {
   formatISO,
   startOfWeek,
@@ -58,25 +60,77 @@ export class ReportsService {
     }
 
     const orgId = await this.getOrgId(params.userId);
+    const maintenance = await MaintenanceMetrics.calculate(
+      this.db.db,
+      orgId,
+      carId,
+      range.from,
+      range.to,
+    );
 
-    // ✅ Fetch rents overlapping with the reporting period OR still open
+    const technicalVisit = await TechnicalVisitMetrics.calculate(
+      this.db.db,
+      orgId,
+      carId,
+    );
+    // ✅ FIXED: Join cars table and select pricePerDay
     const rows = await this.db.db
-      .select()
+      .select({
+        // Rent fields
+        id: rents.id,
+        startDate: rents.startDate,
+        returnedAt: rents.returnedAt,
+        expectedEndDate: rents.expectedEndDate,
+        totalPaid: rents.totalPaid,
+        totalPrice: rents.totalPrice,
+        status: rents.status,
+        isOpenContract: rents.isOpenContract,
+        carId: rents.carId,
+        customerId: rents.customerId,
+        deposit: rents.deposit,
+        guarantee: rents.guarantee,
+        lateFee: rents.lateFee,
+        isFullyPaid: rents.isFullyPaid,
+        damageReport: rents.damageReport,
+        // ✅ Car fields - CRITICAL!
+        pricePerDay: cars.pricePerDay,
+      })
       .from(rents)
+      .leftJoin(cars, eq(rents.carId, cars.id)) // ✅ JOIN cars table
       .where(
         and(
           eq(rents.orgId, orgId),
           sql`${rents.isDeleted} = false`,
           sql`${rents.startDate} <= ${range.to}`,
           sql`(
-        ${rents.returnedAt} >= ${range.from} 
-        OR ${rents.expectedEndDate} >= ${range.from} 
-        OR ${rents.status} IN ('active', 'reserved') 
-        OR ${rents.isOpenContract} = true
+        (${rents.returnedAt} IS NOT NULL AND ${rents.returnedAt} >= ${range.from})
+        OR
+        (${rents.returnedAt} IS NULL AND ${rents.expectedEndDate} IS NOT NULL AND ${rents.expectedEndDate} >= ${range.from})
+        OR
+        (${rents.returnedAt} IS NULL AND ${rents.expectedEndDate} IS NULL AND ${rents.startDate} <= ${range.to})
       )`,
           ...(carId ? [eq(rents.carId, carId)] : []),
         ),
       );
+    console.log('=== RENTAL QUERY DEBUG ===');
+    console.log('Date range:', { from: range.from, to: range.to });
+    console.log('Rentals found:', rows.length);
+    console.log('Rental details:');
+    console.log('Rental details:');
+    rows.forEach((rent, i) => {
+      console.log(`Rent ${i}:`, {
+        id: rent.id,
+        startDate: rent.startDate,
+        returnedAt: rent.returnedAt,
+        expectedEndDate: rent.expectedEndDate,
+        totalPaid: rent.totalPaid,
+        totalPrice: rent.totalPrice,
+        status: rent.status,
+        isOpenContract: rent.isOpenContract,
+        pricePerDay: rent.pricePerDay, // ✅ Now this will exist
+      });
+    });
+    console.log('========================');
     // Fleet size
     const [{ count: fleetCount }] = await this.db.db
       .select({ count: sql<number>`count(*)` })
@@ -88,7 +142,8 @@ export class ReportsService {
     // ✅ Revenue (final + provisional)
     const { revenueBilled, revenueCollected, openAR } =
       RevenueMetrics.calculate(rows);
-
+    // Calculate net profit (after calculating revenueCollected)
+    const netProfit = revenueCollected - maintenance.totalMaintenanceCost;
     // Rental days (for ADR + Utilization)
     const periodDays = Math.max(
       1,
@@ -136,22 +191,33 @@ export class ReportsService {
     const prevTo = new Date(range.from.getTime() - 1);
 
     const prevRows = await this.db.db
-      .select()
+      .select({
+        // Same fields as above
+        id: rents.id,
+        startDate: rents.startDate,
+        returnedAt: rents.returnedAt,
+        expectedEndDate: rents.expectedEndDate,
+        totalPaid: rents.totalPaid,
+        totalPrice: rents.totalPrice,
+        status: rents.status,
+        isOpenContract: rents.isOpenContract,
+        pricePerDay: cars.pricePerDay, // ✅ Include this
+      })
       .from(rents)
+      .leftJoin(cars, eq(rents.carId, cars.id)) // ✅ Join cars table
       .where(
         and(
           eq(rents.orgId, orgId),
           sql`${rents.isDeleted} = false`,
           sql`${rents.startDate} <= ${prevTo}`,
           sql`(
-            ${rents.returnedAt} >= ${prevFrom} 
-            OR ${rents.expectedEndDate} >= ${prevFrom} 
-            OR ${rents.status} = 'open'
-          )`,
+        (${rents.returnedAt} IS NOT NULL AND ${rents.returnedAt} >= ${prevFrom})
+        OR
+        (${rents.returnedAt} IS NULL AND ${rents.expectedEndDate} IS NOT NULL AND ${rents.expectedEndDate} >= ${prevFrom})
+      )`,
           ...(carId ? [eq(rents.carId, carId)] : []),
         ),
       );
-
     const prevTrends = this.calculateTrends(
       prevRows,
       prevFrom,
@@ -177,6 +243,8 @@ export class ReportsService {
         periodDays,
         adr,
         revPar,
+        totalMaintenanceCost: maintenance.totalMaintenanceCost, // ✅ New
+        netProfit, // ✅ New
       },
       trends,
       prevTrends,
@@ -188,12 +256,14 @@ export class ReportsService {
       ),
       overdue: OverdueMetrics.calculate(rows, now),
       insurance: await InsuranceMetrics.calculate(this.db.db, orgId, carId),
+      technicalVisit, // ✅ New
+      maintenance, // ✅ New
       targets: await TargetsMetrics.calculate(
         this.db.db,
         orgId,
         range.from,
         range.to,
-      ), // ✅ added
+      ),
     };
   }
 

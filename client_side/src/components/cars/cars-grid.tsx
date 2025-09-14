@@ -297,11 +297,35 @@ export const CarsGrid = () => {
       headerName: 'Next Available',
       field: 'nextAvailableDate',
       width: 140,
-      cellRenderer: (params: { value: string }) => {
-        if (!params.value) {
+      cellRenderer: (params: { value: string; data: Car }) => {
+        const { value: nextAvailableDate, data: car } = params;
+
+        // If car is not available and no next available date, it's likely an open contract
+        if (!car.isAvailable && !nextAvailableDate) {
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-help underline decoration-dotted text-orange-500 font-semibold">
+                    Open Contract
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  This car is currently rented under an open contract with no
+                  defined end date
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        }
+
+        // If no next available date and car is available, then it's truly available now
+        if (!nextAvailableDate) {
           return <span>Available now</span>;
         }
-        const parsed = new Date(params.value);
+
+        // Otherwise show the next available date
+        const parsed = new Date(nextAvailableDate);
         const shortDate = format(parsed, 'dd/MM/yyyy');
         const fullDate = format(parsed, 'dd/MM/yyyy HH:mm:ss');
 

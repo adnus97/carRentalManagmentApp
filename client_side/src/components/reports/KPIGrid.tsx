@@ -6,10 +6,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+// Update the KPIItem type
 type KPIItem = {
-  key: string; // keep the original key so we can pick the right tooltip
+  key: string;
   title: string;
   value: string | number;
+  textColor?: string; // ✅ New optional field
 };
 
 export function KPIGrid({ snapshot }: { snapshot: any }) {
@@ -24,11 +26,10 @@ export function KPIGrid({ snapshot }: { snapshot: any }) {
     utilization: 'Utilization',
     adr: 'ADR',
     revPar: 'RevPAR',
-    finalRevenue: 'Final Revenue',
-    provisionalRevenue: 'Provisional Revenue',
+    totalMaintenanceCost: 'Maintenance Costs', // ✅ New
+    netProfit: 'Net Profit', // ✅ New
   };
 
-  // Short, practical explanations for titles
   const descriptions: Record<string, string> = {
     revenueBilled:
       'Total revenue invoiced for the selected period (regardless of collection).',
@@ -44,19 +45,24 @@ export function KPIGrid({ snapshot }: { snapshot: any }) {
     adr: 'Average Daily Rate: average revenue per rented day (currency per day).',
     revPar:
       'Revenue per Available Car: average revenue across all available fleet days (includes idle vehicles).',
-    finalRevenue:
-      'Finalized revenue after adjustments, discounts, or corrections.',
-    provisionalRevenue:
-      'Provisional revenue before final reconciliation or adjustments.',
+    // ✅ New
+    totalMaintenanceCost:
+      'Total amount spent on vehicle maintenance during the selected period.',
+    // ✅ New
+    netProfit:
+      'Net profit calculated as total revenue collected minus maintenance costs for the period.',
   };
 
   const items: KPIItem[] = Object.entries(snapshot).map(([key, val]) => {
     let value: string | number;
+    let textColor = ''; // For conditional styling
+
     if (typeof val === 'string' || typeof val === 'number') {
       value = val;
     } else {
       value = JSON.stringify(val);
     }
+
     if (key === 'revenueBilled' && typeof val === 'number')
       value = `${val.toFixed(2)} DHS`;
     if (key === 'revenueCollected' && typeof val === 'number')
@@ -70,7 +76,19 @@ export function KPIGrid({ snapshot }: { snapshot: any }) {
     if (key === 'revPar' && typeof val === 'number')
       value = `${val.toFixed(2)} DHS`;
 
-    return { key, title: mapping[key] ?? key, value };
+    // ✅ New formatting
+    if (key === 'totalMaintenanceCost' && typeof val === 'number')
+      value = `${val.toFixed(2)} DHS`;
+
+    if (key === 'netProfit' && typeof val === 'number') {
+      value = `${val.toFixed(2)} DHS`;
+      textColor =
+        val >= 0
+          ? 'text-green-600 dark:text-green-400'
+          : 'text-red-600 dark:text-red-400';
+    }
+
+    return { key, title: mapping[key] ?? key, value, textColor };
   });
 
   return (
@@ -81,15 +99,12 @@ export function KPIGrid({ snapshot }: { snapshot: any }) {
             key={kpi.title}
             className={[
               'relative overflow-hidden rounded-xl border shadow-sm',
-              // Light mode
               'border-gray-200 bg-white text-gray-900',
               'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
-              // Dark mode (Insurance style)
               'dark:border-border dark:text-gray-100 dark:shadow-lg',
               'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
             ].join(' ')}
           >
-            {/* Dark-mode glow orbs */}
             <div className="pointer-events-none absolute -right-12 -top-12 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
             <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
 
@@ -116,7 +131,9 @@ export function KPIGrid({ snapshot }: { snapshot: any }) {
             </CardHeader>
 
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              <div
+                className={`text-2xl font-bold ${kpi.textColor || 'text-gray-900 dark:text-gray-100'}`}
+              >
                 {typeof kpi.value === 'number' || typeof kpi.value === 'string'
                   ? kpi.value
                   : JSON.stringify(kpi.value)}

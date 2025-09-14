@@ -62,27 +62,51 @@ export class CarsService {
 
   /** SQL for availability */
   private isAvailableSQL = sql<boolean>`
-    ${cars.status} = 'active' AND NOT EXISTS (
-      SELECT 1 FROM ${rents}
-      WHERE ${rents.carId} = ${cars.id}
-        AND ${rents.isDeleted} = false
-        AND ${rents.status} = 'active'
-        AND ${rents.startDate} <= NOW()
-        AND ${rents.returnedAt} > NOW()
-    )
-  `;
-
+  ${cars.status} = 'active' AND NOT EXISTS (
+    SELECT 1 FROM ${rents}
+    WHERE ${rents.carId} = ${cars.id}
+      AND ${rents.isDeleted} = false
+      AND ${rents.status} IN ('active', 'reserved')
+      AND ${rents.startDate} <= NOW()
+      AND (
+        -- For open contracts, check if still active
+        (${rents.isOpenContract} = true AND ${rents.status} = 'active')
+        OR 
+        -- For closed contracts, check return/end dates
+        (${rents.isOpenContract} = false AND (
+          COALESCE(${rents.returnedAt}, ${rents.expectedEndDate}) > NOW()
+        ))
+      )
+  )
+`;
   /** SQL for next available date */
   private nextAvailableDateSQL = sql<Date | null>`
-    (
-      SELECT MIN(${rents.returnedAt})
-      FROM ${rents}
-      WHERE ${rents.carId} = ${cars.id}
-        AND ${rents.isDeleted} = false
-        AND ${rents.status} = 'active'
-        AND ${rents.returnedAt} > NOW()
+  (
+    SELECT MIN(
+      CASE 
+        WHEN ${rents.isOpenContract} = true THEN 
+          CASE 
+            WHEN ${rents.returnedAt} IS NOT NULL AND ${rents.returnedAt} != '9999-12-31'::timestamp 
+            THEN ${rents.returnedAt}
+            ELSE NULL  -- Open contract with no return date = indefinite
+          END
+        ELSE COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})
+      END
     )
-  `;
+    FROM ${rents}
+    WHERE ${rents.carId} = ${cars.id}
+      AND ${rents.isDeleted} = false
+      AND ${rents.status} IN ('active', 'reserved')
+      AND ${rents.startDate} <= NOW()
+      AND (
+        -- For open contracts that have been returned
+        (${rents.isOpenContract} = true AND ${rents.returnedAt} IS NOT NULL AND ${rents.returnedAt} != '9999-12-31'::timestamp AND ${rents.returnedAt} > NOW())
+        OR
+        -- For closed contracts
+        (${rents.isOpenContract} = false AND COALESCE(${rents.returnedAt}, ${rents.expectedEndDate}) > NOW())
+      )
+  )
+`;
 
   /** Convert date strings to Date objects */
   private normalizeDates<T extends Record<string, any>>(data: T): T {

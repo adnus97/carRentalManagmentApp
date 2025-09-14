@@ -36,14 +36,28 @@ function ensureDate(value: any): Date | undefined {
   return undefined;
 }
 // Helper: whole-day difference in UTC (avoid DST/local-time issues)
-function daysBetweenUTC(a: Date, b: Date) {
-  const A = new Date(
-    Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()),
+function daysBetweenUTC(startDate: Date, endDate: Date): number {
+  const start = new Date(
+    Date.UTC(
+      startDate.getUTCFullYear(),
+      startDate.getUTCMonth(),
+      startDate.getUTCDate(),
+    ),
   );
-  const B = new Date(
-    Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()),
+
+  const end = new Date(
+    Date.UTC(
+      endDate.getUTCFullYear(),
+      endDate.getUTCMonth(),
+      endDate.getUTCDate(),
+    ),
   );
-  return Math.max(0, Math.ceil((B.getTime() - A.getTime()) / 86400000));
+
+  // Add 1 to include both start and end days in the rental period
+  const diffInMs = end.getTime() - start.getTime();
+  const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24));
+
+  return Math.max(1, diffInDays + 1); // +1 for inclusive counting
 }
 @Injectable()
 export class RentsService {
@@ -858,15 +872,15 @@ export class RentsService {
 
       // 5) Keep billed-to-date current for open contracts (sets totalPrice)
       // helper for whole-day diff in UTC
-      function daysBetweenUTC(a: Date, b: Date) {
-        const A = new Date(
-          Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()),
-        );
-        const B = new Date(
-          Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()),
-        );
-        return Math.max(0, Math.ceil((B.getTime() - A.getTime()) / 86400000));
-      }
+      // function daysBetweenUTC(a: Date, b: Date) {
+      //   const A = new Date(
+      //     Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate()),
+      //   );
+      //   const B = new Date(
+      //     Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()),
+      //   );
+      //   return Math.max(0, Math.ceil((B.getTime() - A.getTime()) / 86400000));
+      // }
 
       const openNowOrLater =
         rent.isOpenContract || updateRentDto.isOpenContract;

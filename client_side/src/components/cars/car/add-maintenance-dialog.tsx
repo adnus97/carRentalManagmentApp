@@ -106,7 +106,7 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          disabled={isRented || carLoading}
+          disabled={carLoading}
           onClick={() => {
             if (isRented) {
               errorToast(

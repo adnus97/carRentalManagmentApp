@@ -1,17 +1,18 @@
 import { cars } from 'src/db/schema/cars';
 import { and, eq, sql } from 'drizzle-orm';
 
-export class InsuranceMetrics {
+export class TechnicalVisitMetrics {
   static async calculate(db: any, orgId: string, carId?: string) {
     const now = new Date();
     const thirty = new Date();
     thirty.setDate(thirty.getDate() + 30);
+
     const risky = await db
       .select({
         id: cars.id,
         make: cars.make,
         model: cars.model,
-        insuranceExpiryDate: cars.insuranceExpiryDate,
+        technicalVisiteExpiryDate: cars.technicalVisiteExpiryDate,
         status: cars.status,
       })
       .from(cars)
@@ -19,45 +20,43 @@ export class InsuranceMetrics {
         and(
           eq(cars.orgId, orgId),
           sql`${cars.status} = 'active'`,
-          sql`${cars.insuranceExpiryDate} <= ${thirty}`,
+          sql`${cars.technicalVisiteExpiryDate} <= ${thirty}`,
           ...(carId ? [eq(cars.id, carId)] : []),
         ),
       );
-    const expiredCount = risky.filter(
-      (c) => c.insuranceExpiryDate < now,
-    ).length;
+
     return {
       total: risky.length,
-      expired: risky.filter((c) => c.insuranceExpiryDate < now).length,
+      expired: risky.filter((c) => c.technicalVisiteExpiryDate < now).length,
       critical: risky.filter((c) => {
         const days = Math.ceil(
-          (c.insuranceExpiryDate.getTime() - now.getTime()) / 86400000,
+          (c.technicalVisiteExpiryDate.getTime() - now.getTime()) / 86400000,
         );
         return days > 0 && days <= 3;
       }).length,
       warning: risky.filter((c) => {
         const days = Math.ceil(
-          (c.insuranceExpiryDate.getTime() - now.getTime()) / 86400000,
+          (c.technicalVisiteExpiryDate.getTime() - now.getTime()) / 86400000,
         );
         return days > 3 && days <= 7;
       }).length,
       info: risky.filter((c) => {
         const days = Math.ceil(
-          (c.insuranceExpiryDate.getTime() - now.getTime()) / 86400000,
+          (c.technicalVisiteExpiryDate.getTime() - now.getTime()) / 86400000,
         );
         return days > 7 && days <= 30;
       }).length,
-      // ✅ FIX: Calculate individual car risk status
+      // ✅ FIX: Calculate individual car risk status AND rename date field
       cars: risky.map((c) => {
         // ✅ Use the same logic as the aggregated count
-        const isExpired = c.insuranceExpiryDate < now;
+        const isExpired = c.technicalVisiteExpiryDate < now;
 
         let riskStatus;
         if (isExpired) {
           riskStatus = 'expired'; // ✅ Use date comparison, not days calculation
         } else {
           const days = Math.ceil(
-            (c.insuranceExpiryDate.getTime() - now.getTime()) / 86400000,
+            (c.technicalVisiteExpiryDate.getTime() - now.getTime()) / 86400000,
           );
           if (days <= 3) riskStatus = 'critical';
           else if (days <= 7) riskStatus = 'warning';
@@ -67,6 +66,7 @@ export class InsuranceMetrics {
 
         return {
           ...c,
+          insuranceExpiryDate: c.technicalVisiteExpiryDate, // Rename field
           status: riskStatus,
         };
       }),

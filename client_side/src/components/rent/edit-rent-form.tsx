@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
-import { DatePickerDemo } from '../date-picker';
+import { FormDatePicker } from '../form-date-picker';
 import { toast } from '../ui/toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader } from '../loader';
@@ -54,7 +54,7 @@ const MADIcon = ({ className = 'h-3 w-3' }: { className?: string }) => (
   <div
     className={`inline-flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold text-xs px-5 py-1 ${className}`}
   >
-    (MAD)
+    (DHS)
   </div>
 );
 
@@ -682,7 +682,7 @@ export function EditRentFormDialog({
                         control={control}
                         name="returnedAt"
                         render={({ field }) => (
-                          <DatePickerDemo
+                          <FormDatePicker
                             value={field.value ?? undefined}
                             onChange={field.onChange}
                             disabled={

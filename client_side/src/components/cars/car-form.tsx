@@ -17,7 +17,7 @@ import { useState } from 'react';
 import { createCar } from '@/api/cars';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../ui/toast';
-import { DatePickerDemo } from '../date-picker';
+import { FormDatePicker } from '../form-date-picker';
 import { DialogDescription } from '@radix-ui/react-dialog';
 import {
   Select,
@@ -449,9 +449,10 @@ export function DialogDemo({
                 name="insuranceExpiryDate"
                 rules={{ required: 'Required' }}
                 render={({ field }) => (
-                  <DatePickerDemo
+                  <FormDatePicker
                     value={field.value}
                     onChange={field.onChange}
+                    placeholder="Select insurance expiry date"
                   />
                 )}
               />
@@ -470,9 +471,10 @@ export function DialogDemo({
                 name="technicalVisiteExpiryDate"
                 rules={{ required: 'Required' }}
                 render={({ field }) => (
-                  <DatePickerDemo
+                  <FormDatePicker
                     value={field.value}
                     onChange={field.onChange}
+                    placeholder="Select technical visit expiry date"
                   />
                 )}
               />

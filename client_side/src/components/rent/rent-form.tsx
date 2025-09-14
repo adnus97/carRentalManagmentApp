@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '../ui/dialog';
-import { DatePickerDemo } from '../date-picker';
+import { FormDatePicker } from '../form-date-picker';
 import { toast } from '../ui/toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader } from '../loader';
@@ -471,9 +471,10 @@ export function RentFormDialog({
                         control={control}
                         name="startDate"
                         render={({ field }) => (
-                          <DatePickerDemo
+                          <FormDatePicker
                             value={field.value}
                             onChange={field.onChange}
+                            placeholder="Select start date"
                           />
                         )}
                       />
@@ -494,7 +495,7 @@ export function RentFormDialog({
                         control={control}
                         name="expectedEndDate"
                         render={({ field }) => (
-                          <DatePickerDemo
+                          <FormDatePicker
                             value={field.value ?? undefined}
                             onChange={(d) => {
                               field.onChange(d ?? null);

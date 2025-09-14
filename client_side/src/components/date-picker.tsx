@@ -146,98 +146,120 @@ export function DatePickerDemo({
             <span className="sr-only">Select date and time</span>
           </Button>
         </Popover.Trigger>
-        <Popover.Content
-          className="z-50 w-auto p-0 overflow-hidden bg-background border rounded-lg shadow-lg"
-          side="bottom"
-          align="end"
-          sideOffset={4}
-        >
-          <div className="p-0">
-            <Calendar
-              mode="single"
-              selected={currentValue}
-              month={month}
-              fromYear={1970}
-              toYear={2100}
-              captionLayout="dropdown"
-              onMonthChange={setMonth}
-              onSelect={handleDateSelect}
-              initialFocus
-            />
+        <Popover.Portal>
+          {/* Add Portal wrapper */}
+          <Popover.Content
+            className="
+              z-[9999] w-auto p-0 overflow-hidden 
+              bg-background border rounded-lg shadow-2xl
+              data-[state=open]:animate-in 
+              data-[state=closed]:animate-out 
+              data-[state=closed]:fade-out-0 
+              data-[state=open]:fade-in-0 
+              data-[state=closed]:zoom-out-95 
+              data-[state=open]:zoom-in-95 
+              data-[side=bottom]:slide-in-from-top-2 
+              data-[side=left]:slide-in-from-right-2 
+              data-[side=right]:slide-in-from-left-2 
+              data-[side=top]:slide-in-from-bottom-2
+            "
+            side="bottom"
+            align="end"
+            sideOffset={4}
+          >
+            <div className="p-0">
+              <Calendar
+                mode="single"
+                selected={currentValue}
+                month={month}
+                fromYear={1970}
+                toYear={2100}
+                captionLayout="dropdown"
+                onMonthChange={setMonth}
+                onSelect={handleDateSelect}
+                initialFocus
+              />
 
-            {/* Time Picker Section */}
-            <div className="border-t p-3 bg-background">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="size-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Time</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="23"
-                    value={selectedTime.hours.toString().padStart(2, '0')}
-                    onChange={(e) => handleTimeChange('hours', e.target.value)}
-                    className="w-16 text-center"
-                    placeholder="HH"
-                  />
-                  <span className="text-muted-foreground">:</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="59"
-                    value={selectedTime.minutes.toString().padStart(2, '0')}
-                    onChange={(e) =>
-                      handleTimeChange('minutes', e.target.value)
-                    }
-                    className="w-16 text-center"
-                    placeholder="MM"
-                  />
+              {/* Time Picker Section */}
+              <div className="border-t p-3 bg-background">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="size-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Time</span>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const now = getCurrentDateTime();
-                    const newTime = {
-                      hours: now.getHours(),
-                      minutes: now.getMinutes(),
-                    };
-                    setSelectedTime(newTime);
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="23"
+                      value={selectedTime.hours.toString().padStart(2, '0')}
+                      onChange={(e) =>
+                        handleTimeChange('hours', e.target.value)
+                      }
+                      className="w-16 text-center"
+                      placeholder="HH"
+                    />
+                    <span className="text-muted-foreground">:</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={selectedTime.minutes.toString().padStart(2, '0')}
+                      onChange={(e) =>
+                        handleTimeChange('minutes', e.target.value)
+                      }
+                      className="w-16 text-center"
+                      placeholder="MM"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const now = getCurrentDateTime();
+                      const newTime = {
+                        hours: now.getHours(),
+                        minutes: now.getMinutes(),
+                      };
+                      setSelectedTime(newTime);
 
-                    if (currentValue) {
-                      const newDateTime = createLocalDate(
-                        currentValue.getFullYear(),
-                        currentValue.getMonth(),
-                        currentValue.getDate(),
-                        newTime.hours,
-                        newTime.minutes,
-                      );
-                      onChange(newDateTime);
-                    }
-                  }}
-                >
-                  Now
-                </Button>
-              </div>
-              <div className="flex justify-end gap-2 mt-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="button" size="sm" onClick={() => setOpen(false)}>
-                  Done
-                </Button>
+                      if (currentValue) {
+                        const newDateTime = createLocalDate(
+                          currentValue.getFullYear(),
+                          currentValue.getMonth(),
+                          currentValue.getDate(),
+                          newTime.hours,
+                          newTime.minutes,
+                        );
+                        onChange(newDateTime);
+                      }
+                    }}
+                  >
+                    Now
+                  </Button>
+                </div>
+                <div className="flex justify-end gap-2 mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setOpen(false)}
+                  >
+                    Done
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </Popover.Content>
+          </Popover.Content>
+        </Popover.Portal>
       </Popover.Root>
     </div>
   );

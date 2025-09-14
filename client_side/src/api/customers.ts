@@ -52,6 +52,19 @@ export interface BlacklistEntry {
   reason: string;
   isActive: boolean;
   createdAt: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  customerDocumentId: string;
+  orgName?: string; // Only for global blacklist
+}
+
+export interface BlacklistResponse {
+  data: BlacklistEntry[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
 }
 
 /** ✅ Create customer (orgId resolved from backend) */
@@ -110,7 +123,35 @@ export const blacklistCustomer = async (
   return response.data;
 };
 
-/** ✅ Get blacklist */
+/** ✅ Unblacklist customer */
+export const unblacklistCustomer = async (id: string) => {
+  const response = await api.put(`/customers/${id}/unblacklist`);
+  return response.data;
+};
+
+/** ✅ Get organization blacklist - NEW */
+export const getOrganizationBlacklist = async (
+  page: number = 1,
+  pageSize: number = 20,
+): Promise<BlacklistResponse> => {
+  const response = await api.get('/customers/blacklist/org', {
+    params: { page, pageSize },
+  });
+  return response.data;
+};
+
+/** ✅ Get global blacklist - NEW */
+export const getGlobalBlacklist = async (
+  page: number = 1,
+  pageSize: number = 20,
+): Promise<BlacklistResponse> => {
+  const response = await api.get('/customers/blacklist/global', {
+    params: { page, pageSize },
+  });
+  return response.data;
+};
+
+/** ✅ Get blacklist (legacy - keeping for backwards compatibility) */
 export const getBlacklist = async (page: number = 1, pageSize: number = 20) => {
   const response = await api.get('/customers/blacklist/all', {
     params: { page, pageSize },
@@ -141,11 +182,7 @@ export const getCustomerRatings = async (
   return response.data;
 };
 
-export const unblacklistCustomer = async (id: string) => {
-  const response = await api.put(`/customers/${id}/unblacklist`);
-  return response.data;
-};
-
+/** ✅ Get customer rental history */
 export const getRentsByCustomer = async (
   customerId: string,
   page: number = 1,
@@ -157,6 +194,7 @@ export const getRentsByCustomer = async (
   return response.data;
 };
 
+/** ✅ Get customer with files */
 export const getCustomerWithFiles = async (
   id: string,
 ): Promise<CustomerWithFiles> => {

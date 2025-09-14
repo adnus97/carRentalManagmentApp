@@ -10,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { updateCar, Car } from '@/api/cars';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/toast';
-import { DatePickerDemo } from '@/components/date-picker';
+import { FormDatePicker } from '@/components/form-date-picker';
 import { useEffect } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { Loader } from '@/components/loader';
@@ -440,9 +440,10 @@ export function EditCarFormDialog({
                 control={control}
                 name="insuranceExpiryDate"
                 render={({ field }) => (
-                  <DatePickerDemo
+                  <FormDatePicker
                     value={field.value}
                     onChange={field.onChange}
+                    placeholder="Select insurance expiry date"
                   />
                 )}
               />
@@ -462,9 +463,10 @@ export function EditCarFormDialog({
                 control={control}
                 name="technicalVisiteExpiryDate"
                 render={({ field }) => (
-                  <DatePickerDemo
+                  <FormDatePicker
                     value={field.value}
                     onChange={field.onChange}
+                    placeholder="Select technical visit expiry date"
                   />
                 )}
               />

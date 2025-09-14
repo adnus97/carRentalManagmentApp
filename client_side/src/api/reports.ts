@@ -26,6 +26,8 @@ export type ReportsSnapshot = {
   periodDays: number;
   adr: number;
   revPar: number;
+  totalMaintenanceCost: number; // ✅ New
+  netProfit: number; // ✅ New
 };
 
 export type ReportsTrendPoint = {
@@ -73,6 +75,13 @@ export type ReportsInsurance = {
   info: number;
   cars: ReportsInsuranceCar[];
 };
+
+// ✅ New type for maintenance data
+export type ReportsMaintenance = {
+  totalMaintenanceCost: number;
+  maintenanceCount: number;
+  avgMaintenanceCost: number;
+};
 export type ReportsFilters = {
   from: string; // ISO date
   to: string; // ISO date
@@ -87,6 +96,8 @@ export type ReportsResponse = {
   topCars: ReportsTopCar[];
   overdue: ReportsOverdue[];
   insurance: ReportsInsurance;
+  technicalVisit: ReportsInsurance; // ✅ New - reuses same structure as insurance
+  maintenance: ReportsMaintenance; // ✅ New
   targets: ReportsTarget[];
 };
 

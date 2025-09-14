@@ -21,7 +21,14 @@ import {
   getCustomerWithFiles,
 } from '@/api/customers';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, Hammer, Trash, Prohibit } from '@phosphor-icons/react';
+import {
+  Eye,
+  Hammer,
+  Trash,
+  Prohibit,
+  Shield,
+  ShieldWarning,
+} from '@phosphor-icons/react';
 import { ConfirmationDialog } from '../confirmation-dialog';
 import { toast } from '@/components/ui/toast';
 import React from 'react';
@@ -37,6 +44,9 @@ import {
 import { useRouter } from '@tanstack/react-router';
 import { BlacklistDialog } from './blacklist-dialog';
 import { EditClientDialog } from './edit-client-form';
+import BlacklistModal from './modals/BlacklistModal'; // Import our new component
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -112,6 +122,7 @@ export const ClientsGrid = () => {
     }
     setShowDeleteDialog(false);
   };
+
   const handleEditCustomer = async (customer: Customer) => {
     setIsLoadingCustomer(true);
     try {
@@ -129,6 +140,7 @@ export const ClientsGrid = () => {
       setIsLoadingCustomer(false);
     }
   };
+
   const colDefs: ColDef<Customer>[] = [
     {
       headerName: '',
@@ -235,62 +247,135 @@ export const ClientsGrid = () => {
     return pages;
   };
 
+  // Count blacklisted customers in current view
+  const blacklistedCount =
+    data?.data?.filter((customer: Customer) => customer.isBlacklisted).length ||
+    0;
+  const totalCount = data?.total || 0;
+
   return (
     <div
       className="ag-theme-alpine-dark flex flex-col"
       style={{ width: '100%', height: 'calc(100vh - 100px)' }}
     >
-      <h2 className="text-xl mb-1 font-bold">Clients Dashboard</h2>
+      {/* Header Section */}
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-xl font-bold">Clients Dashboard</h2>
 
-      {/* Subtitle + Toolbar inline */}
-      <div className="flex space-x-4 items-center my-4">
-        <p>Manage your clients below:</p>
+        {/* Blacklist Action Buttons */}
+        <div className="flex items-center gap-3">
+          <BlacklistModal
+            type="organization"
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 border-orange-200 hover:border-orange-300 hover:bg-orange-50 text-orange-700"
+              >
+                <Shield size={16} />
+                My Blacklist
+              </Button>
+            }
+          />
+          <BlacklistModal
+            type="global"
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 border-red-200 hover:border-red-300 hover:bg-red-50 text-red-700"
+              >
+                <ShieldWarning size={16} />
+                Global Blacklist
+              </Button>
+            }
+          />
+        </div>
+      </div>
 
-        {selectedRows.length > 0 && (
-          <div className="flex items-center gap-2">
-            {selectedRows.length === 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  onClick={() =>
-                    router.navigate({
-                      to: '/customerDetails/$id',
-                      params: { id: selectedRows[0].id },
-                    })
-                  }
-                >
-                  <Eye size={20} /> View
-                </Button>
-
-                {selectedRows[0].isBlacklisted ? (
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      unblacklistMutation.mutate(selectedRows[0].id)
-                    }
-                  >
-                    <Prohibit size={20} /> Unblacklist
-                  </Button>
-                ) : (
-                  <BlacklistDialog customerId={selectedRows[0].id} />
-                )}
-              </>
-            )}
-            <Button
-              variant="secondary"
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => setShowDeleteDialog(true)}
-            >
-              <Trash size={20} /> Delete ({selectedRows.length})
-            </Button>
-          </div>
+      {/* Stats Bar */}
+      <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
+        <span>Manage your clients below:</span>
+        <Separator orientation="vertical" className="h-4" />
+        <div className="flex items-center gap-2">
+          <span>
+            Total: <Badge variant="outline">{totalCount}</Badge>
+          </span>
+        </div>
+        {blacklistedCount > 0 && (
+          <>
+            <Separator orientation="vertical" className="h-4" />
+            <div className="flex items-center gap-2">
+              <span>
+                Blacklisted:{' '}
+                <Badge variant="destructive" className="bg-[#EC6142]">
+                  {blacklistedCount}
+                </Badge>
+              </span>
+            </div>
+          </>
         )}
       </div>
+
+      {/* Selection Toolbar */}
+      {selectedRows.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+          <span className="text-sm font-medium">
+            {selectedRows.length} customer{selectedRows.length > 1 ? 's' : ''}{' '}
+            selected
+          </span>
+          <Separator orientation="vertical" className="h-4" />
+
+          {selectedRows.length === 1 && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  router.navigate({
+                    to: '/customerDetails/$id',
+                    params: { id: selectedRows[0].id },
+                  })
+                }
+              >
+                <Eye size={16} /> View
+              </Button>
+
+              {selectedRows[0].isBlacklisted ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => unblacklistMutation.mutate(selectedRows[0].id)}
+                  className="border-green-200 hover:border-green-300 text-green-700"
+                >
+                  <Prohibit size={16} /> Unblacklist
+                </Button>
+              ) : (
+                <BlacklistDialog customerId={selectedRows[0].id} />
+              )}
+            </>
+          )}
+
+          <Button
+            variant="secondary"
+            size="sm"
+            className="ml-auto flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            <Trash size={16} /> Delete ({selectedRows.length})
+          </Button>
+        </div>
+      )}
 
       {/* Grid */}
       <div className="flex-1 overflow-hidden">
         {isLoading || isFetching ? (
-          <p className="text-white text-center">Loading customers...</p>
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              <p className="text-white text-center">Loading customers...</p>
+            </div>
+          </div>
         ) : (
           <AgGridReact
             rowHeight={50}
@@ -305,8 +390,8 @@ export const ClientsGrid = () => {
         )}
       </div>
 
-      {/* Pagination pinned at bottom */}
-      <div className="mt-4">
+      {/* Pagination */}
+      <div className="mt-4 flex items-center justify-between">
         <Pagination>
           <PaginationContent>
             <PaginationItem>
@@ -341,6 +426,8 @@ export const ClientsGrid = () => {
           </PaginationContent>
         </Pagination>
       </div>
+
+      {/* Dialogs */}
       {selectedCustomer && (
         <EditClientDialog
           open={editDialogOpen}
@@ -351,6 +438,7 @@ export const ClientsGrid = () => {
           customer={selectedCustomer}
         />
       )}
+
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}

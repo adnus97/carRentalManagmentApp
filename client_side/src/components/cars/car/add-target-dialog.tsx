@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { addMonthlyTarget } from '@/api/cars';
 import { successToast, errorToast } from '@/components/ui/toast';
-import { DatePickerDemo } from '../../../components/date-picker';
+import { FormDatePicker } from '../../../components/form-date-picker';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -159,7 +159,7 @@ export default function AddTargetDialog({
               control={control}
               name="startDate"
               render={({ field }) => (
-                <DatePickerDemo value={field.value} onChange={field.onChange} />
+                <FormDatePicker value={field.value} onChange={field.onChange} />
               )}
             />
             {errors.startDate && (
@@ -174,7 +174,7 @@ export default function AddTargetDialog({
               control={control}
               name="endDate"
               render={({ field }) => (
-                <DatePickerDemo value={field.value} onChange={field.onChange} />
+                <FormDatePicker value={field.value} onChange={field.onChange} />
               )}
             />
             {errors.endDate && (

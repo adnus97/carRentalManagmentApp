@@ -551,4 +551,104 @@ export class CustomerService {
       },
     };
   }
+  async getBlacklistByOrg(userId: string, page = 1, pageSize = 20) {
+    if (!userId) throw new BadRequestException('User ID is required');
+
+    const offset = (page - 1) * pageSize;
+
+    const userOrg = await this.dbService.db
+      .select({ id: organization.id })
+      .from(organization)
+      .where(eq(organization.userId, userId));
+
+    if (!userOrg.length || !userOrg[0]?.id) {
+      return { data: [], page, pageSize, total: 0, totalPages: 0 };
+    }
+
+    const orgId = userOrg[0].id;
+
+    // Fixed: Join with customers and filter by organization
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(customerBlacklist)
+      .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
+      .where(
+        and(
+          eq(customers.orgId, orgId),
+          eq(customers.isDeleted, false), // Exclude deleted customers
+        ),
+      );
+
+    const rows = await this.dbService.db
+      .select({
+        id: customerBlacklist.id,
+        customerId: customerBlacklist.customerId,
+        reason: customerBlacklist.reason,
+        isActive: customerBlacklist.isActive,
+        createdAt: customerBlacklist.createdAt,
+        customerName: sql<string>`CONCAT(${customers.firstName}, ' ', ${customers.lastName})`,
+        customerPhone: customers.phone,
+        customerEmail: customers.email,
+        customerDocumentId: customers.documentId,
+      })
+      .from(customerBlacklist)
+      .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
+      .where(
+        and(
+          eq(customers.orgId, orgId),
+          eq(customers.isDeleted, false), // Exclude deleted customers
+        ),
+      )
+      .orderBy(sql`${customerBlacklist.createdAt} DESC`)
+      .offset(offset)
+      .limit(pageSize);
+
+    return this.safeReturn({
+      data: rows,
+      page,
+      pageSize,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / pageSize),
+    });
+  }
+
+  /** ✅ Get global blacklist with customer details (admin view) */
+  async getGlobalBlacklist(page = 1, pageSize = 20) {
+    const offset = (page - 1) * pageSize;
+
+    const [{ count }] = await this.dbService.db
+      .select({ count: sql<number>`count(*)` })
+      .from(customerBlacklist)
+      .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
+      .where(eq(customers.isDeleted, false)); // Exclude deleted customers
+
+    const rows = await this.dbService.db
+      .select({
+        id: customerBlacklist.id,
+        customerId: customerBlacklist.customerId,
+        reason: customerBlacklist.reason,
+        isActive: customerBlacklist.isActive,
+        createdAt: customerBlacklist.createdAt,
+        customerName: sql<string>`CONCAT(${customers.firstName}, ' ', ${customers.lastName})`,
+        customerPhone: customers.phone,
+        customerEmail: customers.email,
+        customerDocumentId: customers.documentId,
+        orgName: organization.name,
+      })
+      .from(customerBlacklist)
+      .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
+      .leftJoin(organization, eq(customers.orgId, organization.id))
+      .where(eq(customers.isDeleted, false)) // Exclude deleted customers
+      .orderBy(sql`${customerBlacklist.createdAt} DESC`)
+      .offset(offset)
+      .limit(pageSize);
+
+    return this.safeReturn({
+      data: rows,
+      page,
+      pageSize,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / pageSize),
+    });
+  }
 }
