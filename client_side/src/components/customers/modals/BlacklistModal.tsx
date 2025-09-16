@@ -144,7 +144,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
+      <DialogTrigger asChild>{defaultTrigger || trigger}</DialogTrigger>
       <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
         {/* Header - Fixed */}
         <div

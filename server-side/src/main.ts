@@ -26,7 +26,7 @@ async function bootstrap() {
     console.log(`Request received: ${req.method} ${req.url}`);
     next();
   });
-  app.setGlobalPrefix('/api/v1');
+  app.setGlobalPrefix('api/v1');
   app.enableCors({
     credentials: true,
     origin: function (origin, callback) {

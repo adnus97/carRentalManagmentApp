@@ -1,6 +1,7 @@
 import { Module, Global } from '@nestjs/common';
 import { BetterAuthService } from './better-auth.service';
 import { BETTER_AUTH } from './better-auth';
+import { EmailModule } from '../../email/email.module';
 
 @Module({
   providers: [BETTER_AUTH],
@@ -9,7 +10,7 @@ import { BETTER_AUTH } from './better-auth';
 class AuthModule {}
 @Global()
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, EmailModule],
   providers: [BETTER_AUTH, BetterAuthService],
   exports: [BETTER_AUTH, BetterAuthService],
 })

@@ -19,7 +19,7 @@ const BlacklistActions: React.FC = () => {
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Organization Blacklist */}
-          <div className="flex flex-col items-center p-6 border rounded-lg hover:bg-gray-50 transition-colors">
+          <div className="flex flex-col items-center p-6 border rounded-lg hover:bg-muted/50 transition-colors">
             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-3">
               <Users className="w-6 h-6 text-orange-600" />
             </div>
@@ -33,7 +33,7 @@ const BlacklistActions: React.FC = () => {
           </div>
 
           {/* Global Blacklist */}
-          <div className="flex flex-col items-center p-6 border rounded-lg hover:bg-gray-50 transition-colors">
+          <div className="flex flex-col items-center p-6 border rounded-lg hover:bg-muted/50 transition-colors">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
               <AlertTriangle className="w-6 h-6 text-red-600" />
             </div>

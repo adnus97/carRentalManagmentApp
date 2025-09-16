@@ -18,9 +18,11 @@ import { ReportsModule } from './reports/reports.module';
 import { ConfigModule } from '@nestjs/config';
 import { R2Module } from './r2/r2.module';
 import { FilesModule } from './files/files.module';
+import { EmailModule } from './email/email.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    ConfigModule.forRoot(),
     DatabaseModule,
     BetterAuthModule,
     AuthModule,
@@ -36,6 +38,7 @@ import { FilesModule } from './files/files.module';
     ReportsModule,
     R2Module,
     FilesModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

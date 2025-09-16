@@ -168,11 +168,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                   <Separator className="my-2" />
 
-                  <DropdownMenuItem className="flex items-center gap-3 px-3 py-2 rounded-md dark:hover:!bg-gray-4 cursor-pointer">
-                    <User size={18} className="text-gray-10" />
-                    <span className="text-sm font-medium">
-                      Account Settings
-                    </span>
+                  <DropdownMenuItem
+                    asChild
+                    className="flex items-center gap-3 px-3 py-2 rounded-md dark:hover:!bg-gray-4 cursor-pointer"
+                  >
+                    <Link
+                      to="/account-settings"
+                      className="flex items-center gap-3 w-full"
+                    >
+                      <User size={18} className="text-gray-10" />
+                      <span className="text-sm font-medium">
+                        Account Settings
+                      </span>
+                    </Link>
                   </DropdownMenuItem>
 
                   <DropdownMenuItem

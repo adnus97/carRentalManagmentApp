@@ -61,7 +61,7 @@ export function SignupForm({
   const { user, setUser } = useUser();
 
   const onSubmit = async (data: FormFields) => {
-    const { data: responseData, error } = await authClient.signUp.email(
+    const { data: responseData } = await authClient.signUp.email(
       {
         email: data.email,
         password: data.password,

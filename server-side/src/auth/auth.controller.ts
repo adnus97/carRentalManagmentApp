@@ -14,10 +14,13 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    const url = (req as any).originalUrl || req.url;
+    console.log('Request received:', req.method, url);
     try {
       return await toNestJsController(this.betterAuthSerivce, req, res);
     } catch (error) {
       console.error('Error in handleAuth:', error);
+      console.log('IN:', req.method, (req as any).originalUrl || req.url);
       throw new Error('Authentication handler failed');
     }
   }
