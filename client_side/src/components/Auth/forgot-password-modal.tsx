@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/toast';
 import { Loader } from '@/components/loader';
-import { X } from 'lucide-react';
 
 const emailSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -46,9 +45,10 @@ export function ForgotPasswordModal({ onClose }: ForgotPasswordModalProps) {
   const onSubmit = async (data: EmailFormFields) => {
     setIsSubmitting(true);
     try {
+      // Use forgetPassword instead of requestPasswordReset
       await authClient.forgetPassword({
         email: data.email,
-        redirectTo: '/reset-password',
+        redirectTo: '/reset-password', // This should be your frontend route
       });
 
       setEmailSent(true);
@@ -68,15 +68,14 @@ export function ForgotPasswordModal({ onClose }: ForgotPasswordModalProps) {
     }
   };
 
+  // Rest of the component remains the same...
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>
-              {emailSent ? 'Check Your Email' : 'Reset Password'}
-            </DialogTitle>
-          </div>
+          <DialogTitle>
+            {emailSent ? 'Check Your Email' : 'Reset Password'}
+          </DialogTitle>
           <DialogDescription>
             {emailSent
               ? `We've sent password reset instructions to ${email}`

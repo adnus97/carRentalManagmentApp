@@ -8,7 +8,7 @@ export const Route = createFileRoute('/_layout/dashboard')({
 
 function RouteComponent() {
   return (
-    <div>
+    <div className="p-4 full w-full">
       <CarsGrid />
     </div>
   );

@@ -307,6 +307,7 @@ export class CarsService {
         totalPages: Math.ceil(Number(count) / pageSize),
       });
     } catch (error) {
+      console.log('errrrrrrrrrrrrrrrrrrror', error);
       this.handleDbError(error);
     }
   }

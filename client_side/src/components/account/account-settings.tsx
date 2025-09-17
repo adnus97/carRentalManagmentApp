@@ -68,6 +68,24 @@ type LinkedAccount = {
   providerAccountId: string;
 };
 
+// The raw shape your API returns (adjust if needed)
+type ApiAccount = {
+  id: string;
+  provider: string;
+  accountId: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  scopes?: string[];
+};
+
+function mapApiToLinkedAccount(a: ApiAccount): LinkedAccount {
+  return {
+    id: a.id,
+    providerId: a.provider,
+    providerAccountId: a.accountId,
+  };
+}
+
 export function AccountSettings() {
   const { user, setUser } = useUser();
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
@@ -96,9 +114,14 @@ export function AccountSettings() {
       setLoadingAccounts(true);
       try {
         const res = await listAccounts();
-        if (active && res.data) setAccounts(res.data as any);
+        if (!active) return;
+        const apiItems = Array.isArray(res?.data)
+          ? (res.data as ApiAccount[])
+          : [];
+        const items = apiItems.map(mapApiToLinkedAccount);
+        setAccounts(items);
       } catch {
-        // non-fatal
+        if (active) setAccounts([]);
       } finally {
         if (active) setLoadingAccounts(false);
       }
@@ -211,7 +234,11 @@ export function AccountSettings() {
     setLoadingAccounts(true);
     try {
       const res = await listAccounts();
-      if (res.data) setAccounts(res.data as any);
+      const apiItems = Array.isArray(res?.data)
+        ? (res.data as ApiAccount[])
+        : [];
+      const items = apiItems.map(mapApiToLinkedAccount);
+      setAccounts(items);
     } finally {
       setLoadingAccounts(false);
     }
@@ -219,7 +246,7 @@ export function AccountSettings() {
 
   const handleUnlinkAccount = async (providerId: string) => {
     try {
-      await unlinkAccount({ providerId }); // Better Auth expects only providerId
+      await unlinkAccount({ providerId });
       await refreshAccounts();
       toast({
         type: 'success',
@@ -302,7 +329,7 @@ export function AccountSettings() {
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input id="email" value={user?.email ?? ''} disabled />
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-[12px] text-amber-600">
                     To change your email, use the Security tab.
                   </p>
                 </div>

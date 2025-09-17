@@ -38,6 +38,7 @@ import {
   TooltipTrigger,
 } from '../ui/tooltip';
 import { useNavigationContext } from '@/contexts/navigation-context';
+import { Separator } from '../ui/separator';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -487,16 +488,22 @@ export const CarsGrid = () => {
 
   return (
     <div
-      className="ag-theme-alpine-dark p-4 rounded-lg shadow-lg"
-      style={containerStyle}
+      className="ag-theme-alpine-dark flex flex-col"
+      style={{ width: '100%', height: 'calc(100vh - 100px)' }}
     >
       <h2 className="text-xl mb-4 font-bold">Your Cars Dashboard</h2>
 
-      <div className="flex  space-x-4 items-center mb-4">
+      <div className="flex  items-center mb-4">
         <p>Manage your car fleet below:</p>
-
-        {selectedRows.length > 0 && (
-          <div className="flex items-center gap-2">
+      </div>
+      {selectedRows.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+          <span className="text-sm font-medium">
+            {selectedRows.length} car {selectedRows.length > 1 ? 's' : ''}{' '}
+            selected
+          </span>
+          <Separator orientation="vertical" className="h-4" />
+          <div className="flex justify-between   gap-2">
             {selectedRows.length === 1 && (
               <Button
                 variant="outline"
@@ -511,77 +518,78 @@ export const CarsGrid = () => {
                 View Details
               </Button>
             )}
-            <Button
-              variant="secondary"
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={selectedRows.length === 0}
-            >
-              <Trash size={20} /> Delete ({deletableCars.length}/
-              {selectedRows.length})
-            </Button>
-            {blockedCars.length > 0 && (
-              <span className="text-xs text-yellow-500">
-                {blockedCars.length} selected car(s) cannot be deleted
-              </span>
-            )}
           </div>
-        )}
-      </div>
+          <Button
+            variant="secondary"
+            className="ml-auto flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={selectedRows.length === 0}
+          >
+            <Trash size={20} /> Delete ({deletableCars.length}/
+            {selectedRows.length})
+          </Button>
+          {blockedCars.length > 0 && (
+            <span className="text-xs text-yellow-500">
+              {blockedCars.length} selected car(s) cannot be deleted
+            </span>
+          )}
+        </div>
+      )}
 
       {isLoading || isFetching ? (
         <p className="text-white text-center">Loading cars...</p>
       ) : (
         <>
-          <div className="flex flex-col h-[calc(100vh-230px)]">
-            <div className="flex-1 overflow-y-auto" style={gridStyle}>
-              <AgGridReact
-                rowHeight={50}
-                rowData={data?.data || []}
-                columnDefs={colDefs}
-                rowSelection="multiple"
-                pagination={false}
-                onSelectionChanged={(event) =>
-                  setSelectedRows(event.api.getSelectedRows())
-                }
-              />
-            </div>
+          <div className="flex-1 overflow-y-auto" style={gridStyle}>
+            <AgGridReact
+              rowHeight={50}
+              rowData={data?.data || []}
+              columnDefs={colDefs}
+              rowSelection="multiple"
+              pagination={false}
+              onSelectionChanged={(event) =>
+                setSelectedRows(event.api.getSelectedRows())
+              }
+            />
           </div>
         </>
       )}
-      <Pagination className="mt-4">
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              aria-disabled={page === 1}
-            />
-          </PaginationItem>
-          {getPageNumbers().map((p, idx, arr) => (
-            <React.Fragment key={p}>
-              {idx > 0 && p - arr[idx - 1] > 1 && (
+      <div className="mt-4 flex items-center justify-between">
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-disabled={page === 1}
+              />
+            </PaginationItem>
+            {getPageNumbers().map((p, idx, arr) => (
+              <React.Fragment key={p}>
+                {idx > 0 && p - arr[idx - 1] > 1 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
                 <PaginationItem>
-                  <PaginationEllipsis />
+                  <PaginationLink
+                    isActive={p === page}
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </PaginationLink>
                 </PaginationItem>
-              )}
-              <PaginationItem>
-                <PaginationLink
-                  isActive={p === page}
-                  onClick={() => setPage(p)}
-                >
-                  {p}
-                </PaginationLink>
-              </PaginationItem>
-            </React.Fragment>
-          ))}
-          <PaginationItem>
-            <PaginationNext
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              aria-disabled={page === totalPages}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+              </React.Fragment>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                aria-disabled={page === totalPages}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}

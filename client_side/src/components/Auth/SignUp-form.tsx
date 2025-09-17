@@ -1,3 +1,4 @@
+// components/auth/signup-form.tsx
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { authClient } from '@/lib/auth-client'; //import the auth client
+import { authClient } from '@/lib/auth-client';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,18 +25,18 @@ const schema = z
     name: z.string().min(2),
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters long') // Minimum length
-      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter') // At least one uppercase letter
-      .regex(/[a-z]/, 'Password must contain at least one lowercase letter') // At least one lowercase letter
-      .regex(/[0-9]/, 'Password must contain at least one number') // At least one digit
+      .min(8, 'Password must be at least 8 characters long')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number')
       .regex(
         /[@$!%*?&]/,
         'Password must contain at least one special character',
-      ), // At least one special character
+      ),
     email: z
       .string()
-      .email('Invalid email address') // Custom error message for email
-      .nonempty('Email is required'), // Ensure the email is not empty
+      .email('Invalid email address')
+      .nonempty('Email is required'),
     passwordVerification: z.string(),
   })
   .refine((data) => data.password === data.passwordVerification, {
@@ -50,6 +51,9 @@ export function SignupForm({
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
   const navigate = useNavigate();
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
   const {
     register,
     handleSubmit,
@@ -58,40 +62,127 @@ export function SignupForm({
   } = useForm<FormFields>({
     resolver: zodResolver(schema),
   });
-  const { user, setUser } = useUser();
+
+  const { setUser } = useUser();
+
+  const handleGoogleSignUp = async () => {
+    try {
+      await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: '/organizationForm', // Will be handled by verification flow
+      });
+    } catch (error: any) {
+      toast({
+        type: 'error',
+        title: 'Google Sign Up Failed',
+        description: error?.message || 'Failed to sign up with Google',
+      });
+    }
+  };
 
   const onSubmit = async (data: FormFields) => {
-    const { data: responseData } = await authClient.signUp.email(
-      {
-        email: data.email,
-        password: data.password,
-        name: data.name,
-      },
-      {
-        onRequest: (ctx: any) => {},
-
-        onSuccess: (ctx: any) => {
-          setUser(ctx.data.user);
-          localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
-
-          setTimeout(() => {
-            navigate({ to: '/organizationForm' });
-          }, 100); // Give React time to process state
-          reset();
+    try {
+      const response = await authClient.signUp.email(
+        {
+          email: data.email,
+          password: data.password,
+          name: data.name,
         },
-        onError: (ctx: any) => {
-          if (ctx.error.code === 'USER_ALREADY_EXISTS') {
+        {
+          onRequest: (ctx: any) => {},
+          onSuccess: (ctx: any) => {
+            // Don't set user or navigate yet - wait for email verification
+            setUserEmail(data.email);
+            setShowVerificationMessage(true);
+            reset();
+
             toast({
-              type: 'error',
-              title: 'Error',
-              description: ctx.error.message,
+              type: 'success',
+              title: 'Account Created',
+              description: 'Please check your email to verify your account.',
             });
-          }
+          },
+          onError: (ctx: any) => {
+            if (ctx.error.code === 'USER_ALREADY_EXISTS') {
+              toast({
+                type: 'error',
+                title: 'Error',
+                description: ctx.error.message,
+              });
+            } else {
+              toast({
+                type: 'error',
+                title: 'Signup Failed',
+                description: ctx.error.message || 'Failed to create account',
+              });
+            }
+          },
         },
-      },
-    );
-    console.log(responseData);
+      );
+    } catch (error: any) {
+      toast({
+        type: 'error',
+        title: 'Error',
+        description: error?.message || 'An unexpected error occurred',
+      });
+    }
   };
+
+  if (showVerificationMessage) {
+    return (
+      <div className={cn('flex flex-col gap-6', className)} {...props}>
+        <Card className="bg-gray-2">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Check Your Email</CardTitle>
+            <CardDescription>
+              We've sent a verification link to {userEmail}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Click the verification link in your email to activate your
+                account.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Didn't receive the email? Check your spam folder.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowVerificationMessage(false)}
+                className="flex-1"
+              >
+                Try Different Email
+              </Button>
+              <Button
+                onClick={() => navigate({ to: '/login' })}
+                className="flex-1"
+              >
+                Back to Login
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
@@ -106,7 +197,12 @@ export function SignupForm({
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="grid gap-6">
               <div className="flex flex-col gap-4">
-                <Button variant="outline" className="w-full">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleSignUp}
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path
                       d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
@@ -122,6 +218,7 @@ export function SignupForm({
                 </span>
               </div>
               <div className="grid gap-6">
+                {/* Keep all your existing form fields as they are */}
                 <div className="grid gap-2">
                   <Label htmlFor="name" className="text-justify">
                     Name <span className="text-red-700">*</span>

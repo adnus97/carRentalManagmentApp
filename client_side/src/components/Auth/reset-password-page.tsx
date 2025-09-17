@@ -45,8 +45,9 @@ export function ResetPasswordPage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get token from search params
-  const token = searchParams.get('token');
+  // Better-auth uses different parameter names - check for both
+  const token =
+    searchParams.get('token') || window.location.pathname.split('/').pop();
   const callbackURL = searchParams.get('callbackURL') || '/dashboard';
 
   const {
@@ -73,10 +74,16 @@ export function ResetPasswordPage() {
 
     setIsSubmitting(true);
     try {
-      await authClient.resetPassword({
-        newPassword: data.password,
-        token: token,
-      });
+      // Better-auth expects the token to be passed differently
+      const result = await authClient.resetPassword(
+        {
+          newPassword: data.password,
+        },
+        {
+          // Pass token in the request context if it's in the URL path
+          query: { token },
+        },
+      );
 
       toast({
         type: 'success',
@@ -91,9 +98,15 @@ export function ResetPasswordPage() {
     } catch (error: any) {
       let errorMessage = 'Failed to reset password';
 
-      if (error?.code === 'INVALID_TOKEN') {
+      if (
+        error?.code === 'INVALID_TOKEN' ||
+        error?.message?.includes('invalid')
+      ) {
         errorMessage = 'The reset link is invalid or has expired';
-      } else if (error?.code === 'TOKEN_EXPIRED') {
+      } else if (
+        error?.code === 'TOKEN_EXPIRED' ||
+        error?.message?.includes('expired')
+      ) {
         errorMessage = 'The reset link has expired. Please request a new one.';
       }
 

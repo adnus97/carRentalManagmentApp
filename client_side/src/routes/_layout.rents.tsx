@@ -7,7 +7,7 @@ export const Route = createFileRoute('/_layout/rents')({
 
 function RouteComponent() {
   return (
-    <div>
+    <div className="p-4 full w-full">
       <RentsGrid />
     </div>
   );

@@ -1,20 +1,14 @@
+// utils/better-auth/better-auth.module.ts
 import { Module, Global } from '@nestjs/common';
 import { BetterAuthService } from './better-auth.service';
-import { BETTER_AUTH } from './better-auth';
+import { DatabaseModule } from '../../db'; // adjust path if needed
 import { EmailModule } from '../../email/email.module';
+import { BETTER_AUTH } from './better-auth';
 
-@Module({
-  providers: [BETTER_AUTH],
-  exports: [BETTER_AUTH],
-})
-class AuthModule {}
 @Global()
 @Module({
-  imports: [AuthModule, EmailModule],
-  providers: [BETTER_AUTH, BetterAuthService],
-  exports: [BETTER_AUTH, BetterAuthService],
+  imports: [DatabaseModule, EmailModule], // IMPORTANT
+  providers: [BetterAuthService, BETTER_AUTH],
+  exports: [BetterAuthService],
 })
 export class BetterAuthModule {}
-
-export { AUTH_SERVICE } from './better-auth';
-export { BetterAuthService } from './better-auth.service';

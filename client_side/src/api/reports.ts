@@ -22,12 +22,13 @@ export type ReportsSnapshot = {
   openAR: number;
   totalRents: number;
   fleetSize: number;
-  utilization: number;
-  periodDays: number;
-  adr: number;
-  revPar: number;
-  totalMaintenanceCost: number; // ✅ New
-  netProfit: number; // ✅ New
+  utilization: number; // Already calculated by backend (0..1)
+  periodDays: number; // Already calculated by backend
+  rentedDays: number; // Already calculated by backend
+  adr: number; // Already calculated by backend
+  revPar: number; // Already calculated by backend
+  totalMaintenanceCost: number;
+  netProfit: number;
 };
 
 export type ReportsTrendPoint = {

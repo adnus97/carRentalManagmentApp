@@ -71,7 +71,7 @@ function Breadcrumbs() {
     }
 
     // ✅ Organization section
-    if (path.startsWith('/organization')) {
+    if (path.startsWith('/Organization')) {
       return [
         {
           title: 'Organization',

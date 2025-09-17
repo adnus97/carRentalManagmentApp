@@ -1,3 +1,13 @@
+function toLocalDateOnly(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function inclusiveDays(start: Date, end: Date): number {
+  const s = toLocalDateOnly(start).getTime();
+  const e = toLocalDateOnly(end).getTime();
+  const msDay = 24 * 60 * 60 * 1000;
+  if (e < s) return 0;
+  return Math.floor((e - s) / msDay) + 1;
+}
 // In RevenueMetrics.calculate method
 export class RevenueMetrics {
   static calculate(rows: any[]): {
@@ -51,7 +61,7 @@ export class RevenueMetrics {
       if (rental.isOpenContract && rental.pricePerDay) {
         const endDate =
           rental.returnedAt || rental.expectedEndDate || new Date();
-        const days = calculateRentalDays(rental.startDate, endDate);
+        const days = inclusiveDays(rental.startDate, endDate);
         const correctedAmount = days * rental.pricePerDay;
 
         console.log(`   🔄 Open contract correction:`, {

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Session, User } from 'better-auth';
-import { parseCookies } from 'better-auth';
+import { parseCookies } from 'better-auth/cookies';
 import {
   BetterAuthService,
   getRequestResponseFromContext,

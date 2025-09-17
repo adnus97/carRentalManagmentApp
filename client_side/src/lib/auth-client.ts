@@ -1,8 +1,11 @@
+// lib/auth-client.ts
 import { createAuthClient } from 'better-auth/react';
 
 export const authClient = createAuthClient({
-  baseURL: 'http://localhost:3000/api/v1/auth', // your Nest+BetterAuth base
+  baseURL: 'http://localhost:3000/api/v1/auth',
+  credentials: 'include',
 });
+
 export const {
   signIn,
   signUp,
@@ -18,4 +21,4 @@ export const {
   verifyEmail,
   updateUser,
   sendVerificationEmail,
-} = createAuthClient();
+} = authClient;

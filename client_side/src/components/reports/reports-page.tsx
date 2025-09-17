@@ -68,7 +68,8 @@ export default function ReportsPage() {
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
   const [carId, setCarId] = useState<'all' | string>('all');
-  const [showTechnicalVisit, setShowTechnicalVisit] = useState(false); // ✅ New state
+  const [showTechnicalVisit, setShowTechnicalVisit] = useState(false);
+
   // Cars for filter
   const carsQ = useQuery({
     queryKey: ['cars:org'],
@@ -82,24 +83,19 @@ export default function ReportsPage() {
       setFrom(from);
       setTo(to);
     }
-    // Don't reset dates when switching to custom mode
   }, [preset, mode]);
 
   const dateError = useMemo(() => {
     if (mode === 'custom' && from && to) {
-      if (to <= from) {
-        return 'End date must be after start date';
-      }
-      // Optional: Add reasonable range limits
+      if (to <= from) return 'End date must be after start date';
       const daysDiff = Math.ceil(
         (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24),
       );
-      if (daysDiff > 365) {
-        return 'Date range cannot exceed 365 days';
-      }
+      if (daysDiff > 365) return 'Date range cannot exceed 365 days';
     }
     return null;
   }, [mode, from, to]);
+
   // Reports data
   const { data, isLoading, refetch } = useQuery({
     queryKey: [
@@ -115,12 +111,14 @@ export default function ReportsPage() {
         to,
         ...(carId !== 'all' ? { carId } : {}),
       }),
-    enabled: !!from && !!to && !dateError, // ✅ Don't run if there's a date error
+    enabled: !!from && !!to && !dateError,
     placeholderData: (prev) => prev,
   });
+
   const riskTitle = showTechnicalVisit
     ? 'Technical Inspection Risk'
     : 'Insurance Risk';
+
   return (
     <div className="w-full mx-auto px-3 sm:px-4 lg:px-6 space-y-8 pt-4">
       {/* Header */}
@@ -136,7 +134,6 @@ export default function ReportsPage() {
             </p>
           </div>
         </div>
-
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCcw className="mr-2 h-4 w-4" />
@@ -251,14 +248,16 @@ export default function ReportsPage() {
             ))}
           </SelectContent>
         </Select>
-        {/* ✅ Date Error Display */}
+
+        {/* Date Error Display */}
         {dateError && (
           <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/50 dark:text-red-400 px-3 py-2 rounded-md">
             <AlertCircle className="h-4 w-4" />
             {dateError}
           </div>
         )}
-        {/* ✅ Date Range Display */}
+
+        {/* Date Range Display */}
         {from && to && !dateError && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-md">
             <Calendar className="h-4 w-4" />
@@ -273,6 +272,7 @@ export default function ReportsPage() {
           </div>
         )}
       </div>
+
       {/* Loading State */}
       {isLoading && (
         <div className="flex items-center justify-center py-8">
@@ -280,6 +280,7 @@ export default function ReportsPage() {
           <span>Loading reports...</span>
         </div>
       )}
+
       {/* Error State */}
       {dateError && (
         <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -287,11 +288,12 @@ export default function ReportsPage() {
           <span>Please fix the date range to view reports</span>
         </div>
       )}
-      {/* Content - only show when no error and data exists */}
-      {!dateError && data && (
+
+      {/* Content - Use backend-calculated data directly */}
+      {!dateError && data?.snapshot && (
         <>
-          {/* KPIs */}
-          <KPIGrid snapshot={data?.snapshot} />
+          {/* KPIs - Pass the backend snapshot directly */}
+          <KPIGrid snapshot={data.snapshot} />
 
           {/* Revenue Chart */}
           <Card className="shadow-lg rounded-xl">
@@ -318,7 +320,6 @@ export default function ReportsPage() {
               </CardContent>
             </Card>
 
-            {/* ✅ Updated Insurance Card with toggle in header */}
             <Card className="shadow-lg rounded-xl">
               <CardHeader className="pb-3 border-b">
                 <div className="flex items-center justify-between">
@@ -344,7 +345,7 @@ export default function ReportsPage() {
                 <InsuranceCard
                   insurance={data?.insurance}
                   technicalVisit={data?.technicalVisit}
-                  showTechnicalVisit={showTechnicalVisit} // ✅ Pass the state
+                  showTechnicalVisit={showTechnicalVisit}
                 />
               </CardContent>
             </Card>

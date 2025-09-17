@@ -106,6 +106,7 @@ export class OrganizationService {
       );
       return organizations || [];
     } catch (error) {
+      console.log(error);
       throw new HttpException(
         'Failed to fetch user organizations',
         HttpStatus.INTERNAL_SERVER_ERROR,

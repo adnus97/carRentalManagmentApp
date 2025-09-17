@@ -1423,10 +1423,10 @@ export class RentsService {
         expectedEndDate || null,
         'reserved',
       );
-
+      const id = createId();
       // Create rent with image IDs
       const rentData: CreateRentData = {
-        id: createId(),
+        id,
         rentContractId,
         rentNumber,
         year: currentYear,
@@ -1448,7 +1448,41 @@ export class RentsService {
         isDeleted: false,
         ...imageIds,
       };
+      const orgOwner = await this.getOrgOwner(orgId);
+      if (orgOwner) {
+        // Get customer and car details for better notification
+        const [customer] = await this.dbService.db
+          .select({
+            firstName: customers.firstName,
+            lastName: customers.lastName,
+          })
+          .from(customers)
+          .where(eq(customers.id, createRentDto.customerId));
 
+        const [car] = await this.dbService.db
+          .select({ make: cars.make, model: cars.model })
+          .from(cars)
+          .where(eq(cars.id, createRentDto.carId));
+
+        await this.notificationsService.createNotification({
+          userId: orgOwner.userId,
+          orgId,
+          category: 'RENTAL',
+          type: 'RENT_STARTED',
+          priority: 'MEDIUM',
+          title: 'New Rental Created',
+          message: `${customer?.firstName} ${customer?.lastName} rented ${car?.make} ${car?.model} - Contract #${rentContractId}`, // 🆕 Use rentContractId
+          actionUrl: `/rentals/${id}`,
+          actionLabel: 'View Rental',
+          metadata: {
+            rentalId: id,
+            rentContractId,
+            customerId: createRentDto.customerId,
+            carId: createRentDto.carId,
+            totalPrice: createRentDto.totalPrice,
+          },
+        });
+      }
       console.log('💾 Creating rent with data:', {
         id: rentData.id,
         carImg1Id: rentData.carImg1Id,

@@ -6,18 +6,33 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-// Update the KPIItem type
 type KPIItem = {
   key: string;
   title: string;
   value: string | number;
-  textColor?: string; // ✅ New optional field
+  textColor?: string;
 };
 
-export function KPIGrid({ snapshot }: { snapshot: any }) {
+// Update to match backend response exactly
+type BackendSnapshot = {
+  fleetSize: number;
+  periodDays: number;
+  rentedDays: number;
+  revenueBilled: number;
+  revenueCollected: number;
+  openAR: number;
+  totalMaintenanceCost: number;
+  totalRents: number;
+  utilization: number; // Already 0..1 from backend
+  adr: number; // Already calculated by backend
+  revPar: number; // Already calculated by backend
+  netProfit: number;
+};
+
+export function KPIGrid({ snapshot }: { snapshot: BackendSnapshot | null }) {
   if (!snapshot) return null;
 
-  const mapping: Record<string, string> = {
+  const mapping: Record<keyof BackendSnapshot, string> = {
     revenueBilled: 'Revenue (Billed)',
     revenueCollected: 'Revenue (Collected)',
     openAR: 'Open A/R',
@@ -26,92 +41,98 @@ export function KPIGrid({ snapshot }: { snapshot: any }) {
     utilization: 'Utilization',
     adr: 'ADR',
     revPar: 'RevPAR',
-    totalMaintenanceCost: 'Maintenance Costs', // ✅ New
-    netProfit: 'Net Profit', // ✅ New
+    totalMaintenanceCost: 'Maintenance Costs',
+    netProfit: 'Net Profit',
+    periodDays: 'Period Days',
+    rentedDays: 'Rented Days',
   };
 
-  const descriptions: Record<string, string> = {
+  const descriptions: Record<keyof BackendSnapshot, string> = {
     revenueBilled:
-      'Total revenue invoiced for the selected period (regardless of collection).',
-    revenueCollected:
-      'Cash actually collected for the selected period (payments received).',
-    openAR:
-      'Outstanding customer balances not yet collected (Accounts Receivable).',
-    totalRents:
-      'Number of rental contracts completed/active during the selected period.',
+      'Total revenue invoiced for the selected period (regardless of payment).',
+    revenueCollected: 'Cash actually collected during the selected period.',
+    openAR: 'Unpaid invoices (Accounts Receivable).',
+    totalRents: 'Number of rental contracts in the selected period.',
     fleetSize: 'Total number of vehicles in the fleet.',
-    utilization:
-      'Percentage of fleet days that were rented vs available (Rented days / Available days).',
-    adr: 'Average Daily Rate: average revenue per rented day (currency per day).',
-    revPar:
-      'Revenue per Available Car: average revenue across all available fleet days (includes idle vehicles).',
-    // ✅ New
-    totalMaintenanceCost:
-      'Total amount spent on vehicle maintenance during the selected period.',
-    // ✅ New
-    netProfit:
-      'Net profit calculated as total revenue collected minus maintenance costs for the period.',
+    utilization: 'Rented car-days ÷ Available car-days across the period.',
+    adr: 'Average revenue per rented day.',
+    revPar: 'Revenue per available car-day across the whole fleet.',
+    totalMaintenanceCost: 'Total maintenance spend in the period.',
+    netProfit: 'Collected revenue minus maintenance costs in the period.',
+    periodDays: 'Number of calendar days in the selected range.',
+    rentedDays: 'Sum of rental days within the period across all cars.',
   };
 
-  const items: KPIItem[] = Object.entries(snapshot).map(([key, val]) => {
-    let value: string | number;
-    let textColor = ''; // For conditional styling
+  const order: Array<keyof BackendSnapshot> = [
+    'revenueBilled',
+    'revenueCollected',
+    'openAR',
+    'totalRents',
+    'fleetSize',
+    'utilization',
+    'periodDays',
+    'rentedDays',
+    'adr',
+    'revPar',
+    'totalMaintenanceCost',
+    'netProfit',
+  ];
 
-    if (typeof val === 'string' || typeof val === 'number') {
-      value = val;
-    } else {
-      value = JSON.stringify(val);
-    }
+  const moneyKeys = new Set<keyof BackendSnapshot>([
+    'revenueBilled',
+    'revenueCollected',
+    'openAR',
+    'adr',
+    'revPar',
+    'totalMaintenanceCost',
+    'netProfit',
+  ]);
 
-    if (key === 'revenueBilled' && typeof val === 'number')
-      value = `${val.toFixed(2)} DHS`;
-    if (key === 'revenueCollected' && typeof val === 'number')
-      value = `${val.toFixed(2)} DHS`;
-    if (key === 'openAR' && typeof val === 'number')
-      value = `${val.toFixed(2)} DHS`;
-    if (key === 'utilization' && typeof val === 'number')
-      value = `${val.toFixed(1)}%`;
-    if (key === 'adr' && typeof val === 'number')
-      value = `${val.toFixed(2)} DHS`;
-    if (key === 'revPar' && typeof val === 'number')
-      value = `${val.toFixed(2)} DHS`;
+  const items: KPIItem[] = order
+    .filter((k) => snapshot[k] !== undefined)
+    .map((k) => {
+      const val = snapshot[k];
+      let value: string | number = val;
+      let textColor = '';
 
-    // ✅ New formatting
-    if (key === 'totalMaintenanceCost' && typeof val === 'number')
-      value = `${val.toFixed(2)} DHS`;
+      if (k === 'utilization' && typeof val === 'number') {
+        // Backend returns 0..1, convert to percentage
+        value = `${(val * 100).toFixed(1)}%`;
+      } else if (moneyKeys.has(k) && typeof val === 'number') {
+        value = `${val.toFixed(2)} DHS`;
+      } else if (typeof val === 'number') {
+        value = val;
+      } else if (typeof val !== 'string') {
+        value = JSON.stringify(val);
+      }
 
-    if (key === 'netProfit' && typeof val === 'number') {
-      value = `${val.toFixed(2)} DHS`;
-      textColor =
-        val >= 0
-          ? 'text-green-600 dark:text-green-400'
-          : 'text-red-600 dark:text-red-400';
-    }
+      if (k === 'netProfit' && typeof val === 'number') {
+        textColor =
+          val >= 0
+            ? 'text-green-600 dark:text-green-400'
+            : 'text-red-600 dark:text-red-400';
+      }
 
-    return { key, title: mapping[key] ?? key, value, textColor };
-  });
+      return {
+        key: k,
+        title: mapping[k],
+        value,
+        textColor,
+      };
+    });
 
   return (
     <TooltipProvider delayDuration={150}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {items.map((kpi) => (
           <Card
-            key={kpi.title}
-            className={[
-              'relative overflow-hidden rounded-xl border shadow-sm',
-              'border-gray-200 bg-white text-gray-900',
-              'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
-              'dark:border-border dark:text-gray-100 dark:shadow-lg',
-              'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
-            ].join(' ')}
+            key={kpi.key}
+            className="relative overflow-hidden rounded-xl border shadow-sm border-gray-200 bg-white text-gray-900 bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)] dark:border-border dark:text-gray-100 dark:shadow-lg dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900"
           >
-            <div className="pointer-events-none absolute -right-12 -top-12 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
-            <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
-
             <CardHeader className="pb-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <CardTitle className="cursor-help text-sm text-gray-700 dark:text-gray-200">
+                  <CardTitle className="cursor-help text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
                     {kpi.title}
                   </CardTitle>
                 </TooltipTrigger>
@@ -123,20 +144,17 @@ export function KPIGrid({ snapshot }: { snapshot: any }) {
                   <div className="text-[13px]">
                     <div className="font-medium">{kpi.title}</div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      {descriptions[kpi.key] ?? 'Key performance indicator'}
+                      {descriptions[kpi.key as keyof BackendSnapshot]}
                     </div>
                   </div>
                 </TooltipContent>
               </Tooltip>
             </CardHeader>
-
             <CardContent>
               <div
                 className={`text-2xl font-bold ${kpi.textColor || 'text-gray-900 dark:text-gray-100'}`}
               >
-                {typeof kpi.value === 'number' || typeof kpi.value === 'string'
-                  ? kpi.value
-                  : JSON.stringify(kpi.value)}
+                {kpi.value}
               </div>
             </CardContent>
           </Card>

@@ -66,9 +66,7 @@ export class R2Service {
 
       //this.logger.verbose(`Object \`${key}\` put`);
     } catch (e) {
-      throw new Error(`Failed to put object \`${key}\``, {
-        cause: e,
-      });
+      throw new Error(`Failed to put object \`${key}\``);
     }
   }
 
@@ -107,9 +105,7 @@ export class R2Service {
         //this.logger.verbose(`Object \`${key}\` not found`);
         return {};
       } else {
-        throw new Error(`Failed to read object \`${key}\``, {
-          cause: e,
-        });
+        throw new Error(`Failed to read object \`${key}\``);
       }
     }
   }
@@ -139,9 +135,7 @@ export class R2Service {
         // this.logger.verbose(`Object \`${key}\` not found`);
         return '';
       } else {
-        throw new Error(`Failed to read object \`${key}\``, {
-          cause: e,
-        });
+        throw new Error(`Failed to read object \`${key}\``);
       }
     }
   }
@@ -155,9 +149,7 @@ export class R2Service {
         }),
       );
     } catch (e) {
-      throw new Error(`Failed to delete object \`${key}\``, {
-        cause: e,
-      });
+      throw new Error(`Failed to delete object \`${key}\``);
     }
   }
 }

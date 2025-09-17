@@ -23,6 +23,35 @@ import {
   eachMonthOfInterval,
 } from 'date-fns';
 
+function toLocalDateOnly(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+// Inclusive: 2025-09-01 to 2025-09-01 => 1 day
+function inclusiveDays(start: Date, end: Date): number {
+  const s = toLocalDateOnly(start).getTime();
+  const e = toLocalDateOnly(end).getTime();
+  const msDay = 24 * 60 * 60 * 1000;
+  if (e < s) return 0;
+  return Math.floor((e - s) / msDay) + 1;
+}
+// Overlap days (inclusive) between rental and [from, to]
+function overlapDaysInclusive(
+  rentalStart: Date,
+  rentalEnd: Date,
+  from: Date,
+  to: Date,
+): number {
+  const rs = toLocalDateOnly(rentalStart);
+  const re = toLocalDateOnly(rentalEnd);
+  const fs = toLocalDateOnly(from);
+  const fe = toLocalDateOnly(to);
+  if (re < fs || fe < rs) return 0;
+  const os = rs > fs ? rs : fs;
+  const oe = re < fe ? re : fe;
+  return inclusiveDays(os, oe);
+}
+
 @Injectable()
 export class ReportsService {
   constructor(private readonly db: DatabaseService) {}
@@ -145,39 +174,52 @@ export class ReportsService {
     // Calculate net profit (after calculating revenueCollected)
     const netProfit = revenueCollected - maintenance.totalMaintenanceCost;
     // Rental days (for ADR + Utilization)
-    const periodDays = Math.max(
-      1,
-      Math.floor((range.to.getTime() - range.from.getTime()) / 86400000),
-    );
+    // const periodDays = Math.max(
+    //   1,
+    //   Math.floor((range.to.getTime() - range.from.getTime()) / 86400000),
+    // );
+    const periodDays = inclusiveDays(range.from, range.to);
+    // const rentedDays = rows.reduce((days, r) => {
+    //   const start = r.startDate < range.from ? range.from : r.startDate;
+    //   const end = r.returnedAt || r.expectedEndDate || range.to;
+    //   const clippedEnd = end > range.to ? range.to : end;
+    //   return (
+    //     days +
+    //     Math.max(
+    //       0,
+    //       Math.floor((clippedEnd.getTime() - start.getTime()) / 86400000),
+    //     )
+    //   );
+    // }, 0);
+    // rentedDays and totalRents using inclusive overlap and clipping
+    let rentedDays = 0;
+    let totalRents = 0;
 
-    const rentedDays = rows.reduce((days, r) => {
-      const start = r.startDate < range.from ? range.from : r.startDate;
-      const end = r.returnedAt || r.expectedEndDate || range.to;
-      const clippedEnd = end > range.to ? range.to : end;
-      return (
-        days +
-        Math.max(
-          0,
-          Math.floor((clippedEnd.getTime() - start.getTime()) / 86400000),
-        )
+    for (const r of rows) {
+      // choose the end date for the rental
+      const rawEnd = r.returnedAt ?? r.expectedEndDate ?? range.to;
+      const days = overlapDaysInclusive(
+        r.startDate,
+        rawEnd,
+        range.from,
+        range.to,
       );
-    }, 0);
-
-    // ADR (Average Daily Rate)
+      if (days > 0) {
+        rentedDays += days;
+        totalRents += 1;
+      }
+    }
+    const availableCarDays = Number(fleetCount) * periodDays;
+    if (availableCarDays > 0) {
+      rentedDays = Math.min(rentedDays, availableCarDays);
+    }
+    // ADR and RevPAR from exact days
     const adr = rentedDays > 0 ? revenueBilled / rentedDays : 0;
 
-    // RevPAR (Revenue per Available Car)
-    const revPar =
-      Number(fleetCount) > 0
-        ? revenueBilled / (Number(fleetCount) * periodDays)
-        : 0;
-
+    const revPar = availableCarDays > 0 ? revenueBilled / availableCarDays : 0;
     // Utilization
     const utilization =
-      Number(fleetCount) > 0
-        ? (rentedDays / (Number(fleetCount) * periodDays)) * 100
-        : 0;
-
+      availableCarDays > 0 ? rentedDays / availableCarDays : 0;
     // Trends (current + previous)
     const trends = this.calculateTrends(
       rows,
@@ -237,12 +279,13 @@ export class ReportsService {
         revenueBilled,
         revenueCollected,
         openAR,
-        totalRents: rows.length,
+        totalRents,
         fleetSize: Number(fleetCount),
-        utilization,
-        periodDays,
-        adr,
-        revPar,
+        periodDays, // exact inclusive
+        rentedDays, // exact inclusive
+        adr, // exact = revenueBilled / rentedDays
+        revPar, // exact = revenueBilled / (fleetSize*periodDays)
+        utilization, // fraction 0..1 (or multiply by 100 if you prefer percent)
         totalMaintenanceCost: maintenance.totalMaintenanceCost, // ✅ New
         netProfit, // ✅ New
       },

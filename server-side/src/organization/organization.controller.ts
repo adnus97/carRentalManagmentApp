@@ -41,8 +41,12 @@ export class OrganizationController {
   }
 
   @Get('user')
-  findByUser(@CurrentUser() user: CustomUser) {
-    return this.organizationService.findByUser(user);
+  async findByUser(@CurrentUser() user: CustomUser) {
+    try {
+      return await this.organizationService.findByUser(user);
+    } catch (error) {
+      console.log('errrrrrrrr', error);
+    }
   }
 
   @Get(':id')
