@@ -52,6 +52,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Separator } from '../ui/separator';
+import { ContractDialog } from '../contracts/contract-dialog';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -132,7 +133,8 @@ export const RentsGrid = () => {
     useState<null | RentRow>(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
-
+  const [contractOpen, setContractOpen] = useState(false);
+  const [contractId, setContractId] = useState<string | null>(null);
   const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
 
@@ -884,26 +886,27 @@ export const RentsGrid = () => {
             <Separator orientation="vertical" className="h-4" />
             {/* View button: only when exactly 1 selected */}
             {selectedRows.length === 1 && (
-              <a
-                href={`/contracts/${selectedRows[0]?.id ?? ''}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-accent-9 bg-transparent text-sm text-accent-11 shadow-sm hover:bg-accent-9 hover:text-accent-9-contrast"
-                onClick={(e) => {
-                  if (!selectedRows[0]?.id) {
-                    e.preventDefault();
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const id = selectedRows[0]?.id;
+                  if (!id) {
                     toast({
                       type: 'error',
                       title: 'Missing ID',
                       description:
                         'Selected row does not contain a contract ID.',
                     });
+                    return;
                   }
+                  setContractId(id);
+                  setContractOpen(true);
                 }}
+                className="inline-flex items-center gap-2"
               >
                 <FileText size={20} />
                 View
-              </a>
+              </Button>
             )}
 
             {/* PDF button: only when exactly 1 selected */}
@@ -1049,7 +1052,16 @@ export const RentsGrid = () => {
         loadingText="Deleting..."
         variant="destructive"
       />
-
+      <ContractDialog
+        open={contractOpen}
+        onOpenChange={setContractOpen}
+        contractId={contractId}
+        title={
+          selectedRows.length === 1
+            ? `${selectedRows[0]?.carModel ?? 'Contract'}`
+            : 'Contract Preview'
+        }
+      />
       {selectedRentForEdit && (
         <EditRentFormDialog
           open={editDialogOpen}
