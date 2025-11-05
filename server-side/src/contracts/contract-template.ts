@@ -168,40 +168,106 @@ export function buildCleanContractHTML(view: ContractView) {
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);font-size:11.5px;background:#f5f7fb}
   .sheet{width:210mm;margin:0 auto;background:#fff}
-  .page{width:210mm;height:281mm;padding:9mm;page-break-after:always;position:relative}
+  .page{width:210mm;height:281mm;padding:8mm;page-break-after:always;position:relative}
 
-  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5mm}
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4mm}
   .brand{display:flex;align-items:center;gap:4mm}
-  .brand img{height:36px;width:auto;border-radius:6px}
+  .brand img{height:34px;width:auto;border-radius:6px}
   .org h1{font-size:13px}
   .org small{display:block;font-size:10px;color:var(--muted)}
   .title{font-weight:800;letter-spacing:.4px;font-size:15px;text-align:center;flex:1}
-  .nr{border:1px solid var(--ink);padding:1.6mm 3mm;border-radius:4mm;font-weight:800;background:#fff}
+  .nr{border:1px solid var(--ink);padding:1.4mm 3mm;border-radius:4mm;font-weight:800;background:#fff}
 
-  .band{background:var(--band);color:#fff;font-weight:800;padding:1.6mm 3mm;border-radius:3mm;margin:3mm 0 2mm}
-  .card{border:1px solid var(--line);border-radius:3mm;background:#fff;padding:3mm}
-  .row{display:grid;grid-template-columns:32mm 1fr;gap:2mm;align-items:center;margin:1.6mm 0}
+  .info-bar{border:1px solid var(--line);border-radius:3mm;background:#fff;padding:2mm;margin-bottom:3mm}
+  .row-3{display:grid;grid-template-columns:1fr 1fr 1fr}
+
+  .band{background:var(--band);color:#fff;font-weight:800;padding:1.4mm 3mm;border-radius:3mm;margin:3mm 0 2mm}
+  .card{border:1px solid var(--line);border-radius:3mm;background:#fff;padding:2.6mm}
+  .row{display:grid;grid-template-columns:30mm 1fr;gap:2mm;align-items:center;margin:1.4mm 0}
   .label{font-weight:700}
-  .inp{border:1px solid var(--line);background:var(--chip);padding:1mm 1.6mm;border-radius:2mm;font-weight:600}
+  .inp{border:1px solid var(--line);background:var(--chip);padding:.9mm 1.4mm;border-radius:2mm;font-weight:600}
+
+  /* Two-column blocks side-by-side */
+  .grid-two{display:grid;grid-template-columns:1fr 1fr;gap:3mm}
+
+  /* Vehicle grid keeps two columns inside card */
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:3mm}
-  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm}
 
-  .totals{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
-  .totals .row{grid-template-columns:24mm 1fr;margin:1.2mm 0}
+  /* Synthèse: 2 columns -> left(all fields) | right(large checklist) */
+.synth {
+  display: grid;
+  grid-template-columns: 1.05fr 1.35fr; /* bigger right panel */
+  gap: 3mm;
+}
 
-  .checklist{border:1px solid var(--line);border-radius:3mm;background:#fff;padding:3mm}
-  .check-title{font-weight:800;text-align:center;margin-bottom:2mm}
-  .fuelGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm;align-items:center}
-  .gauge{border:1.4px solid var(--ink);border-bottom-left-radius:36mm;border-bottom-right-radius:36mm;border-top:none;height:18mm;position:relative}
-  .gauge:after{content:"";position:absolute;left:50%;bottom:0;width:1.4px;height:16mm;background:var(--ink);transform:translateX(-50%) rotate(18deg);transform-origin:bottom center}
-  .glevel{display:flex;justify-content:space-between;font-size:9.5px;font-weight:700;margin-top:1mm}
-  .sketch{border:1px dashed var(--line);border-radius:2mm;height:36mm;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:10px}
+.synth-left .row {
+  grid-template-columns: 24mm 1fr;
+  margin: 1.1mm 0;
+}
 
-  .signs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm;margin-top:3mm}
-  .sign{border:1px solid var(--line);border-radius:12mm;padding:2.4mm;text-align:center;background:#fff;font-weight:700}
+/* Checklist stays, just larger by layout */
+.check {
+  border: 1px solid var(--line);
+  border-radius: 3mm;
+  background: #fff;
+  padding: 2.6mm;
+}
+.check h4 {
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 2mm;
+}
+.fuelWrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm;
+}
+.gauge {
+  border: 1.3px solid var(--ink);
+  border-bottom-left-radius: 36mm;
+  border-bottom-right-radius: 36mm;
+  border-top: none;
+  height: 20mm;          /* slightly taller */
+  position: relative;
+}
+.gauge:after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 1.3px;
+  height: 17mm;
+  background: var(--ink);
+  transform: translateX(-50%) rotate(18deg);
+  transform-origin: bottom center;
+}
+.glevel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  font-weight: 700;
+  margin-top: .8mm;
+}
+.sketch {
+  border: 1px dashed var(--line);
+  border-radius: 2mm;
+  height: 40mm;          /* larger sketch area */
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  margin-top: 3mm;
+}
+
+  /* Signatures lane */
+  .sign-lane{margin-top:4mm}
+  .signs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm}
+  .sign{border:1px solid var(--line);border-radius:12mm;padding:3mm;text-align:center;background:#fff;font-weight:700}
+  .sigline{margin-top:2mm;height:10mm;border:1px dashed var(--line);border-radius:3mm}
 
   .footer{margin-top:3mm;font-size:9.8px;text-align:center;color:var(--muted)}
-  .wm{position:absolute;inset:auto 0 8mm 0;text-align:center;opacity:.06;font-weight:900;font-size:40px;letter-spacing:2px}
+  .wm{position:absolute;inset:auto 0 7mm 0;text-align:center;opacity:.06;font-weight:900;font-size:38px;letter-spacing:2px}
 
   .cond-title{font-weight:900;font-size:15px;text-align:center;margin-bottom:4mm}
   .article{margin-bottom:3mm}
@@ -211,7 +277,7 @@ export function buildCleanContractHTML(view: ContractView) {
 
   @media print{
     body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff}
-    @page{size:A4;margin:9mm}
+    @page{size:A4;margin:8mm}
   }
 </style>
 </head>
@@ -219,116 +285,147 @@ export function buildCleanContractHTML(view: ContractView) {
 <div class="sheet">
 
   <!-- PAGE 1: All operational info -->
-  <section class="page">
-    <div class="header">
-      <div class="brand">
-        ${orgLogo ? `<img src="${orgLogo}" alt="logo" />` : ''}
-        <div class="org">
-          <h1>${orgName || ''}</h1>
-          <small>${f(orgAddress, 40)} • ${f(orgPhone, 14)}</small>
-        </div>
-      </div>
-      <div class="title">CONTRAT DE LOCATION</div>
-      <div class="nr">Nr ${f(view.rentContractId, 6)}</div>
-    </div>
-
-    <div class="card" style="margin-bottom:3mm">
-      <div class="grid-3">
-        <small>Respectez le code de la route</small>
-        <small style="text-align:center">7j/7 Ouvert</small>
-        <small style="text-align:right">Lieu de retour: ${f(orgName, 16)}</small>
+ <section class="page">
+  <div class="header">
+    <div class="brand">
+      ${orgLogo ? `<img src="${orgLogo}" alt="logo" />` : ''}
+      <div class="org">
+        <h1>${orgName || ''}</h1>
+        <small>${f(orgAddress, 44)} • ${f(orgPhone, 14)}</small>
       </div>
     </div>
+    <div class="title">CONTRAT DE LOCATION</div>
+    <div class="nr">Nr ${f(view.rentContractId, 6)}</div>
+  </div>
 
-    <div class="band">LOCATAIRE</div>
-    <div class="card">
-      <div class="grid-2">
+  <div class="info-bar">
+    <div class="row-3">
+      <small>Respectez le code de la route</small>
+      <small style="text-align:center">7j/7 Ouvert</small>
+      <small style="text-align:right">Lieu de retour: ${f(orgName, 16)}</small>
+    </div>
+  </div>
+
+  <!-- Locataire + 2ème conducteur side-by-side -->
+  <div class="grid-two">
+    <div>
+      <div class="band">LOCATAIRE</div>
+      <div class="card">
         <div class="row"><div class="label">Nom / Prénom</div><div class="inp">${f(view.customer?.firstName)} ${f(view.customer?.lastName)}</div></div>
         <div class="row"><div class="label">Téléphone</div><div class="inp">${f(view.customer?.phone)}</div></div>
-        <div class="row"><div class="label">CIN (Passeport)</div><div class="inp">${f(view.customer?.cin || view.customer?.passport)}</div></div>
+        <div class="row"><div class="label">CIN / Passeport</div><div class="inp">${f(view.customer?.cin || view.customer?.passport)}</div></div>
         <div class="row"><div class="label">Permis N°</div><div class="inp">${f(view.customer?.driverLicense)}</div></div>
-        <div class="row" style="grid-column:1 / span 2"><div class="label">Adresse</div><div class="inp">${f(view.customer?.address, 46)}</div></div>
+        <div class="row"><div class="label">Adresse</div><div class="inp">${f(view.customer?.address, 46)}</div></div>
       </div>
     </div>
 
-    <div class="band">2ème CONDUCTEUR</div>
-    <div class="card">
-      <div class="grid-2">
+    <div>
+      <div class="band">2ème CONDUCTEUR</div>
+      <div class="card">
         <div class="row"><div class="label">Nom</div><div class="inp">${f(view.secondDriver?.lastName)}</div></div>
         <div class="row"><div class="label">Prénom</div><div class="inp">${f(view.secondDriver?.firstName)}</div></div>
-        <div class="row"><div class="label">CIN (Passeport)</div><div class="inp">${f(view.secondDriver?.cin || view.secondDriver?.passport)}</div></div>
+        <div class="row"><div class="label">CIN / Passeport</div><div class="inp">${f(view.secondDriver?.cin || view.secondDriver?.passport)}</div></div>
         <div class="row"><div class="label">Permis N°</div><div class="inp">${f(view.secondDriver?.driverLicense)}</div></div>
-        <div class="row" style="grid-column:1 / span 2"><div class="label">Adresse</div><div class="inp">${f(view.secondDriver?.address, 46)}</div></div>
+        <div class="row"><div class="label">Adresse</div><div class="inp">${f(view.secondDriver?.address, 46)}</div></div>
       </div>
     </div>
+  </div>
 
-    <div class="band">INFORMATIONS SUR VÉHICULE</div>
-    <div class="card">
-      <div class="grid-2">
-        <div class="row"><div class="label">Marque / Modèle</div><div class="inp">${f(view.car?.make)} ${f(view.car?.model)}</div></div>
-        <div class="row"><div class="label">Immatriculation</div><div class="inp">${f(view.car?.plate)}</div></div>
-
-        <div class="row"><div class="label">Année</div><div class="inp">${f(view.car?.year)}</div></div>
-        <div class="row"><div class="label">Couleur</div><div class="inp">${f(view.car?.color)}</div></div>
-
-        <div class="row"><div class="label">Carburant</div><div class="inp">${f(view.car?.fuel)}</div></div>
-        <div class="row"><div class="label">Kilométrage départ</div><div class="inp">${f(view.car?.mileage)} km</div></div>
-
-        <div class="row"><div class="label">Date de réception</div><div class="inp">${startLabel}</div></div>
-        <div class="row"><div class="label">Date retour</div><div class="inp">${endLabel}</div></div>
-
-        <div class="row"><div class="label">Prolongation (1)</div><div class="inp">${dots(18)}</div></div>
-        <div class="row"><div class="label">Heure</div><div class="inp">${dots(8)}</div></div>
-
-        <div class="row"><div class="label">Prolongation (2)</div><div class="inp">${dots(18)}</div></div>
-        <div class="row"><div class="label">Heure</div><div class="inp">${dots(8)}</div></div>
-      </div>
-    </div>
-
-    <div class="band">SYNTHÈSE & CHECKLIST</div>
+  <!-- Vehicle -->
+  <div class="band">INFORMATIONS SUR VÉHICULE</div>
+  <div class="card">
     <div class="grid-2">
-      <div class="card">
-        <div class="totals">
-          <div class="row"><div class="label">Total</div><div class="inp">${money(view.prices?.total)}</div></div>
-          <div class="row"><div class="label">Avance</div><div class="inp">${money(view.prices?.deposit)}</div></div>
-          <div class="row"><div class="label">Reste</div><div class="inp">${money(reste)}</div></div>
-          <div class="row"><div class="label">Franchise</div><div class="inp">${dots(12)}</div></div>
-          <div class="row"><div class="label">Livré par</div><div class="inp">${dots(18)}</div></div>
-          <div class="row"><div class="label">Intermédiaire</div><div class="inp">${dots(18)}</div></div>
-          <div class="row"><div class="label">Durée</div><div class="inp">${duree}</div></div>
-        </div>
-      </div>
+      <div class="row"><div class="label">Marque / Modèle</div><div class="inp">${f(view.car?.make)} ${f(view.car?.model)}</div></div>
+      <div class="row"><div class="label">Immatriculation</div><div class="inp">${f(view.car?.plate)}</div></div>
 
-      <div class="checklist">
-        <div class="check-title">État du Véhicule</div>
-        <div class="fuelGrid">
-          <div>
-            <div style="font-weight:700;margin-bottom:2mm">AVANT CARBURANT</div>
-            <div class="gauge"></div>
-            <div class="glevel"><span>1/4</span><span>1/2</span><span>3/4</span></div>
-          </div>
-          <div class="sketch">Vue Haut / Côtés (schéma)</div>
-          <div>
-            <div style="font-weight:700;margin-bottom:2mm">APRÈS CARBURANT</div>
-            <div class="gauge"></div>
-            <div class="glevel"><span>1/4</span><span>1/2</span><span>3/4</span></div>
-          </div>
-        </div>
-      </div>
+      <div class="row"><div class="label">Année</div><div class="inp">${f(view.car?.year)}</div></div>
+      <div class="row"><div class="label">Couleur</div><div class="inp">${f(view.car?.color)}</div></div>
+
+      <div class="row"><div class="label">Carburant</div><div class="inp">${f(view.car?.fuel)}</div></div>
+      <div class="row"><div class="label">Kilométrage départ</div><div class="inp">${f(view.car?.mileage)} km</div></div>
+
+      <div class="row"><div class="label">Date de réception</div><div class="inp">${startLabel}</div></div>
+      <div class="row"><div class="label">Date retour</div><div class="inp">${endLabel}</div></div>
+
+      <div class="row"><div class="label">Prolongation (1)</div><div class="inp">${dots(18)}</div></div>
+      <div class="row"><div class="label">Heure</div><div class="inp">${dots(8)}</div></div>
+
+      <div class="row"><div class="label">Prolongation (2)</div><div class="inp">${dots(18)}</div></div>
+      <div class="row"><div class="label">Heure</div><div class="inp">${dots(8)}</div></div>
+    </div>
+  </div>
+
+  <!-- Synthèse -->
+ <div class="band">SYNTHÈSE & ÉTAT DU VÉHICULE</div>
+<div class="synth">
+  <!-- LEFT: all fields one after another -->
+  <div class="card synth-left">
+    <div class="row">
+      <div class="label">Total</div>
+      <div class="inp">${money(view.prices?.total)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Avance</div>
+      <div class="inp">${money(view.prices?.deposit)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Reste</div>
+      <div class="inp">${money(reste)}</div>
     </div>
 
+    <div class="row">
+      <div class="label">Franchise</div>
+      <div class="inp">${dots(12)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Livré par</div>
+      <div class="inp">${dots(18)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Intermédiaire</div>
+      <div class="inp">${dots(18)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Durée</div>
+      <div class="inp">${duree}</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: enlarged vehicle state -->
+  <div class="check">
+    <h4>État du Véhicule</h4>
+    <div class="fuelWrap">
+      <div>
+        <div style="font-weight:700;margin-bottom:1.2mm">AVANT CARBURANT</div>
+        <div class="gauge"></div>
+        <div class="glevel"><span>1/4</span><span>1/2</span><span>3/4</span></div>
+      </div>
+      <div>
+        <div style="font-weight:700;margin-bottom:1.2mm">APRÈS CARBURANT</div>
+        <div class="gauge"></div>
+        <div class="glevel"><span>1/4</span><span>1/2</span><span>3/4</span></div>
+      </div>
+    </div>
+    <div class="sketch">Vue Haut / Côtés (schéma)</div>
+  </div>
+</div>
+
+  <!-- Signatures lane with extra space above footer -->
+  <div class="sign-lane">
     <div class="signs">
       <div class="sign">Signature et cachet d'agent</div>
       <div class="sign">Signature du locataire</div>
       <div class="sign">Signature 2ème conducteur</div>
     </div>
+    <div class="sigline"></div>
+  </div>
 
-    <div class="footer">
-      Siège Social: ${f(orgAddress, 50)} • ${f(orgPhone, 14)}
-    </div>
+  <div class="footer">
+    Siège Social: ${f(orgAddress, 52)} • ${f(orgPhone, 14)}
+  </div>
 
-    <div class="wm">${orgName || ''}</div>
-  </section>
+  <div class="wm">${orgName || ''}</div>
+</section>
 
   <!-- PAGE 2: Only Conditions générales -->
   <section class="page">

@@ -3,7 +3,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { getContractHTML, downloadContractPDF } from '@/api/contracts';
+import {
+  getContractHTML,
+  downloadContractPDF,
+  downloadContractDOCX,
+} from '@/api/contracts';
 import { toast } from '@/components/ui/toast';
 
 type Props = {
@@ -24,6 +28,73 @@ export function ContractDialog({
   const [err, setErr] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
 
+  // Inject minimal preview CSS and auto-size iframe height
+  const enhancePreview = () => {
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc || !iframe) return;
+
+    // Preview-only: show each .page as a separate sheet with gap BELOW it
+    const style = doc.createElement('style');
+    style.textContent = `
+      @media screen {
+        body { background: #e5e7eb; } /* gray canvas behind pages */
+        .sheet { padding: 12px 0; }
+        .page {
+          box-shadow: 0 6px 20px rgba(0,0,0,.15);
+          border-radius: 6px;
+          background: #fff;
+          margin: 0 auto 14px auto; /* bottom-only gap, no padding to avoid covering content */
+        }
+        /* Keep signature lane area visually clear (actual space is in template) */
+        .sign-lane { margin-top: 4mm; margin-bottom: 4mm; }
+      }
+    `;
+    doc.head.appendChild(style);
+
+    const resize = () => {
+      const h = Math.max(
+        doc.body.scrollHeight,
+        doc.documentElement.scrollHeight,
+      );
+      iframe.style.height = `${h}px`;
+    };
+
+    // Initial sizing after layout
+    if (doc.readyState === 'complete') {
+      resize();
+    } else {
+      iframe.onload = () => resize();
+      doc.addEventListener('readystatechange', () => {
+        if (doc.readyState === 'complete') resize();
+      });
+    }
+
+    // Resize when images load
+    Array.from(doc.images || []).forEach((img) => {
+      img.addEventListener('load', resize, { once: true } as any);
+      img.addEventListener('error', resize, { once: true } as any);
+    });
+
+    // Observe document size changes
+    const RZCtor = (window as any).ResizeObserver as
+      | (new (cb: ResizeObserverCallback) => ResizeObserver)
+      | undefined;
+
+    if (RZCtor) {
+      const ro = new RZCtor(() => resize());
+      ro.observe(doc.documentElement);
+      ro.observe(doc.body);
+    } else {
+      // Fallback retries
+      let n = 0;
+      const id = setInterval(() => {
+        resize();
+        if (++n > 10) clearInterval(id);
+      }, 200);
+    }
+  };
+
   useEffect(() => {
     if (!open || !contractId) return;
     let cancelled = false;
@@ -34,11 +105,13 @@ export function ContractDialog({
       try {
         const html = await getContractHTML(contractId);
         if (cancelled) return;
-        const doc = iframeRef.current?.contentDocument;
+        const iframe = iframeRef.current;
+        const doc = iframe?.contentDocument;
         if (doc) {
           doc.open();
           doc.write(html);
           doc.close();
+          enhancePreview();
         }
       } catch (e: any) {
         if (!cancelled) {
@@ -62,18 +135,36 @@ export function ContractDialog({
 
   const print = () => iframeRef.current?.contentWindow?.print();
 
-  const handleDownload = async () => {
+  const handleDownloadPDF = async () => {
     if (!contractId) return;
     try {
       await downloadContractPDF(contractId);
       toast({
         type: 'success',
         title: 'Download Started',
-        description: `Contract ${contractId} is being downloaded.`,
+        description: `PDF is being downloaded.`,
       });
     } catch (e: any) {
       const msg =
         e?.response?.data?.message || e?.message || 'Failed to download PDF';
+      toast({ type: 'error', title: 'Download Failed', description: msg });
+    }
+  };
+
+  const handleDownloadDOCX = async () => {
+    if (!contractId) return;
+    try {
+      await downloadContractDOCX(contractId);
+      toast({
+        type: 'success',
+        title: 'Download Started',
+        description: `Word document is being downloaded.`,
+      });
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        'Failed to download Word file';
       toast({ type: 'error', title: 'Download Failed', description: msg });
     }
   };
@@ -115,8 +206,11 @@ export function ContractDialog({
             <Button variant="ghost" size="sm" onClick={print}>
               Print
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleDownload}>
-              Download PDF
+            <Button variant="ghost" size="sm" onClick={handleDownloadPDF}>
+              PDF
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleDownloadDOCX}>
+              Word
             </Button>
           </div>
         </div>
@@ -124,22 +218,22 @@ export function ContractDialog({
         {/* Content */}
         <div className="relative flex-1 bg-muted overflow-auto">
           <div
-            className="w-[794px] mx-auto my-4 bg-white shadow"
+            className="w-[794px] mx-auto my-4"
             style={{
               transform: `scale(${zoom})`,
               transformOrigin: 'top center',
               width: 794, // ~210mm at 96dpi
             }}
           >
-            {/* Height large enough for 2 pages */}
             <iframe
               ref={iframeRef}
               title="Contract"
               style={{
                 width: 794,
-                height: 1600,
+                height: 100, // initial; auto-sized after load
                 border: 'none',
                 display: 'block',
+                background: 'transparent',
               }}
             />
           </div>

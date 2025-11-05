@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { RentsService } from '../rents/rents.service';
 import { OrganizationService } from 'src/organization/organization.service';
 import { buildCleanContractHTML, ContractView } from './contract-template';
+import HTMLtoDOCX from 'html-to-docx';
 import puppeteer from 'puppeteer';
 
 @Injectable()
@@ -14,16 +15,27 @@ export class ContractsService {
   async getContractHTML(rentId: string): Promise<string> {
     const { data: c } = await this.rentsService.getRentContract(rentId);
 
-    const org = c.orgId
-      ? (await this.organizationService.findOne(c.orgId))?.[0]
-      : {};
+    // Fetch org with normalized file URLs (logo included)
+    let org: any = {};
+    try {
+      if (c.orgId) {
+        // This returns { ...org, imageFile: { id, url, isPublic, ... } , ... }
+        org = await this.organizationService.findOneWithFiles(c.orgId);
+      }
+    } catch {
+      // swallow and continue with empty org
+    }
+
+    // Prefer the resolved file URL if available; fallback to any existing absolute URL
+    const logoUrl: string | undefined =
+      org?.imageFile?.url || org?.image || undefined;
 
     const view: ContractView = {
       rentContractId: c.rentContractId,
       org: {
         name: org?.name,
-        logo: org?.image,
-        address: org?.address,
+        logo: logoUrl, // will be <img src="..."> in template
+        address: org?.address, // used in header + "Siège Social"
         phone: org?.phone,
       },
       customer: {
@@ -34,6 +46,7 @@ export class ContractsService {
         passport: c.customerPassport,
         driverLicense: c.customerDriverLicense,
       },
+      // Optional second driver fields: keep if present, otherwise template shows dotted placeholders
 
       car: {
         make: c.carMake,
@@ -82,5 +95,20 @@ export class ContractsService {
     } finally {
       await browser.close();
     }
+  }
+  async generateContractDOCX(rentId: string): Promise<Buffer> {
+    const html = await this.getContractHTML(rentId);
+
+    // html-to-docx options: tune if needed
+    const options = {
+      table: { row: { cantSplit: true } },
+      footer: true,
+      pageNumber: true,
+      // margins are already defined in your HTML via @page; html-to-docx
+      // will respect most of the structure.
+    } as any;
+
+    const buffer = await HTMLtoDOCX(html, null, options);
+    return Buffer.from(buffer);
   }
 }

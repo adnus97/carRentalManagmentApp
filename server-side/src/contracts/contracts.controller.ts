@@ -29,4 +29,32 @@ export class ContractsController {
     });
     res.send(buf);
   }
+
+  @Get(':id/doc')
+  async getContractDOC(@Param('id') id: string, @Res() res: Response) {
+    const html = await this.contractsService.getContractHTML(id);
+
+    // Wrap with minimal Word-compatible header to help Word render CSS
+    const docHtml = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+      /* Keep your CSS as-is; Word will render much of it for HTML .doc */
+    </style>
+  </head>
+  <body>${html}</body>
+  </html>`;
+
+    res.set({
+      'Content-Type': 'application/msword',
+      'Content-Disposition': `attachment; filename=contract-${id}.doc`,
+      'Cache-Control': 'no-store',
+    });
+    res.send(Buffer.from(docHtml, 'utf8'));
+  }
 }

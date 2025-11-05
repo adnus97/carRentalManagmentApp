@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Separator } from '../ui/separator';
 import { ContractDialog } from '../contracts/contract-dialog';
+import { downloadContractDOCX } from '@/api/contracts';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -948,7 +949,34 @@ export const RentsGrid = () => {
                 PDF
               </Button>
             )}
-
+            {selectedRows.length === 1 && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  const row = selectedRows[0];
+                  try {
+                    await downloadContractDOCX(row.id);
+                    toast({
+                      type: 'success',
+                      title: 'Download Started',
+                      description: 'Word document is being downloaded.',
+                    });
+                  } catch (error: any) {
+                    const msg =
+                      error?.response?.data?.message ||
+                      error?.message ||
+                      'Failed to download Word file. Please try again.';
+                    toast({
+                      type: 'error',
+                      title: 'Download Failed',
+                      description: msg,
+                    });
+                  }
+                }}
+              >
+                Word
+              </Button>
+            )}
             {/* Delete button: still supports multiple */}
             <Button
               variant="secondary"
