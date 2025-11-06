@@ -15,27 +15,30 @@ export class ContractsService {
   async getContractHTML(rentId: string): Promise<string> {
     const { data: c } = await this.rentsService.getRentContract(rentId);
 
-    // Fetch org with normalized file URLs (logo included)
     let org: any = {};
     try {
       if (c.orgId) {
-        // This returns { ...org, imageFile: { id, url, isPublic, ... } , ... }
         org = await this.organizationService.findOneWithFiles(c.orgId);
       }
-    } catch {
-      // swallow and continue with empty org
-    }
+    } catch {}
 
-    // Prefer the resolved file URL if available; fallback to any existing absolute URL
     const logoUrl: string | undefined =
       org?.imageFile?.url || org?.image || undefined;
+
+    // Build a base URL that Puppeteer and the browser can resolve
+    const BASE =
+      process.env.PUBLIC_BASE_URL?.replace(/\/$/, '') ||
+      `http://localhost:${process.env.PORT || 3000}`;
+
+    const gaugeUrl = `${BASE}/contract-assets/gauge.png`;
+    const carTopUrl = `${BASE}/contract-assets/car-top.png`;
 
     const view: ContractView = {
       rentContractId: c.rentContractId,
       org: {
         name: org?.name,
-        logo: logoUrl, // will be <img src="..."> in template
-        address: org?.address, // used in header + "Siège Social"
+        logo: logoUrl,
+        address: org?.address,
         phone: org?.phone,
       },
       customer: {
@@ -46,8 +49,6 @@ export class ContractsService {
         passport: c.customerPassport,
         driverLicense: c.customerDriverLicense,
       },
-      // Optional second driver fields: keep if present, otherwise template shows dotted placeholders
-
       car: {
         make: c.carMake,
         model: c.carModel,
@@ -64,6 +65,10 @@ export class ContractsService {
       prices: {
         total: c.totalPrice,
         deposit: c.deposit,
+      },
+      etat: {
+        gaugeUrl,
+        carTopUrl,
       },
     };
 
@@ -96,16 +101,13 @@ export class ContractsService {
       await browser.close();
     }
   }
+
   async generateContractDOCX(rentId: string): Promise<Buffer> {
     const html = await this.getContractHTML(rentId);
-
-    // html-to-docx options: tune if needed
     const options = {
       table: { row: { cantSplit: true } },
       footer: true,
       pageNumber: true,
-      // margins are already defined in your HTML via @page; html-to-docx
-      // will respect most of the structure.
     } as any;
 
     const buffer = await HTMLtoDOCX(html, null, options);

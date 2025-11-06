@@ -19,8 +19,14 @@ import { ConfigModule } from '@nestjs/config';
 import { R2Module } from './r2/r2.module';
 import { FilesModule } from './files/files.module';
 import { EmailModule } from './email/email.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, 'public'),
+      serveRoot: '/',
+    }),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot(),
     DatabaseModule,

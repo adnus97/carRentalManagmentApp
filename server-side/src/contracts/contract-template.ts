@@ -30,6 +30,10 @@ export type ContractView = {
   };
   dates?: { start?: string | Date; end?: string | Date | null };
   prices?: { total?: number; deposit?: number };
+  etat?: {
+    gaugeUrl?: string;
+    carTopUrl?: string;
+  };
 };
 
 const dots = (n = 15) => '.'.repeat(n);
@@ -158,281 +162,288 @@ export function buildCleanContractHTML(view: ContractView) {
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Contrat ${f(view.rentContractId)}</title>
-<style>
-  :root{
-    --ink:#0f172a; --muted:#475569; --line:#cbd5e1; --chip:#f8fafc; --band:#111827;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);font-size:11.5px;background:#f5f7fb}
-  .sheet{width:210mm;margin:0 auto;background:#fff}
-  .page{width:210mm;height:281mm;padding:8mm;page-break-after:always;position:relative}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contrat ${f(view.rentContractId)}</title>
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#475569; --line:#cbd5e1; --chip:#f8fafc; --band:#111827;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{
+      height:100%;
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+      color:var(--ink);
+      font-size:11.5px;
+      background:#f5f7fb;
+    }
+    .sheet{width:210mm;margin:0 auto;background:#fff}
+    .page{
+      width:210mm;height:281mm;padding:8mm;page-break-after:always;position:relative;
+      display:flex;flex-direction:column;
+    }
 
-  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4mm}
-  .brand{display:flex;align-items:center;gap:4mm}
-  .brand img{height:34px;width:auto;border-radius:6px}
-  .org h1{font-size:13px}
-  .org small{display:block;font-size:10px;color:var(--muted)}
-  .title{font-weight:800;letter-spacing:.4px;font-size:15px;text-align:center;flex:1}
-  .nr{border:1px solid var(--ink);padding:1.4mm 3mm;border-radius:4mm;font-weight:800;background:#fff}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:3.5mm}
+    .brand{display:flex;align-items:center;gap:4mm}
+    .brand img{height:34px;width:auto;border-radius:6px}
+    .org h1{font-size:13px}
+    .org small{display:block;font-size:10px;color:var(--muted)}
+    .title{font-weight:800;letter-spacing:.4px;font-size:15px;text-align:center;flex:1}
+    .nr{border:1px solid var(--ink);padding:1.2mm 3mm;border-radius:4mm;font-weight:800;background:#fff}
 
-  .info-bar{border:1px solid var(--line);border-radius:3mm;background:#fff;padding:2mm;margin-bottom:3mm}
-  .row-3{display:grid;grid-template-columns:1fr 1fr 1fr}
+    .info-bar{border:1px solid var(--line);border-radius:3mm;background:#fff;padding:1.6mm;margin-bottom:3mm}
+    .row-3{display:grid;grid-template-columns:1fr 1fr 1fr}
 
-  .band{background:var(--band);color:#fff;font-weight:800;padding:1.4mm 3mm;border-radius:3mm;margin:3mm 0 2mm}
-  .card{border:1px solid var(--line);border-radius:3mm;background:#fff;padding:2.6mm}
-  .row{display:grid;grid-template-columns:30mm 1fr;gap:2mm;align-items:center;margin:1.4mm 0}
-  .label{font-weight:700}
-  .inp{border:1px solid var(--line);background:var(--chip);padding:.9mm 1.4mm;border-radius:2mm;font-weight:600}
+    .band{background:var(--band);color:#fff;font-weight:800;padding:1.2mm 3mm;border-radius:3mm;margin:2.6mm 0 1.8mm}
+    .card{border:1px solid var(--line);border-radius:3mm;background:#fff;padding:2.4mm}
+    .row{display:grid;grid-template-columns:28mm 1fr;gap:1.6mm;align-items:center;margin:1.1mm 0}
+    .label{font-weight:700}
+    .inp{border:1px solid var(--line);background:var(--chip);padding:.75mm 1.2mm;border-radius:2mm;font-weight:600}
 
-  /* Two-column blocks side-by-side */
-  .grid-two{display:grid;grid-template-columns:1fr 1fr;gap:3mm}
+    .grid-two{display:grid;grid-template-columns:1fr 1fr;gap:3mm}
 
-  /* Vehicle grid keeps two columns inside card */
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:3mm}
+    /* VEHICLE compact */
+    .vehicle.card{padding:2mm}
+    .vehicle .row{grid-template-columns:26mm 1fr;margin:.9mm 0;gap:1.4mm}
+    .vehicle .inp{padding:.65mm 1mm}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:2.6mm}
 
-  /* Synthèse: 2 columns -> left(all fields) | right(large checklist) */
-.synth {
-  display: grid;
-  grid-template-columns: 1.05fr 1.35fr; /* bigger right panel */
-  gap: 3mm;
-}
+    /* Synthèse + Etat compact */
+    .synth{
+      display:grid;
+      grid-template-columns:1fr 1fr;;
+      gap:3mm;
+      align-items:stretch;
+      margin-bottom:2.2mm;
+    }
+    /* Stretch both panels to fill their cells */
+    .synth > .card,
+    .synth > .etat {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
 
-.synth-left .row {
-  grid-template-columns: 24mm 1fr;
-  margin: 1.1mm 0;
-}
+    /* Add a little breathing room inside Synthèse so height matches nicely */
+    .synth > .card {
+      padding: 2.8mm;                 /* slightly more than before to match right */
+    }
 
-/* Checklist stays, just larger by layout */
-.check {
-  border: 1px solid var(--line);
-  border-radius: 3mm;
-  background: #fff;
-  padding: 2.6mm;
-}
-.check h4 {
-  font-weight: 800;
-  text-align: center;
-  margin-bottom: 2mm;
-}
-.fuelWrap {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3mm;
-}
-.gauge {
-  border: 1.3px solid var(--ink);
-  border-bottom-left-radius: 36mm;
-  border-bottom-right-radius: 36mm;
-  border-top: none;
-  height: 20mm;          /* slightly taller */
-  position: relative;
-}
-.gauge:after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 1.3px;
-  height: 17mm;
-  background: var(--ink);
-  transform: translateX(-50%) rotate(18deg);
-  transform-origin: bottom center;
-}
-.glevel {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9.5px;
-  font-weight: 700;
-  margin-top: .8mm;
-}
-.sketch {
-  border: 1px dashed var(--line);
-  border-radius: 2mm;
-  height: 40mm;          /* larger sketch area */
-  background: #fafafa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  margin-top: 3mm;
-}
+    /* If rows are too tight, add vertical spacing to expand height gracefully */
+    .synth > .card .row {
+      margin: 0.9mm 0;                /* was ~0.65–0.7mm; a bit taller now */
+    }
 
-  /* Signatures lane */
-  .sign-lane{margin-top:4mm}
-  .signs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm}
-  .sign{border:1px solid var(--line);border-radius:12mm;padding:3mm;text-align:center;background:#fff;font-weight:700}
-  .sigline{margin-top:2mm;height:10mm;border:1px dashed var(--line);border-radius:3mm}
+    /* Let the inner content of État continue to flex properly */
+    .synth > .etat .etat-rows {
+      flex: 1 0 auto;
+    }
+    .synth-left .row{grid-template-columns:18mm 1fr;margin:.65mm 0;gap:1.4mm}
+    .synth-left .label{font-size:10px}
+    .synth-left .inp{padding:.6mm 1mm;font-size:10px}
 
-  .footer{margin-top:3mm;font-size:9.8px;text-align:center;color:var(--muted)}
-  .wm{position:absolute;inset:auto 0 7mm 0;text-align:center;opacity:.06;font-weight:900;font-size:38px;letter-spacing:2px}
+    .etat{border:1px solid var(--line);border-radius:3mm;background:#fff;padding:1.6mm}
+    .etat-header{
+      display:grid;grid-template-columns:1fr 1fr;gap:1.4mm;margin-bottom:1.2mm;
+      font-weight:700;font-size:9.6px;
+    }
+    .etat-header .left{text-align:left}
+    .etat-header .right{text-align:right}
+    .etat-rows{display:grid;grid-template-rows:auto auto;gap:1.6mm}
+    .etat-row{display:grid;grid-template-columns:1fr 1fr;gap:1.4mm}
+    .etat-box{border:1px solid var(--line);border-radius:2mm;background:#fff;padding:1.2mm;display:grid;grid-template-rows:1fr}
+    .etat-img-wrap{
+      display:flex;align-items:center;justify-content:center;
+      border:1px dashed var(--line);border-radius:2mm;background:#fafafa;min-height:17mm;
+    }
+    .gauge-img,.sketch-img{width:46%;max-width:17mm;height:auto;object-fit:contain}
 
-  .cond-title{font-weight:900;font-size:15px;text-align:center;margin-bottom:4mm}
-  .article{margin-bottom:3mm}
-  .article h4{font-size:12px;margin-bottom:1mm}
-  .article p,.article li{font-size:11px;line-height:1.34}
-  .article ul{padding-left:4mm;display:grid;row-gap:.6mm}
+    .content-flow{flex:1 0 auto}
 
-  @media print{
-    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff}
-    @page{size:A4;margin:8mm}
-  }
-</style>
+    /* Signatures full width */
+    .sign-footer-wrap{flex:0 0 auto;width:100%}
+    .sign-lane{margin-top:0.3mm;width:100%}
+    .signs{
+      display:grid;grid-template-columns:1fr 1fr 1fr;gap:2.2mm;width:100%;
+    }
+    .sign{border:1px solid var(--line);border-radius:10mm;padding:1.6mm 2.2mm;text-align:center;font-size: 10.8px;background:#fff;font-weight:700;min-height:11mm}
+    .sigline{margin-top:1.4mm;height:18mm;border:1px dashed var(--line);border-radius:3mm}
+
+    .footer{margin-top:1.8mm;font-size:9.8px;text-align:center;color:var(--muted)}
+
+    .wm{position:absolute;inset:auto 0 7mm 0;text-align:center;opacity:.06;font-weight:900;font-size:38px;letter-spacing:2px}
+
+    .cond-title{font-weight:900;font-size:15px;text-align:center;margin-bottom:4mm}
+    .article{margin-bottom:3mm}
+    .article h4{font-size:12px;margin-bottom:1mm}
+    .article p,.article li{font-size:11px;line-height:1.34}
+    .article ul{padding-left:4mm;display:grid;row-gap:.6mm}
+
+    @media print{
+      body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff}
+      @page{size:A4;margin:8mm}
+    }
+  </style>
 </head>
 <body>
-<div class="sheet">
+  <div class="sheet">
 
-  <!-- PAGE 1: All operational info -->
- <section class="page">
-  <div class="header">
-    <div class="brand">
-      ${orgLogo ? `<img src="${orgLogo}" alt="logo" />` : ''}
-      <div class="org">
-        <h1>${orgName || ''}</h1>
-        <small>${f(orgAddress, 44)} • ${f(orgPhone, 14)}</small>
+    <!-- PAGE 1 -->
+    <section class="page">
+
+      <div class="content-flow">
+        <div class="header">
+          <div class="brand">
+            ${orgLogo ? `<img src="${orgLogo}" alt="logo" />` : ''}
+            <div class="org">
+              <h1>${orgName || ''}</h1>
+              <small>${f(orgAddress, 44)} • ${f(orgPhone, 14)}</small>
+            </div>
+          </div>
+          <div class="title">CONTRAT DE LOCATION</div>
+          <div class="nr">Nr ${f(view.rentContractId, 6)}</div>
+        </div>
+
+        <div class="info-bar">
+          <div class="row-3">
+            <small>Respectez le code de la route</small>
+            <small style="text-align:center">7j/7 Ouvert</small>
+            <small style="text-align:right">Lieu de retour: ${f(orgName, 16)}</small>
+          </div>
+        </div>
+
+        <!-- Locataire + 2ème Conducteur -->
+        <div class="grid-two">
+          <div>
+            <div class="band">LOCATAIRE</div>
+            <div class="card">
+              <div class="row"><div class="label">Nom / Prénom</div><div class="inp">${f(view.customer?.firstName)} ${f(view.customer?.lastName)}</div></div>
+              <div class="row"><div class="label">Téléphone</div><div class="inp">${f(view.customer?.phone)}</div></div>
+              <div class="row"><div class="label">CIN / Passeport</div><div class="inp">${f(view.customer?.cin || view.customer?.passport)}</div></div>
+              <div class="row"><div class="label">Permis N°</div><div class="inp">${f(view.customer?.driverLicense)}</div></div>
+              <div class="row"><div class="label">Adresse</div><div class="inp">${f(view.customer?.address, 46)}</div></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="band">2ème CONDUCTEUR</div>
+            <div class="card">
+              <div class="row"><div class="label">Nom</div><div class="inp">${f(view.secondDriver?.lastName)}</div></div>
+              <div class="row"><div class="label">Prénom</div><div class="inp">${f(view.secondDriver?.firstName)}</div></div>
+              <div class="row"><div class="label">CIN / Passeport</div><div class="inp">${f(view.secondDriver?.cin || view.secondDriver?.passport)}</div></div>
+              <div class="row"><div class="label">Permis N°</div><div class="inp">${f(view.secondDriver?.driverLicense)}</div></div>
+              <div class="row"><div class="label">Adresse</div><div class="inp">${f(view.secondDriver?.address, 46)}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VEHICLE -->
+        <div class="band">INFORMATIONS SUR VÉHICULE</div>
+        <div class="card vehicle">
+          <div class="grid-2">
+            <div class="row"><div class="label">Marque / Modèle</div><div class="inp">${f(view.car?.make)} ${f(view.car?.model)}</div></div>
+            <div class="row"><div class="label">Immatriculation</div><div class="inp">${f(view.car?.plate)}</div></div>
+            <div class="row"><div class="label">Année</div><div class="inp">${f(view.car?.year)}</div></div>
+            <div class="row"><div class="label">Couleur</div><div class="inp">${f(view.car?.color)}</div></div>
+            <div class="row"><div class="label">Carburant</div><div class="inp">${f(view.car?.fuel)}</div></div>
+            <div class="row"><div class="label">Kilométrage départ</div><div class="inp">${f(view.car?.mileage)} km</div></div>
+            <div class="row"><div class="label">Date de réception</div><div class="inp">${toFR(view.dates?.start)}</div></div>
+            <div class="row"><div class="label">Date retour</div><div class="inp">${view.dates?.end ? toFR(view.dates?.end) : 'Ouvert'}</div></div>
+            <div class="row"><div class="label">Prolongation (1)</div><div class="inp">${'.'.repeat(18)}</div></div>
+            <div class="row"><div class="label">Heure</div><div class="inp">${'.'.repeat(8)}</div></div>
+            <div class="row"><div class="label">Prolongation (2)</div><div class="inp">${'.'.repeat(18)}</div></div>
+            <div class="row"><div class="label">Heure</div><div class="inp">${'.'.repeat(8)}</div></div>
+          </div>
+        </div>
+
+        <!-- Synthèse + Etat -->
+        <div class="band">SYNTHÈSE & ÉTAT DU VÉHICULE</div>
+        <div class="synth">
+          <div class="card synth-left">
+            <div class="row"><div class="label">Total</div><div class="inp">${money(view.prices?.total)}</div></div>
+            <div class="row"><div class="label">Avance</div><div class="inp">${money(view.prices?.deposit)}</div></div>
+            <div class="row"><div class="label">Reste</div><div class="inp">${money(Math.max(0, (view.prices?.total || 0) - (view.prices?.deposit || 0)))}</div></div>
+            <div class="row"><div class="label">Franchise</div><div class="inp">${'.'.repeat(12)}</div></div>
+            <div class="row"><div class="label">Livré par</div><div class="inp">${'.'.repeat(18)}</div></div>
+            <div class="row"><div class="label">Intermédiaire</div><div class="inp">${'.'.repeat(18)}</div></div>
+            <div class="row"><div class="label">Durée</div><div class="inp">${(() => {
+              const s = view.dates?.start
+                ? new Date(view.dates.start).getTime()
+                : NaN;
+              const e = view.dates?.end
+                ? new Date(view.dates.end as any).getTime()
+                : NaN;
+              if (!isNaN(s) && !isNaN(e)) {
+                const d = Math.max(1, Math.ceil((e - s) / 86400000));
+                return `${d} jour(s)`;
+              }
+              return '........';
+            })()}</div></div>
+          </div>
+
+          <div class="etat">
+            <div class="etat-header">
+              <div class="left">Avant</div>
+              <div class="right">Après</div>
+            </div>
+
+            <div class="etat-rows">
+              <div class="etat-row">
+                <div class="etat-box">
+                  <div class="etat-img-wrap">
+                    <img class="gauge-img" src="${view.etat?.gaugeUrl || ''}" alt="Jauge carburant avant"/>
+                  </div>
+                </div>
+                <div class="etat-box">
+                  <div class="etat-img-wrap">
+                    <img class="gauge-img" src="${view.etat?.gaugeUrl || ''}" alt="Jauge carburant après"/>
+                  </div>
+                </div>
+              </div>
+
+              <div class="etat-row">
+                <div class="etat-box">
+                  <div class="etat-img-wrap">
+                    <img class="sketch-img" src="${view.etat?.carTopUrl || ''}" alt="Vue Haut / Côtés (avant)"/>
+                  </div>
+                </div>
+                <div class="etat-box">
+                  <div class="etat-img-wrap">
+                    <img class="sketch-img" src="${view.etat?.carTopUrl || ''}" alt="Vue Haut / Côtés (après)"/>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div> <!-- end synth -->
+      </div> <!-- end content-flow -->
+
+
+      <div class="sign-footer-wrap">
+        <div class="sign-lane">
+          <div class="signs">
+            <div class="sign">Signature et cachet d'agent</div>
+            <div class="sign">Signature du locataire</div>
+            <div class="sign">Signature 2ème conducteur</div>
+          </div>
+          <div class="sigline"></div>
+        </div>
+
+        <div class="footer">
+          Siège Social: ${f(orgAddress, 52)} • ${f(orgPhone, 14)}
+        </div>
       </div>
-    </div>
-    <div class="title">CONTRAT DE LOCATION</div>
-    <div class="nr">Nr ${f(view.rentContractId, 6)}</div>
+
+      <div class="wm">${orgName || ''}</div>
+    </section>
+
+    <!-- PAGE 2 -->
+    <section class="page">
+      <div class="cond-title">Conditions générales de location</div>
+      ${(() => CONDITIONS)()}
+    </section>
+
   </div>
-
-  <div class="info-bar">
-    <div class="row-3">
-      <small>Respectez le code de la route</small>
-      <small style="text-align:center">7j/7 Ouvert</small>
-      <small style="text-align:right">Lieu de retour: ${f(orgName, 16)}</small>
-    </div>
-  </div>
-
-  <!-- Locataire + 2ème conducteur side-by-side -->
-  <div class="grid-two">
-    <div>
-      <div class="band">LOCATAIRE</div>
-      <div class="card">
-        <div class="row"><div class="label">Nom / Prénom</div><div class="inp">${f(view.customer?.firstName)} ${f(view.customer?.lastName)}</div></div>
-        <div class="row"><div class="label">Téléphone</div><div class="inp">${f(view.customer?.phone)}</div></div>
-        <div class="row"><div class="label">CIN / Passeport</div><div class="inp">${f(view.customer?.cin || view.customer?.passport)}</div></div>
-        <div class="row"><div class="label">Permis N°</div><div class="inp">${f(view.customer?.driverLicense)}</div></div>
-        <div class="row"><div class="label">Adresse</div><div class="inp">${f(view.customer?.address, 46)}</div></div>
-      </div>
-    </div>
-
-    <div>
-      <div class="band">2ème CONDUCTEUR</div>
-      <div class="card">
-        <div class="row"><div class="label">Nom</div><div class="inp">${f(view.secondDriver?.lastName)}</div></div>
-        <div class="row"><div class="label">Prénom</div><div class="inp">${f(view.secondDriver?.firstName)}</div></div>
-        <div class="row"><div class="label">CIN / Passeport</div><div class="inp">${f(view.secondDriver?.cin || view.secondDriver?.passport)}</div></div>
-        <div class="row"><div class="label">Permis N°</div><div class="inp">${f(view.secondDriver?.driverLicense)}</div></div>
-        <div class="row"><div class="label">Adresse</div><div class="inp">${f(view.secondDriver?.address, 46)}</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Vehicle -->
-  <div class="band">INFORMATIONS SUR VÉHICULE</div>
-  <div class="card">
-    <div class="grid-2">
-      <div class="row"><div class="label">Marque / Modèle</div><div class="inp">${f(view.car?.make)} ${f(view.car?.model)}</div></div>
-      <div class="row"><div class="label">Immatriculation</div><div class="inp">${f(view.car?.plate)}</div></div>
-
-      <div class="row"><div class="label">Année</div><div class="inp">${f(view.car?.year)}</div></div>
-      <div class="row"><div class="label">Couleur</div><div class="inp">${f(view.car?.color)}</div></div>
-
-      <div class="row"><div class="label">Carburant</div><div class="inp">${f(view.car?.fuel)}</div></div>
-      <div class="row"><div class="label">Kilométrage départ</div><div class="inp">${f(view.car?.mileage)} km</div></div>
-
-      <div class="row"><div class="label">Date de réception</div><div class="inp">${startLabel}</div></div>
-      <div class="row"><div class="label">Date retour</div><div class="inp">${endLabel}</div></div>
-
-      <div class="row"><div class="label">Prolongation (1)</div><div class="inp">${dots(18)}</div></div>
-      <div class="row"><div class="label">Heure</div><div class="inp">${dots(8)}</div></div>
-
-      <div class="row"><div class="label">Prolongation (2)</div><div class="inp">${dots(18)}</div></div>
-      <div class="row"><div class="label">Heure</div><div class="inp">${dots(8)}</div></div>
-    </div>
-  </div>
-
-  <!-- Synthèse -->
- <div class="band">SYNTHÈSE & ÉTAT DU VÉHICULE</div>
-<div class="synth">
-  <!-- LEFT: all fields one after another -->
-  <div class="card synth-left">
-    <div class="row">
-      <div class="label">Total</div>
-      <div class="inp">${money(view.prices?.total)}</div>
-    </div>
-    <div class="row">
-      <div class="label">Avance</div>
-      <div class="inp">${money(view.prices?.deposit)}</div>
-    </div>
-    <div class="row">
-      <div class="label">Reste</div>
-      <div class="inp">${money(reste)}</div>
-    </div>
-
-    <div class="row">
-      <div class="label">Franchise</div>
-      <div class="inp">${dots(12)}</div>
-    </div>
-    <div class="row">
-      <div class="label">Livré par</div>
-      <div class="inp">${dots(18)}</div>
-    </div>
-    <div class="row">
-      <div class="label">Intermédiaire</div>
-      <div class="inp">${dots(18)}</div>
-    </div>
-    <div class="row">
-      <div class="label">Durée</div>
-      <div class="inp">${duree}</div>
-    </div>
-  </div>
-
-  <!-- RIGHT: enlarged vehicle state -->
-  <div class="check">
-    <h4>État du Véhicule</h4>
-    <div class="fuelWrap">
-      <div>
-        <div style="font-weight:700;margin-bottom:1.2mm">AVANT CARBURANT</div>
-        <div class="gauge"></div>
-        <div class="glevel"><span>1/4</span><span>1/2</span><span>3/4</span></div>
-      </div>
-      <div>
-        <div style="font-weight:700;margin-bottom:1.2mm">APRÈS CARBURANT</div>
-        <div class="gauge"></div>
-        <div class="glevel"><span>1/4</span><span>1/2</span><span>3/4</span></div>
-      </div>
-    </div>
-    <div class="sketch">Vue Haut / Côtés (schéma)</div>
-  </div>
-</div>
-
-  <!-- Signatures lane with extra space above footer -->
-  <div class="sign-lane">
-    <div class="signs">
-      <div class="sign">Signature et cachet d'agent</div>
-      <div class="sign">Signature du locataire</div>
-      <div class="sign">Signature 2ème conducteur</div>
-    </div>
-    <div class="sigline"></div>
-  </div>
-
-  <div class="footer">
-    Siège Social: ${f(orgAddress, 52)} • ${f(orgPhone, 14)}
-  </div>
-
-  <div class="wm">${orgName || ''}</div>
-</section>
-
-  <!-- PAGE 2: Only Conditions générales -->
-  <section class="page">
-    <div class="cond-title">Conditions générales de location</div>
-    ${CONDITIONS}
-  </section>
-</div>
 </body>
 </html>
   `;
