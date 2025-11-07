@@ -867,7 +867,35 @@ export class CarsService {
       totalPages: Math.ceil(Number(count) / pageSize),
     };
   }
+  // ✅ Update Maintenance Log
+  async updateMaintenanceLog(
+    id: string,
+    dto: Partial<CreateMaintenanceDto>,
+    userId?: string,
+  ) {
+    const [row] = await this.dbService.db
+      .select()
+      .from(maintenanceLogs)
+      .where(eq(maintenanceLogs.id, id))
+      .limit(1);
 
+    if (!row) throw new NotFoundException('Maintenance log not found');
+
+    const patch: any = {};
+    if (dto.type !== undefined) patch.type = dto.type;
+    if (dto.description !== undefined) patch.description = dto.description;
+    if (dto.cost !== undefined) patch.cost = dto.cost;
+    if (dto.mileage !== undefined) patch.mileage = dto.mileage;
+    if (dto.createdAt !== undefined) patch.createdAt = new Date(dto.createdAt);
+    patch.updatedAt = new Date();
+
+    await this.dbService.db
+      .update(maintenanceLogs)
+      .set(patch)
+      .where(eq(maintenanceLogs.id, id));
+
+    return { success: true, message: 'Maintenance updated' };
+  }
   // ✅ Paginated Rentals
   async getCarRentals(carId: string, page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;

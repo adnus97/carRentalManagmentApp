@@ -37,6 +37,7 @@ import {
 import { Value } from '@radix-ui/react-select';
 import { Switch } from '../ui/switch';
 import { Calendar } from '@phosphor-icons/react';
+import { endOfDay } from 'date-fns';
 
 // Toggle component
 function ModeToggle({
@@ -68,7 +69,10 @@ export default function ReportsPage() {
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
   const [carId, setCarId] = useState<'all' | string>('all');
+
   const [showTechnicalVisit, setShowTechnicalVisit] = useState(false);
+  // NEW: include expired targets toggle
+  const [includeExpiredTargets, setIncludeExpiredTargets] = useState(false);
 
   // Cars for filter
   const carsQ = useQuery({
@@ -118,6 +122,18 @@ export default function ReportsPage() {
   const riskTitle = showTechnicalVisit
     ? 'Technical Inspection Risk'
     : 'Insurance Risk';
+
+  // Helper to compute target status (Active through end of endDate)
+  const isTargetActive = (endDate: string | Date) =>
+    endOfDay(new Date(endDate)) >= new Date();
+
+  // Filter targets based on includeExpiredTargets toggle
+  const visibleTargets = useMemo(() => {
+    const targets = data?.targets || [];
+    if (includeExpiredTargets) return targets;
+    // default: show only active targets
+    return targets.filter((t: any) => isTargetActive(t.endDate));
+  }, [data?.targets, includeExpiredTargets]);
 
   return (
     <div className="w-full mx-auto px-3 sm:px-4 lg:px-6 space-y-8 pt-4">
@@ -203,10 +219,16 @@ export default function ReportsPage() {
                 <TooltipTrigger asChild>
                   <span className="truncate whitespace-nowrap overflow-hidden max-w-[180px]">
                     {carsQ.data?.data.find((c: any) => c.id === carId)
-                      ? `${carsQ.data?.data.find((c: any) => c.id === carId)?.plateNumber ?? ''} • ${
+                      ? `${
+                          carsQ.data?.data.find((c: any) => c.id === carId)
+                            ?.plateNumber ?? ''
+                        } • ${
                           carsQ.data?.data.find((c: any) => c.id === carId)
                             ?.make
-                        } ${carsQ.data?.data.find((c: any) => c.id === carId)?.model} ${
+                        } ${
+                          carsQ.data?.data.find((c: any) => c.id === carId)
+                            ?.model
+                        } ${
                           carsQ.data?.data.find((c: any) => c.id === carId)
                             ?.year
                         }`
@@ -215,9 +237,14 @@ export default function ReportsPage() {
                 </TooltipTrigger>
                 <TooltipContent>
                   {carsQ.data?.data.find((c: any) => c.id === carId)
-                    ? `${carsQ.data?.data.find((c: any) => c.id === carId)?.plateNumber ?? ''} • ${
+                    ? `${
+                        carsQ.data?.data.find((c: any) => c.id === carId)
+                          ?.plateNumber ?? ''
+                      } ${
                         carsQ.data?.data.find((c: any) => c.id === carId)?.make
-                      } ${carsQ.data?.data.find((c: any) => c.id === carId)?.model} ${
+                      } ${
+                        carsQ.data?.data.find((c: any) => c.id === carId)?.model
+                      } ${
                         carsQ.data?.data.find((c: any) => c.id === carId)?.year
                       }`
                     : 'All Cars'}
@@ -289,13 +316,11 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* Content - Use backend-calculated data directly */}
+      {/* Content */}
       {!dateError && data?.snapshot && (
         <>
-          {/* KPIs - Pass the backend snapshot directly */}
           <KPIGrid snapshot={data.snapshot} />
 
-          {/* Revenue Chart */}
           <Card className="shadow-lg rounded-xl">
             <CardHeader className="pb-3 border-b">
               <CardTitle>Revenue & Rents Over Time</CardTitle>
@@ -313,10 +338,26 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="shadow-lg rounded-xl">
               <CardHeader className="pb-3 border-b">
-                <CardTitle>Targets vs Actuals</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Targets vs Actuals</span>
+                  {/* NEW: Include Expired Targets Toggle */}
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="targets-include-expired"
+                      checked={includeExpiredTargets}
+                      onCheckedChange={setIncludeExpiredTargets}
+                    />
+                    <label
+                      htmlFor="targets-include-expired"
+                      className="text-sm font-normal text-muted-foreground cursor-pointer select-none"
+                    >
+                      Include expired
+                    </label>
+                  </div>
+                </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                <TargetsComparison data={data?.targets || []} />
+                <TargetsComparison data={visibleTargets} />
               </CardContent>
             </Card>
 

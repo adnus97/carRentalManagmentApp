@@ -146,12 +146,35 @@ export const getCarDetails = async (id: string): Promise<CarDetails> => {
 // ✅ Add maintenance log
 export const addMaintenanceLog = async (
   carId: string,
-  data: { type: string; description: string; cost: number; mileage?: number },
+  data: {
+    type: string;
+    description: string;
+    cost: number;
+    mileage?: number;
+    createdAt: string;
+  },
 ) => {
   const response = await api.post(`/cars/${carId}/maintenance`, data, {
     headers: { 'Content-Type': 'application/json' },
   });
   return response.data;
+};
+
+export const updateMaintenanceLog = async (
+  maintenanceId: string,
+  payload: Partial<{
+    type: string;
+    description: string;
+    cost: number;
+    mileage: number;
+    createdAt: string; // ISO
+  }>,
+) => {
+  const res = await api.put(`/cars/maintenance/${maintenanceId}`, payload, {
+    headers: { 'Content-Type': 'application/json' },
+    withCredentials: true,
+  });
+  return res.data;
 };
 
 // ✅ Add oil change

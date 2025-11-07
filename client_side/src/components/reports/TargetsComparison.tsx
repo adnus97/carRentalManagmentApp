@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { endOfDay } from 'date-fns';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 import {
@@ -11,10 +12,31 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-export function TargetsComparison({ data }: { data: any[] }) {
+type Target = {
+  startDate: string | Date;
+  endDate: string | Date;
+  targetRevenue?: number;
+  actualRevenue?: number;
+  targetRents?: number;
+  actualRents?: number;
+  make?: string;
+  model?: string;
+  plateNumber?: string;
+};
+
+export function TargetsComparison({ data }: { data: Target[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  if (!data.length) return <div className="p-2 text-sm">No targets data</div>;
+  // If parent passes none (after filtering), show empty state
+  if (!Array.isArray(data) || data.length === 0) {
+    return <div className="p-2 text-sm">No targets data</div>;
+  }
+
+  // Compute status from endDate (Active through end of the endDate day)
+  const getStatus = (endDate: string | Date) => {
+    const end = endOfDay(new Date(endDate));
+    return end < new Date() ? 'expired' : 'active';
+  };
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -48,12 +70,16 @@ export function TargetsComparison({ data }: { data: any[] }) {
       <div ref={scrollRef} className="overflow-x-auto scrollbar-hide">
         <div className="flex gap-6 w-max px-10 sm:px-14">
           {data.map((t, i) => {
+            const status = getStatus(t.endDate);
+            const isActive = status === 'active';
+
             const daysRemaining = Math.max(
               0,
               Math.ceil(
                 (new Date(t.endDate).getTime() - Date.now()) / 86400000,
               ),
             );
+
             const revenueProgress =
               t.targetRevenue && t.targetRevenue > 0
                 ? ((t.actualRevenue ?? 0) / t.targetRevenue) * 100
@@ -68,22 +94,19 @@ export function TargetsComparison({ data }: { data: any[] }) {
               <Card
                 key={i}
                 className={[
-                  // required for glows and clipping
                   'relative overflow-hidden',
-                  // sizing + base
                   'min-w-[360px] max-w-[400px] flex-shrink-0 rounded-2xl border shadow-sm',
-                  // LIGHT MODE: clean white with a subtle top tint so it doesn’t look flat
                   'border-gray-200 bg-white text-gray-900',
                   'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
-                  // DARK MODE: exact Insurance Risk vertical gradient
                   'dark:border-border dark:text-gray-100 dark:shadow-lg',
                   'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
                 ].join(' ')}
               >
-                {/* Decorative glow orbs (dark mode only) to match Insurance Risk */}
+                {/* Decorative glows (dark mode) */}
                 <div className="pointer-events-none absolute -right-16 -top-16 hidden h-48 w-48 rounded-full bg-red-500/10 blur-3xl dark:block" />
                 <div className="pointer-events-none absolute -left-20 -bottom-20 hidden h-56 w-56 rounded-full bg-amber-400/10 blur-3xl dark:block" />
-                {/* Top elapsed bar (period progress) */}
+
+                {/* Top elapsed bar */}
                 {(() => {
                   const startDate = new Date(t.startDate);
                   const endDate = new Date(t.endDate);
@@ -92,9 +115,6 @@ export function TargetsComparison({ data }: { data: any[] }) {
                   const now = Date.now();
                   const total = Math.max(1, end - start);
 
-                  // Choose one: elapsed or remaining. Uncomment the one you prefer.
-
-                  // Elapsed
                   const elapsedRatio = Math.max(
                     0,
                     Math.min(1, (now - start) / total),
@@ -105,17 +125,10 @@ export function TargetsComparison({ data }: { data: any[] }) {
                     0,
                     Math.min(daysTotal, Math.ceil((now - start) / 86400000)),
                   );
-                  const daysRemaining = Math.max(0, daysTotal - daysElapsed);
-                  const barPct = elapsedPct;
-                  const titleText = `Elapsed ${elapsedPct}% of period`;
-
-                  // Remaining (if you want remaining instead)
-                  // const remainingRatio = Math.max(0, Math.min(1, (end - now) / total));
-                  // const remainingPct = Math.round(remainingRatio * 100);
-                  // const daysRemaining = Math.max(0, Math.ceil((end - now) / 86400000));
-                  // const daysTotal = Math.max(1, Math.ceil(total / 86400000));
-                  // const barPct = remainingPct;
-                  // const titleText = `Remaining ${remainingPct}% of period`;
+                  const daysRemainingLocal = Math.max(
+                    0,
+                    daysTotal - daysElapsed,
+                  );
 
                   return (
                     <TooltipProvider delayDuration={150}>
@@ -128,18 +141,20 @@ export function TargetsComparison({ data }: { data: any[] }) {
                               aria-label="Target period progress"
                               aria-valuemin={0}
                               aria-valuemax={100}
-                              aria-valuenow={barPct}
+                              aria-valuenow={elapsedPct}
                             >
                               <div
                                 className="h-full rounded-full bg-gradient-to-r from-sky-500 via-emerald-500 to-fuchsia-500 dark:from-sky-400 dark:via-emerald-400 dark:to-fuchsia-400"
-                                style={{ width: `${barPct}%` }}
+                                style={{ width: `${elapsedPct}%` }}
                               />
                             </div>
                           </div>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[280px]">
                           <div className="text-[13px]">
-                            <div className="font-medium">{titleText}</div>
+                            <div className="font-medium">
+                              Elapsed {elapsedPct}% of period
+                            </div>
                             <div className="mt-1 text-xs text-muted-foreground">
                               {startDate.toLocaleDateString()} –{' '}
                               {endDate.toLocaleDateString()}
@@ -148,7 +163,7 @@ export function TargetsComparison({ data }: { data: any[] }) {
                               <span className="font-medium">{daysElapsed}</span>{' '}
                               elapsed •{' '}
                               <span className="font-medium">
-                                {daysRemaining}
+                                {daysRemainingLocal}
                               </span>{' '}
                               remaining •{' '}
                               <span className="font-medium">{daysTotal}</span>{' '}
@@ -160,21 +175,28 @@ export function TargetsComparison({ data }: { data: any[] }) {
                     </TooltipProvider>
                   );
                 })()}
+
                 {/* Header */}
-                <CardHeader className="pb-3">
+                <div className="pb-3 px-6 pt-2">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium text-gray-300">
                       {new Date(t.startDate).toLocaleDateString()} –{' '}
                       {new Date(t.endDate).toLocaleDateString()}
                     </div>
-                    <span className="text-[11px] px-2 py-1 rounded-md bg-emerald-500/15 text-emerald-300">
-                      Active
-                    </span>
+                    {getStatus(t.endDate) === 'active' ? (
+                      <span className="text-[11px] px-2 py-1 rounded-md bg-emerald-500/15 text-emerald-300">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-[11px] px-2 py-1 rounded-md bg-rose-500/15 text-rose-300">
+                        Expired
+                      </span>
+                    )}
                   </div>
-                </CardHeader>
+                </div>
 
                 <CardContent className="space-y-5 pt-0">
-                  {/* Top stats (3 pills) */}
+                  {/* Top stats */}
                   <div className="grid grid-cols-3 gap-3 text-sm">
                     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-800 dark:border-gray-800 dark:bg-[#121621] dark:text-gray-100">
                       <div className="flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400">
@@ -207,7 +229,7 @@ export function TargetsComparison({ data }: { data: any[] }) {
                     </div>
                   </div>
 
-                  {/* Breakdown panel */}
+                  {/* Breakdown */}
                   <div className="rounded-xl border border-gray-200 bg-white text-gray-800 dark:border-gray-800 dark:bg-[#0f141b] dark:text-gray-200">
                     <div className="border-b border-gray-200 px-4 py-3 text-[12px] uppercase tracking-wide text-gray-600 dark:border-gray-800 dark:text-gray-400">
                       Breakdown
@@ -245,7 +267,6 @@ export function TargetsComparison({ data }: { data: any[] }) {
                     </div>
                   </div>
 
-                  {/* Progress: Revenue */}
                   {/* Revenue */}
                   <div>
                     <div className="mb-1.5 flex items-center justify-between">
@@ -260,7 +281,7 @@ export function TargetsComparison({ data }: { data: any[] }) {
                     <Progress
                       value={revenueProgress}
                       className="h-2 rounded-full bg-gray-200 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] dark:bg-gray-800
-               [&>div]:bg-emerald-600/90 dark:[&>div]:bg-emerald-500/90"
+                      [&>div]:bg-emerald-600/90 dark:[&>div]:bg-emerald-500/90"
                     />
                   </div>
 
@@ -277,7 +298,7 @@ export function TargetsComparison({ data }: { data: any[] }) {
                     <Progress
                       value={rentsProgress}
                       className="h-2 rounded-full bg-gray-200 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] dark:bg-gray-800
-               [&>div]:bg-sky-600/90 dark:[&>div]:bg-sky-500/90"
+                      [&>div]:bg-sky-600/90 dark:[&>div]:bg-sky-500/90"
                     />
                   </div>
 

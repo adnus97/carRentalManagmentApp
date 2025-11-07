@@ -17,7 +17,34 @@ import {
 import { getCarRentals } from '@/api/cars';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import React from 'react';
+
+// ================= Empty State Card (inline) =================
+function EmptyStateCard({
+  title,
+  description,
+  ctaText = 'Create Rental',
+  onCta,
+}: {
+  title: string;
+  description?: string;
+  ctaText?: string;
+  onCta?: () => void;
+}) {
+  return (
+    <Card className="p-8 flex flex-col items-center w-fit place-self-center text-center rounded-xl shadow-md bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-200/70 dark:bg-slate-800/70">
+        <span className="inline-flex h-8 w-8 items-center justify-center text-pink-400">
+          📄
+        </span>
+      </div>
+      <h3 className="mb-1 text-lg font-semibold">{title}</h3>
+      {description ? <p className="mb-6 text-sm">{description}</p> : null}
+    </Card>
+  );
+}
+// ============================================================
 
 // ✅ Safe number helper
 function safeNumber(value: number | null | undefined): number {
@@ -37,7 +64,6 @@ export default function CarRentalsGrid({
     avgRentPrice: number;
   };
 }) {
-  console.log('CarRentalsGrid mounted with carId:', carId);
   const [page, setPage] = useState(1);
   const pageSize = 5;
 
@@ -57,6 +83,7 @@ export default function CarRentalsGrid({
   if (isLoading) return <p>Loading rentals...</p>;
 
   const totalPages = data?.totalPages || 1;
+  const isEmpty = (data?.total ?? 0) === 0; // <-- key empty-state flag
 
   // ✅ Find current active rent
   const currentRent = data.data.find(
@@ -65,7 +92,7 @@ export default function CarRentalsGrid({
       (!r.returnedAt || new Date(r.returnedAt) > new Date()),
   );
 
-  // ✅ Pagination logic (copied from CarTargetsGrid)
+  // ✅ Pagination logic
   const getPageNumbers = () => {
     const pages: number[] = [];
     for (let p = 1; p <= totalPages; p++) {
@@ -76,7 +103,6 @@ export default function CarRentalsGrid({
     return pages;
   };
 
-  // ✅ Grid columns
   const columnDefs = [
     {
       headerName: 'Start Date',
@@ -92,7 +118,7 @@ export default function CarRentalsGrid({
       headerName: 'End Date',
       field: 'endDate',
       valueFormatter: (p: { value: string | null }) => {
-        if (!p.value) return 'Ongoing'; // ✅ Fix: show "Ongoing" if null
+        if (!p.value) return 'Ongoing';
         const parsed = parseISO(p.value);
         return isValid(parsed) ? format(parsed, 'dd/MM/yyyy') : 'Invalid';
       },
@@ -107,6 +133,26 @@ export default function CarRentalsGrid({
     { headerName: 'Status', field: 'status', flex: 1 },
   ];
 
+  // Optional: open your create-rental dialog
+  const handleCreateRental = () => {
+    // TODO: setCreateRentalOpen(true)
+  };
+
+  // ===== EMPTY STATE: show only the card and hide everything else =====
+  if (isEmpty) {
+    return (
+      <div className="w-full max-w-[1200px] mx-auto min-h-[60vh] flex items-center justify-center py-10">
+        <EmptyStateCard
+          title="No rentals found"
+          description="This car doesn't have any rental history yet."
+          ctaText="Create Rental"
+          onCta={handleCreateRental}
+        />
+      </div>
+    );
+  }
+
+  // ===== NON-EMPTY: summary + grid + pagination =====
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
       {/* ✅ Summary Card */}
@@ -114,10 +160,8 @@ export default function CarRentalsGrid({
         className={[
           'p-4 border border-border shadow-md rounded-lg',
           'relative overflow-hidden rounded-xl border shadow-sm',
-          // Light mode
           'border-gray-200 bg-white text-gray-900',
           'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
-          // Dark mode (Insurance style)
           'dark:border-border dark:text-gray-100 dark:shadow-lg',
           'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
         ].join(' ')}
@@ -217,7 +261,6 @@ export default function CarRentalsGrid({
       <div className="lg:col-span-2">
         <h3 className="text-md font-semibold mb-2">Rentals History</h3>
         <div className="flex flex-col h-full">
-          {/* 🔹 Smaller height grid */}
           <div className="flex-1 max-h-[300px] overflow-hidden">
             <CarDataGrid<RentalRow>
               rowData={data.data}
@@ -226,7 +269,6 @@ export default function CarRentalsGrid({
             />
           </div>
 
-          {/* 🔹 Pagination always visible (like CarTargetsGrid) */}
           {totalPages >= 1 && (
             <Pagination className="mt-4">
               <PaginationContent>

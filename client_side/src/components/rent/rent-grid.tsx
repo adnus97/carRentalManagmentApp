@@ -879,120 +879,122 @@ export const RentsGrid = () => {
       </div>
       {selectedRows.length > 0 && (
         <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-          <div className="flex items-center gap-2 ">
-            <span className="text-sm font-medium">
-              {selectedRows.length} Rent
-              {selectedRows.length > 1 ? 's' : ''} selected
-            </span>
-            <Separator orientation="vertical" className="h-4" />
-            {/* View button: only when exactly 1 selected */}
-            {selectedRows.length === 1 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const id = selectedRows[0]?.id;
-                  if (!id) {
-                    toast({
-                      type: 'error',
-                      title: 'Missing ID',
-                      description:
-                        'Selected row does not contain a contract ID.',
-                    });
-                    return;
-                  }
-                  setContractId(id);
-                  setContractOpen(true);
-                }}
-                className="inline-flex items-center gap-2"
-              >
-                <FileText size={20} />
-                View
-              </Button>
-            )}
-
-            {/* PDF button: only when exactly 1 selected */}
-            {selectedRows.length === 1 && (
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  const row = selectedRows[0];
-                  const contractId =
-                    row?.rentContractId ||
-                    (row?.rentNumber && row?.year
-                      ? `${String(row.rentNumber).padStart(3, '0')}/${row.year}`
-                      : `#${String(row?.id || '').slice(0, 8)}`);
-
-                  try {
-                    // Ensure downloadRentContractPDF triggers a browser download
-                    // and throws on non-200 responses.
-                    await downloadRentContractPDF(row.id);
-                    toast({
-                      type: 'success',
-                      title: 'Download Started',
-                      description: `Contract ${contractId} is being downloaded.`,
-                    });
-                  } catch (error: any) {
-                    const msg =
-                      error?.response?.data?.message ||
-                      error?.response?.data?.error ||
-                      error?.message ||
-                      'Failed to download contract. Please try again.';
-                    toast({
-                      type: 'error',
-                      title: 'Download Failed',
-                      description: msg,
-                    });
-                  }
-                }}
-              >
-                <Download size={20} />
-                PDF
-              </Button>
-            )}
-            {selectedRows.length === 1 && (
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  const row = selectedRows[0];
-                  try {
-                    await downloadContractDOCX(row.id);
-                    toast({
-                      type: 'success',
-                      title: 'Download Started',
-                      description: 'Word document is being downloaded.',
-                    });
-                  } catch (error: any) {
-                    const msg =
-                      error?.response?.data?.message ||
-                      error?.message ||
-                      'Failed to download Word file. Please try again.';
-                    toast({
-                      type: 'error',
-                      title: 'Download Failed',
-                      description: msg,
-                    });
-                  }
-                }}
-              >
-                Word
-              </Button>
-            )}
-            {/* Delete button: still supports multiple */}
-            <Button
-              variant="secondary"
-              className="ml-auto flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={selectedRows.length === 0}
-            >
-              <Trash size={20} />
-              Delete ({deletableCount}/{selectedRows.length})
-            </Button>
-
-            {activeCount > 0 && (
-              <span className="text-xs text-yellow-600">
-                {activeCount} active rental(s) cannot be deleted
+          <div className="flex items-center gap-2 justify-between w-full">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                {selectedRows.length} Rent
+                {selectedRows.length > 1 ? 's' : ''} selected
               </span>
-            )}
+              <Separator orientation="vertical" className="h-4" />
+              {/* View button: only when exactly 1 selected */}
+              {selectedRows.length === 1 && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const id = selectedRows[0]?.id;
+                    if (!id) {
+                      toast({
+                        type: 'error',
+                        title: 'Missing ID',
+                        description:
+                          'Selected row does not contain a contract ID.',
+                      });
+                      return;
+                    }
+                    setContractId(id);
+                    setContractOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2"
+                >
+                  <FileText size={20} />
+                  View
+                </Button>
+              )}
+              {/* PDF button: only when exactly 1 selected */}
+              {selectedRows.length === 1 && (
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    const row = selectedRows[0];
+                    const contractId =
+                      row?.rentContractId ||
+                      (row?.rentNumber && row?.year
+                        ? `${String(row.rentNumber).padStart(3, '0')}/${row.year}`
+                        : `#${String(row?.id || '').slice(0, 8)}`);
+
+                    try {
+                      // Ensure downloadRentContractPDF triggers a browser download
+                      // and throws on non-200 responses.
+                      await downloadRentContractPDF(row.id);
+                      toast({
+                        type: 'success',
+                        title: 'Download Started',
+                        description: `Contract ${contractId} is being downloaded.`,
+                      });
+                    } catch (error: any) {
+                      const msg =
+                        error?.response?.data?.message ||
+                        error?.response?.data?.error ||
+                        error?.message ||
+                        'Failed to download contract. Please try again.';
+                      toast({
+                        type: 'error',
+                        title: 'Download Failed',
+                        description: msg,
+                      });
+                    }
+                  }}
+                >
+                  <Download size={20} />
+                  PDF
+                </Button>
+              )}
+              {selectedRows.length === 1 && (
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    const row = selectedRows[0];
+                    try {
+                      await downloadContractDOCX(row.id);
+                      toast({
+                        type: 'success',
+                        title: 'Download Started',
+                        description: 'Word document is being downloaded.',
+                      });
+                    } catch (error: any) {
+                      const msg =
+                        error?.response?.data?.message ||
+                        error?.message ||
+                        'Failed to download Word file. Please try again.';
+                      toast({
+                        type: 'error',
+                        title: 'Download Failed',
+                        description: msg,
+                      });
+                    }
+                  }}
+                >
+                  Word
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Delete button: still supports multiple */}
+              <Button
+                variant="secondary"
+                className="ml-auto flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={selectedRows.length === 0}
+              >
+                <Trash size={20} />
+                Delete ({deletableCount}/{selectedRows.length})
+              </Button>
+              {activeCount > 0 && (
+                <span className="text-xs text-yellow-600">
+                  {activeCount} active rental(s) cannot be deleted
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}

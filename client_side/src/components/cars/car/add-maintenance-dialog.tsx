@@ -25,6 +25,7 @@ import {
   SelectItem,
   SelectValue,
 } from '@/components/ui/select';
+import { FormDatePicker } from '@/components/form-date-picker';
 
 const maintenanceSchema = z.object({
   type: z.string().nonempty('Type is required'),
@@ -33,6 +34,7 @@ const maintenanceSchema = z.object({
     .number({ invalid_type_error: 'Cost must be a number' })
     .min(0, 'Cost is required'),
   mileage: z.number().optional(),
+  createdAt: z.date(),
 });
 
 type MaintenanceFormFields = z.infer<typeof maintenanceSchema>;
@@ -60,7 +62,13 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
 
   const mutation = useMutation({
     mutationFn: (payload: MaintenanceFormFields) =>
-      addMaintenanceLog(carId, payload),
+      addMaintenanceLog(carId, {
+        type: payload.type,
+        description: payload.description,
+        cost: payload.cost,
+        mileage: payload.mileage,
+        createdAt: payload.createdAt.toISOString(), // convert Date -> ISO for API
+      }),
     onSuccess: () => {
       successToast('Maintenance log added');
       queryClient.invalidateQueries({
@@ -90,14 +98,11 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
       description: '',
       cost: 0,
       mileage: 0,
+      createdAt: new Date(),
     },
   });
 
   const onSubmit = (data: MaintenanceFormFields) => {
-    if (isRented) {
-      errorToast('This car is currently rented. Maintenance not allowed.');
-      return;
-    }
     mutation.mutate(data);
   };
 
@@ -108,12 +113,6 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
           variant="outline"
           disabled={carLoading}
           onClick={() => {
-            if (isRented) {
-              errorToast(
-                'This car is currently rented. Maintenance cannot be added.',
-              );
-              return;
-            }
             setIsOpen(true);
           }}
         >
@@ -188,7 +187,25 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
               <p className="text-red-500 text-xs">{errors.mileage.message}</p>
             )}
           </div>
-
+          <div>
+            <Label>Date & Time</Label>
+            <Controller
+              control={control}
+              name="createdAt"
+              render={({ field }) => (
+                <FormDatePicker
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Select date and time"
+                />
+              )}
+            />
+            {errors.createdAt && (
+              <p className="text-red-500 text-xs">
+                {errors.createdAt.message as any}
+              </p>
+            )}
+          </div>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : 'Save'}
           </Button>

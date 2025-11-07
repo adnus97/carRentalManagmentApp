@@ -25,6 +25,7 @@ import {
   PinnedRowModule,
   TextFilterModule,
 } from 'ag-grid-community';
+import { Loader } from '@/components/loader';
 
 type CarDataGridProps<T> = AgGridReactProps<T>;
 
@@ -135,7 +136,13 @@ export default function CarTargetsGrid({
     { headerName: 'Days Remaining', field: 'daysRemaining' },
   ];
 
-  if (isLoading) return <p>Loading targets...</p>;
+  if (isLoading)
+    return (
+      <p>
+        <Loader />
+        Loading targets...
+      </p>
+    );
 
   // No active target behavior (restored)
   if (!activeCard) {

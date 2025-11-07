@@ -200,6 +200,13 @@ export class CarsController {
       this.handleControllerError(error);
     }
   }
+  @Put('maintenance/:id')
+  updateMaintenance(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreateMaintenanceDto>,
+  ) {
+    return this.carsService.updateMaintenanceLog(id, dto);
+  }
   @Get(':id/insurance-status')
   async checkInsuranceStatus(
     @Param('id') id: string,

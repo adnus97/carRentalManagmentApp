@@ -33,4 +33,8 @@ export class CreateMaintenanceDto {
   @IsNumber()
   @IsOptional()
   mileage?: number;
+
+  @IsDate()
+  @Type(() => Date)
+  createdAt: Date;
 }

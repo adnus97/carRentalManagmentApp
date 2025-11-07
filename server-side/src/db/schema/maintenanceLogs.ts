@@ -24,6 +24,6 @@ export const maintenanceLogs = pgTable('maintenance_logs', {
   mileage: integer('mileage'), // optional
   cost: integer('cost'), // optional,
   description: text('description'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
