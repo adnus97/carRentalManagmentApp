@@ -1,5 +1,5 @@
-// import * as React from 'react';
-import { SearchForm } from '@/components/search-form';
+// src/components/app-sidebar.tsx
+import * as React from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -10,15 +10,7 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import {
-  CarProfile,
-  UserList,
-  ChartDonut,
-  BuildingOffice,
-  CaretUpDown,
-  User,
-  SignOut,
-} from '@phosphor-icons/react';
+import { CaretUpDown, User, SignOut, Shield } from '@phosphor-icons/react';
 import { Link, useRouter } from '@tanstack/react-router';
 import {
   DropdownMenu,
@@ -28,25 +20,21 @@ import {
 } from './ui/dropdown-menu';
 import { Separator } from './ui/separator';
 import { useUser } from '@/contexts/user-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getOrganizationByUser, Organization } from '@/api/organization';
-import { UserDefaultImg } from './user-defaultImg';
 import { authClient } from '@/lib/auth-client';
 import { ConfirmationDialog } from './confirmation-dialog';
 import { navigationConfig } from '@/config/navigation';
 import { NotificationsDropdown } from './notifications/notification-dropdown';
-import { useQueryClient } from '@tanstack/react-query';
-
-import React from 'react';
-import { Skeleton } from './ui/skeleton';
-
-const navData = navigationConfig;
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, setUser } = useUser();
   const queryClient = useQueryClient();
   const router = useRouter();
   const [showSignOutDialog, setShowSignOutDialog] = React.useState(false);
+
+  // Check if user is super admin
+  const isSuperAdmin = user?.role === 'super_admin';
 
   const { data, isLoading } = useQuery<Organization[]>({
     queryKey: ['organizations'],
@@ -61,16 +49,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     router.navigate({ to: '/login' });
   };
 
+  // Conditionally select navigation items
+  const navigationItems = isSuperAdmin
+    ? navigationConfig.navAdmin
+    : navigationConfig.navMain.slice(0, -1); // Exclude notifications placeholder
+
+  // Conditionally select avatar gradient
+  const avatarGradient = isSuperAdmin
+    ? 'from-red-500 to-orange-600'
+    : 'from-blue-500 to-purple-600';
+
   return (
     <>
       <Sidebar {...props} className="bg-gray-3 border-r-gray-4">
-        {/* ✅ Completely empty header */}
         <SidebarHeader className="h-0 p-0 border-0 m-0" />
 
         <SidebarContent className="px-4 py-2">
+          {/* Conditional Admin Badge */}
+          {isSuperAdmin && (
+            <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md">
+              <Shield size={16} className="text-red-600 dark:text-red-400" />
+              <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                ADMIN PANEL
+              </span>
+            </div>
+          )}
+
           <SidebarGroup>
             <SidebarMenu>
-              {navData.navMain.slice(0, -1).map((item) => (
+              {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild>
                     <Link
@@ -86,7 +93,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroup>
 
-          {/* Push notifications to bottom */}
           <div className="flex-1" />
 
           <div className="flex justify-end pb-2">
@@ -94,7 +100,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
         </SidebarContent>
 
-        {/* ✅ User info ONLY in footer */}
         <SidebarFooter className="border-t border-gray-6 bg-gray-1 p-0">
           <SidebarMenu>
             <SidebarMenuItem>
@@ -102,7 +107,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton className="h-16 px-4 py-3 hover:bg-gray-3 transition-colors duration-200">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {/* ✅ Fixed avatar rendering */}
                       <div className="w-10 h-10 flex-shrink-0">
                         {!isLoading && data?.[0]?.imageFileId ? (
                           <img
@@ -111,7 +115,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
                           />
                         ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md">
+                          <div
+                            className={`w-10 h-10 bg-gradient-to-br ${avatarGradient} rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md`}
+                          >
                             {(user?.name || 'U').charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -140,7 +146,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   className="w-64 p-2"
                   sideOffset={8}
                 >
-                  {/* Same avatar logic in dropdown */}
                   <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 mb-2">
                     <div className="w-10 h-10 flex-shrink-0">
                       {!isLoading && data?.[0]?.imageFileId ? (
@@ -150,7 +155,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
                         />
                       ) : (
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        <div
+                          className={`w-10 h-10 bg-gradient-to-br ${avatarGradient} rounded-full flex items-center justify-center text-white text-sm font-bold`}
+                        >
                           {(user?.name || 'U').charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -185,7 +192,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                   <DropdownMenuItem
                     onSelect={() => setShowSignOutDialog(true)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4  cursor-pointer text-red-600"
+                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600"
                   >
                     <SignOut size={18} />
                     <span className="text-sm font-medium">Sign Out</span>

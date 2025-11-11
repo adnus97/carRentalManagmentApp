@@ -4,9 +4,10 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { EnhancedCronService } from './enhanced-cron.service';
 import { DatabaseModule } from '../db/database.module';
+import { EmailModule } from 'src/email/email.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, EmailModule],
   controllers: [NotificationsController],
   providers: [NotificationsService, EnhancedCronService],
   exports: [NotificationsService],

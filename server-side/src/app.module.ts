@@ -21,6 +21,8 @@ import { FilesModule } from './files/files.module';
 import { EmailModule } from './email/email.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { SubscriptionModule } from './subscription/subscription.module';
+import { AdminModule } from './admin/admin.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -45,6 +47,8 @@ import { join } from 'path';
     R2Module,
     FilesModule,
     EmailModule,
+    SubscriptionModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

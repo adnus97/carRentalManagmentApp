@@ -4,6 +4,7 @@ import { BadRequestException, Logger } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common';
 import { createRouteHandler } from 'uploadthing/express';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import cookieParser from 'cookie-parser';
 
 const whitelist = [
   'http://localhost:5173',
@@ -12,6 +13,7 @@ const whitelist = [
 ];
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

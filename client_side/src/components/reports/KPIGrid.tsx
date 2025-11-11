@@ -22,10 +22,11 @@ type BackendSnapshot = {
   revenueCollected: number;
   openAR: number;
   totalMaintenanceCost: number;
+  monthlyLeaseTotal: number; // ✅ ADD THIS
   totalRents: number;
-  utilization: number; // Already 0..1 from backend
-  adr: number; // Already calculated by backend
-  revPar: number; // Already calculated by backend
+  utilization: number;
+  adr: number;
+  revPar: number;
   netProfit: number;
 };
 
@@ -42,6 +43,7 @@ export function KPIGrid({ snapshot }: { snapshot: BackendSnapshot | null }) {
     adr: 'ADR',
     revPar: 'RevPAR',
     totalMaintenanceCost: 'Maintenance Costs',
+    monthlyLeaseTotal: 'Lease Costs', // ✅ ADD THIS
     netProfit: 'Net Profit',
     periodDays: 'Period Days',
     rentedDays: 'Rented Days',
@@ -58,7 +60,8 @@ export function KPIGrid({ snapshot }: { snapshot: BackendSnapshot | null }) {
     adr: 'Average revenue per rented day.',
     revPar: 'Revenue per available car-day across the whole fleet.',
     totalMaintenanceCost: 'Total maintenance spend in the period.',
-    netProfit: 'Collected revenue minus maintenance costs in the period.',
+    monthlyLeaseTotal: 'Total lease costs prorated for the selected period.',
+    netProfit: 'Collected revenue minus maintenance and lease costs.',
     periodDays: 'Number of calendar days in the selected range.',
     rentedDays: 'Sum of rental days within the period across all cars.',
   };
@@ -75,6 +78,7 @@ export function KPIGrid({ snapshot }: { snapshot: BackendSnapshot | null }) {
     'adr',
     'revPar',
     'totalMaintenanceCost',
+    'monthlyLeaseTotal',
     'netProfit',
   ];
 
@@ -85,6 +89,7 @@ export function KPIGrid({ snapshot }: { snapshot: BackendSnapshot | null }) {
     'adr',
     'revPar',
     'totalMaintenanceCost',
+    'monthlyLeaseTotal',
     'netProfit',
   ]);
 

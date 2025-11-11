@@ -1,5 +1,7 @@
+// src/contexts/user-context.tsx
 import { Loader } from '@/components/loader';
-import type { User } from '../types/user';
+import type { User } from '@/types/user'; // ✅ Import from types
+import { getCurrentUser } from '@/api/auth';
 import {
   createContext,
   useContext,
@@ -11,9 +13,9 @@ import {
 
 export interface UserContextType {
   user: User | null;
-  // IMPORTANT: make this a React state setter type
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  setUser: (user: User | null) => void; // ✅ Change to function signature
   is_authenticated: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType | undefined>(
@@ -36,21 +38,45 @@ const AUTH_KEY = 'authUser';
 
 const useAuthProvider = (): UserContextType => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false); // ✅ Add this
   const is_authenticated = !!user;
 
-  useEffect(() => {
-    const localUser = localStorage.getItem(AUTH_KEY);
-    if (!user && localUser) {
-      const parsedUser = JSON.parse(localUser) as User;
-      setUser(parsedUser);
+  const refreshUser = async () => {
+    try {
+      const userData = await getCurrentUser();
+
+      if (userData) {
+        setUser(userData);
+        localStorage.setItem(AUTH_KEY, JSON.stringify(userData));
+      } else {
+        setUser(null);
+        localStorage.removeItem(AUTH_KEY);
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      setUser(null);
+      localStorage.removeItem(AUTH_KEY);
+    } finally {
+      setLoading(false);
+      setInitialized(true); // ✅ Mark as initialized after first fetch
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  };
+
+  useEffect(() => {
+    const initializeUser = async () => {
+      // ✅ Don't load from localStorage first - go straight to fresh data
+      await refreshUser();
+    };
+
+    initializeUser();
   }, []);
 
   return {
     user,
     setUser,
     is_authenticated,
+    refreshUser,
   };
 };
 
@@ -68,9 +94,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     };
   }, []);
 
-  return (
-    <UserContext.Provider value={auth}>
-      {mounted ? children : <Loader />}
-    </UserContext.Provider>
-  );
+  // ✅ Show loader while auth is initializing
+  if (!mounted) {
+    return <Loader />;
+  }
+
+  return <UserContext.Provider value={auth}>{children}</UserContext.Provider>;
 };

@@ -13,6 +13,7 @@ import { useUser } from '@/contexts/user-context';
 import { toast } from '../ui/toast';
 import { useState } from 'react';
 import { ForgotPasswordModal } from './forgot-password-modal';
+import { ModeToggle } from '../mode-toggle';
 
 const schema = z.object({
   email: z
@@ -31,6 +32,7 @@ export function LoginForm({
   const navigate = useNavigate({ from: '/login' });
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { refreshUser } = useUser(); // ✅ Get refreshUser from context
 
   const {
     register,
@@ -39,7 +41,7 @@ export function LoginForm({
     reset,
   } = useForm<formFields>({ resolver: zodResolver(schema) });
 
-  const { user, setUser } = useUser();
+  //const { user, setUser } = useUser();
 
   const onsubmit = async (formData: formFields) => {
     await authClient.signIn.email(
@@ -49,23 +51,23 @@ export function LoginForm({
       },
       {
         onRequest: (ctx: any) => {},
-        onSuccess: (ctx: any) => {
-          setUser(ctx.data.user);
-          localStorage.setItem('authUser', JSON.stringify(ctx.data.user));
-          console.log('Previous user state:', user);
-          console.log('New user data:', ctx.data.user);
+        onSuccess: async (ctx: any) => {
+          // ✅ Don't manually set user - let refreshUser handle it
+          console.log('Login successful, fetching complete user data...');
+
+          // ✅ Fetch complete user data including subscription fields
+          await refreshUser();
+
+          console.log('Complete user data loaded, navigating...');
 
           setTimeout(() => {
-            navigate({ to: '/dashboard' });
+            navigate({ to: '/dashboard' }); // ❌ Navigating too early!
           }, 100);
-          console.log('Final user state:', ctx.data.user);
-
           reset();
         },
         onError: (ctx: any) => {
           let errorMessage = ctx.error.message;
 
-          // Handle specific error codes
           if (ctx.error.code === 'INVALID_EMAIL_OR_PASSWORD') {
             errorMessage = 'Invalid email or password. Please try again.';
           } else if (ctx.error.code === 'EMAIL_NOT_VERIFIED') {
@@ -105,6 +107,9 @@ export function LoginForm({
 
   return (
     <>
+      <div className="absolute top-4 right-4 md:top-8 md:right-8">
+        <ModeToggle />
+      </div>
       <div
         className={cn('flex flex-col gap-6 max-w-max', className)}
         {...props}
@@ -178,42 +183,6 @@ export function LoginForm({
                     'Login'
                   )}
                 </Button>
-
-                <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
-                  <span className="relative z-10 bg-gray-2 px-2 text-muted-foreground">
-                    Or continue with
-                  </span>
-                </div>
-
-                <div className="">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleGoogleSignIn}
-                    disabled={isGoogleLoading}
-                  >
-                    {isGoogleLoading ? (
-                      <>
-                        <Loader />
-                        <span>Connecting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-                            fill="currentColor"
-                          />
-                        </svg>
-                        Google
-                      </>
-                    )}
-                  </Button>
-                </div>
 
                 <div className="text-center text-sm">
                   Don&apos;t have an account?{' '}

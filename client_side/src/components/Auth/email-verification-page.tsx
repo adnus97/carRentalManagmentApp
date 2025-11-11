@@ -1,6 +1,6 @@
 // src/components/auth/email-verification-page.tsx
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useRouter } from '@tanstack/react-router';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { authClient } from '@/lib/auth-client';
 import { useUser } from '@/contexts/user-context';
 import {
@@ -18,8 +18,7 @@ export function EmailVerificationPage() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
-  const { setUser } = useUser();
-  const router = useRouter();
+  const { setUser, refreshUser } = useUser();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
     'loading',
   );
@@ -45,20 +44,24 @@ export function EmailVerificationPage() {
     try {
       if (verificationType === 'change-email') {
         await authClient.verifyEmail({
-          query: {
-            token,
-          },
+          query: { token },
         });
+
+        // Sign out after email change
         await authClient.signOut();
         localStorage.removeItem('authUser');
         setUser(null);
-        router.navigate({ to: '/login' });
-      } else if (verificationType === 'delete-account') {
-        // Handle account deletion
-        // const result = await authClient.deleteUser({
-        //   token,
-        // });
 
+        toast({
+          type: 'success',
+          title: 'Email Changed',
+          description: 'Please sign in with your new email address.',
+        });
+
+        setTimeout(() => {
+          navigate({ to: '/login' });
+        }, 2000);
+      } else if (verificationType === 'delete-account') {
         setStatus('success');
         setMessage('Account deletion confirmed.');
 
@@ -72,21 +75,17 @@ export function EmailVerificationPage() {
           navigate({ to: '/login' });
         }, 2000);
       } else {
+        // Regular email verification
         const result = await authClient.verifyEmail({
-          query: {
-            token,
-          },
+          query: { token },
         });
 
         if (result.data) {
           setStatus('success');
           setMessage('Email verified successfully!');
 
-          // Update user context if user data is returned
-          if (result.data.user) {
-            setUser(result.data.user);
-            localStorage.setItem('authUser', JSON.stringify(result.data.user));
-          }
+          // Refresh user data
+          await refreshUser();
 
           toast({
             type: 'success',
@@ -94,8 +93,17 @@ export function EmailVerificationPage() {
             description: 'Your email has been successfully verified!',
           });
 
+          // Check if user is still authenticated
+          const session = await authClient.getSession();
+
           setTimeout(() => {
-            navigate({ to: '/organizationForm' });
+            if (session?.data?.user) {
+              // User is authenticated, go to org form
+              navigate({ to: '/organizationForm' });
+            } else {
+              // User is not authenticated, go to login
+              navigate({ to: '/login' });
+            }
           }, 2000);
         } else {
           throw new Error('Failed to verify email');
@@ -107,7 +115,6 @@ export function EmailVerificationPage() {
 
       let errorMessage = 'Failed to verify email';
 
-      // Handle different error types
       if (error?.message) {
         if (
           error.message.includes('invalid') ||
@@ -119,13 +126,19 @@ export function EmailVerificationPage() {
             'The verification link has expired. Please request a new one.';
         } else if (error.message.includes('already verified')) {
           errorMessage = 'Email is already verified';
-          // If already verified, redirect anyway
           setStatus('success');
+
+          // Check authentication and redirect
+          const session = await authClient.getSession();
           setTimeout(() => {
-            if (verificationType === 'email-verification') {
-              navigate({ to: '/organizationForm' });
+            if (session?.data?.user) {
+              if (verificationType === 'email-verification') {
+                navigate({ to: '/organizationForm' });
+              } else {
+                navigate({ to: '/account-settings' });
+              }
             } else {
-              navigate({ to: '/account-settings' });
+              navigate({ to: '/login' });
             }
           }, 2000);
           return;
@@ -175,35 +188,28 @@ export function EmailVerificationPage() {
   const getSuccessRedirectMessage = () => {
     switch (verificationType) {
       case 'change-email':
-        return 'Redirecting to account settings...';
+        return 'Redirecting to login...';
       case 'delete-account':
         return 'Redirecting to login...';
       default:
-        return 'Redirecting to organization setup...';
+        return 'Redirecting...';
     }
   };
 
-  const getSuccessButtonText = () => {
-    switch (verificationType) {
-      case 'change-email':
-        return 'Go to Account Settings';
-      case 'delete-account':
-        return 'Go to Login';
-      default:
-        return 'Continue to Organization Setup';
-    }
-  };
+  const handleSuccessRedirect = async () => {
+    const session = await authClient.getSession();
 
-  const handleSuccessRedirect = () => {
     switch (verificationType) {
       case 'change-email':
-        navigate({ to: '/account-settings' });
-        break;
       case 'delete-account':
         navigate({ to: '/login' });
         break;
       default:
-        navigate({ to: '/organizationForm' });
+        if (session?.data?.user) {
+          navigate({ to: '/organizationForm' });
+        } else {
+          navigate({ to: '/login' });
+        }
         break;
     }
   };
@@ -251,7 +257,7 @@ export function EmailVerificationPage() {
                 {getSuccessRedirectMessage()}
               </p>
               <Button onClick={handleSuccessRedirect} className="w-full">
-                {getSuccessButtonText()}
+                Continue
               </Button>
             </div>
           )}

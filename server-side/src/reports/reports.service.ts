@@ -51,7 +51,46 @@ function overlapDaysInclusive(
   const oe = re < fe ? re : fe;
   return inclusiveDays(os, oe);
 }
+async function computeMonthlyLeaseTotal(
+  db: any,
+  orgId: string,
+  from: Date,
+  to: Date,
+  carId?: string,
+): Promise<number> {
+  const carsWithLease = await db
+    .select({
+      id: cars.id,
+      monthlyLeasePrice: sql<number>`COALESCE(${cars.monthlyLeasePrice}, 0)`,
+      status: cars.status,
+    })
+    .from(cars)
+    .where(
+      and(
+        eq(cars.orgId, orgId),
+        sql`${cars.status} != 'deleted'`,
+        ...(carId ? [eq(cars.id, carId)] : []),
+      ),
+    );
 
+  if (!carsWithLease.length) return 0;
+
+  const rangeDays = inclusiveDays(from, to);
+  if (rangeDays <= 0) return 0;
+
+  let total = 0;
+  for (const c of carsWithLease) {
+    const monthly = c.monthlyLeasePrice || 0;
+    if (monthly <= 0) continue;
+
+    // Convert monthly lease to daily rate via annual cost
+    const annualCost = monthly * 12;
+    const dailyRate = annualCost / 365.25;
+    total += dailyRate * rangeDays;
+  }
+
+  return total;
+}
 @Injectable()
 export class ReportsService {
   constructor(private readonly db: DatabaseService) {}
@@ -167,12 +206,19 @@ export class ReportsService {
       .where(and(eq(cars.orgId, orgId), sql`${cars.status} != 'deleted'`));
 
     const now = new Date();
-
+    const monthlyLeaseTotal = await computeMonthlyLeaseTotal(
+      this.db.db,
+      orgId,
+      range.from,
+      range.to,
+      carId,
+    );
     // ✅ Revenue (final + provisional)
     const { revenueBilled, revenueCollected, openAR } =
       RevenueMetrics.calculate(rows);
     // Calculate net profit (after calculating revenueCollected)
-    const netProfit = revenueCollected - maintenance.totalMaintenanceCost;
+    const netProfit =
+      revenueCollected - maintenance.totalMaintenanceCost - monthlyLeaseTotal;
     // Rental days (for ADR + Utilization)
     // const periodDays = Math.max(
     //   1,
@@ -281,13 +327,14 @@ export class ReportsService {
         openAR,
         totalRents,
         fleetSize: Number(fleetCount),
-        periodDays, // exact inclusive
-        rentedDays, // exact inclusive
-        adr, // exact = revenueBilled / rentedDays
-        revPar, // exact = revenueBilled / (fleetSize*periodDays)
-        utilization, // fraction 0..1 (or multiply by 100 if you prefer percent)
-        totalMaintenanceCost: maintenance.totalMaintenanceCost, // ✅ New
-        netProfit, // ✅ New
+        periodDays,
+        rentedDays,
+        adr,
+        revPar,
+        utilization,
+        totalMaintenanceCost: maintenance.totalMaintenanceCost,
+        monthlyLeaseTotal, // ✅ ADD THIS
+        netProfit, // ✅ Now includes lease cost subtraction
       },
       trends,
       prevTrends,

@@ -12,6 +12,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as VerifyEmailImport } from './routes/verify-email'
+import { Route as SubscriptionRequiredImport } from './routes/subscription-required'
 import { Route as SignupImport } from './routes/signup'
 import { Route as ResetPasswordImport } from './routes/reset-password'
 import { Route as OrganizationFormImport } from './routes/organizationForm'
@@ -29,12 +30,19 @@ import { Route as LayoutClientsImport } from './routes/_layout.clients'
 import { Route as LayoutAccountSettingsImport } from './routes/_layout.account-settings'
 import { Route as LayoutCustomerDetailsIdImport } from './routes/_layout.customerDetails.$id'
 import { Route as LayoutCarDetailsIdImport } from './routes/_layout.carDetails.$id'
+import { Route as LayoutAdminDashboardImport } from './routes/_layout.admin.dashboard'
 
 // Create/Update Routes
 
 const VerifyEmailRoute = VerifyEmailImport.update({
   id: '/verify-email',
   path: '/verify-email',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const SubscriptionRequiredRoute = SubscriptionRequiredImport.update({
+  id: '/subscription-required',
+  path: '/subscription-required',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -138,6 +146,12 @@ const LayoutCarDetailsIdRoute = LayoutCarDetailsIdImport.update({
   getParentRoute: () => LayoutRoute,
 } as any)
 
+const LayoutAdminDashboardRoute = LayoutAdminDashboardImport.update({
+  id: '/admin/dashboard',
+  path: '/admin/dashboard',
+  getParentRoute: () => LayoutRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -189,6 +203,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupImport
+      parentRoute: typeof rootRoute
+    }
+    '/subscription-required': {
+      id: '/subscription-required'
+      path: '/subscription-required'
+      fullPath: '/subscription-required'
+      preLoaderRoute: typeof SubscriptionRequiredImport
       parentRoute: typeof rootRoute
     }
     '/verify-email': {
@@ -254,6 +275,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthIndexImport
       parentRoute: typeof AuthImport
     }
+    '/_layout/admin/dashboard': {
+      id: '/_layout/admin/dashboard'
+      path: '/admin/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof LayoutAdminDashboardImport
+      parentRoute: typeof LayoutImport
+    }
     '/_layout/carDetails/$id': {
       id: '/_layout/carDetails/$id'
       path: '/carDetails/$id'
@@ -290,6 +318,7 @@ interface LayoutRouteChildren {
   LayoutOrganizationRoute: typeof LayoutOrganizationRoute
   LayoutRentsRoute: typeof LayoutRentsRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
+  LayoutAdminDashboardRoute: typeof LayoutAdminDashboardRoute
   LayoutCarDetailsIdRoute: typeof LayoutCarDetailsIdRoute
   LayoutCustomerDetailsIdRoute: typeof LayoutCustomerDetailsIdRoute
 }
@@ -301,6 +330,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutOrganizationRoute: LayoutOrganizationRoute,
   LayoutRentsRoute: LayoutRentsRoute,
   LayoutReportsRoute: LayoutReportsRoute,
+  LayoutAdminDashboardRoute: LayoutAdminDashboardRoute,
   LayoutCarDetailsIdRoute: LayoutCarDetailsIdRoute,
   LayoutCustomerDetailsIdRoute: LayoutCustomerDetailsIdRoute,
 }
@@ -315,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/organizationForm': typeof OrganizationFormRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/subscription-required': typeof SubscriptionRequiredRoute
   '/verify-email': typeof VerifyEmailRoute
   '/account-settings': typeof LayoutAccountSettingsRoute
   '/clients': typeof LayoutClientsRoute
@@ -324,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof LayoutReportsRoute
   '/contracts/$id': typeof ContractsIdRoute
   '/': typeof AuthIndexRoute
+  '/admin/dashboard': typeof LayoutAdminDashboardRoute
   '/carDetails/$id': typeof LayoutCarDetailsIdRoute
   '/customerDetails/$id': typeof LayoutCustomerDetailsIdRoute
 }
@@ -335,6 +367,7 @@ export interface FileRoutesByTo {
   '/organizationForm': typeof OrganizationFormRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/subscription-required': typeof SubscriptionRequiredRoute
   '/verify-email': typeof VerifyEmailRoute
   '/account-settings': typeof LayoutAccountSettingsRoute
   '/clients': typeof LayoutClientsRoute
@@ -344,6 +377,7 @@ export interface FileRoutesByTo {
   '/reports': typeof LayoutReportsRoute
   '/contracts/$id': typeof ContractsIdRoute
   '/': typeof AuthIndexRoute
+  '/admin/dashboard': typeof LayoutAdminDashboardRoute
   '/carDetails/$id': typeof LayoutCarDetailsIdRoute
   '/customerDetails/$id': typeof LayoutCustomerDetailsIdRoute
 }
@@ -357,6 +391,7 @@ export interface FileRoutesById {
   '/organizationForm': typeof OrganizationFormRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/subscription-required': typeof SubscriptionRequiredRoute
   '/verify-email': typeof VerifyEmailRoute
   '/_layout/account-settings': typeof LayoutAccountSettingsRoute
   '/_layout/clients': typeof LayoutClientsRoute
@@ -366,6 +401,7 @@ export interface FileRoutesById {
   '/_layout/reports': typeof LayoutReportsRoute
   '/contracts/$id': typeof ContractsIdRoute
   '/_auth/': typeof AuthIndexRoute
+  '/_layout/admin/dashboard': typeof LayoutAdminDashboardRoute
   '/_layout/carDetails/$id': typeof LayoutCarDetailsIdRoute
   '/_layout/customerDetails/$id': typeof LayoutCustomerDetailsIdRoute
 }
@@ -379,6 +415,7 @@ export interface FileRouteTypes {
     | '/organizationForm'
     | '/reset-password'
     | '/signup'
+    | '/subscription-required'
     | '/verify-email'
     | '/account-settings'
     | '/clients'
@@ -388,6 +425,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/contracts/$id'
     | '/'
+    | '/admin/dashboard'
     | '/carDetails/$id'
     | '/customerDetails/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -398,6 +436,7 @@ export interface FileRouteTypes {
     | '/organizationForm'
     | '/reset-password'
     | '/signup'
+    | '/subscription-required'
     | '/verify-email'
     | '/account-settings'
     | '/clients'
@@ -407,6 +446,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/contracts/$id'
     | '/'
+    | '/admin/dashboard'
     | '/carDetails/$id'
     | '/customerDetails/$id'
   id:
@@ -418,6 +458,7 @@ export interface FileRouteTypes {
     | '/organizationForm'
     | '/reset-password'
     | '/signup'
+    | '/subscription-required'
     | '/verify-email'
     | '/_layout/account-settings'
     | '/_layout/clients'
@@ -427,6 +468,7 @@ export interface FileRouteTypes {
     | '/_layout/reports'
     | '/contracts/$id'
     | '/_auth/'
+    | '/_layout/admin/dashboard'
     | '/_layout/carDetails/$id'
     | '/_layout/customerDetails/$id'
   fileRoutesById: FileRoutesById
@@ -440,6 +482,7 @@ export interface RootRouteChildren {
   OrganizationFormRoute: typeof OrganizationFormRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  SubscriptionRequiredRoute: typeof SubscriptionRequiredRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   ContractsIdRoute: typeof ContractsIdRoute
 }
@@ -452,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrganizationFormRoute: OrganizationFormRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  SubscriptionRequiredRoute: SubscriptionRequiredRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   ContractsIdRoute: ContractsIdRoute,
 }
@@ -473,6 +517,7 @@ export const routeTree = rootRoute
         "/organizationForm",
         "/reset-password",
         "/signup",
+        "/subscription-required",
         "/verify-email",
         "/contracts/$id"
       ]
@@ -492,6 +537,7 @@ export const routeTree = rootRoute
         "/_layout/organization",
         "/_layout/rents",
         "/_layout/reports",
+        "/_layout/admin/dashboard",
         "/_layout/carDetails/$id",
         "/_layout/customerDetails/$id"
       ]
@@ -510,6 +556,9 @@ export const routeTree = rootRoute
     },
     "/signup": {
       "filePath": "signup.tsx"
+    },
+    "/subscription-required": {
+      "filePath": "subscription-required.tsx"
     },
     "/verify-email": {
       "filePath": "verify-email.tsx"
@@ -544,6 +593,10 @@ export const routeTree = rootRoute
     "/_auth/": {
       "filePath": "_auth/index.tsx",
       "parent": "/_auth"
+    },
+    "/_layout/admin/dashboard": {
+      "filePath": "_layout.admin.dashboard.tsx",
+      "parent": "/_layout"
     },
     "/_layout/carDetails/$id": {
       "filePath": "_layout.carDetails.$id.tsx",

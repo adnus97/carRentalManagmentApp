@@ -1,9 +1,15 @@
+// src/types/user.ts
 export interface User {
   id: string;
-  email: string;
   name: string;
-  image: string | null | undefined;
+  email: string;
   emailVerified: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  image?: string;
+  role: 'user' | 'super_admin';
+  subscriptionStatus: 'active' | 'inactive' | 'expired';
+  subscriptionStartDate?: Date;
+  subscriptionEndDate?: Date;
+  subscriptionType?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }

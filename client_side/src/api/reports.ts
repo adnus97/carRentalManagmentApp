@@ -22,12 +22,13 @@ export type ReportsSnapshot = {
   openAR: number;
   totalRents: number;
   fleetSize: number;
-  utilization: number; // Already calculated by backend (0..1)
-  periodDays: number; // Already calculated by backend
-  rentedDays: number; // Already calculated by backend
-  adr: number; // Already calculated by backend
-  revPar: number; // Already calculated by backend
+  utilization: number;
+  periodDays: number;
+  rentedDays: number;
+  adr: number;
+  revPar: number;
   totalMaintenanceCost: number;
+  monthlyLeaseTotal: number; // ✅ ADD THIS
   netProfit: number;
 };
 
@@ -107,17 +108,24 @@ export async function getReportSummary(params: {
   preset?: Preset;
   interval?: Interval;
   carId?: string;
-  from?: Date | string; // ✅ allow custom range
+  from?: Date | string;
   to?: Date | string;
 }) {
-  const res = await api.get<ReportsResponse>('/reports/summary', {
-    params: {
-      ...params,
-      // ✅ ensure Dates are converted to ISO strings
-      from:
-        params.from instanceof Date ? params.from.toISOString() : params.from,
-      to: params.to instanceof Date ? params.to.toISOString() : params.to,
-    },
-  });
+  const q: Record<string, string> = {};
+
+  if (params.preset) q.preset = params.preset;
+  if (params.interval) q.interval = params.interval;
+  if (params.carId) q.carId = params.carId;
+
+  const norm = (v?: Date | string) =>
+    v instanceof Date ? (isNaN(v.getTime()) ? undefined : v.toISOString()) : v;
+
+  const from = norm(params.from);
+  const to = norm(params.to);
+
+  if (from) q.from = from;
+  if (to) q.to = to;
+
+  const res = await api.get<ReportsResponse>('/reports/summary', { params: q });
   return res.data;
 }

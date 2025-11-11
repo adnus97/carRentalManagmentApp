@@ -1,3 +1,4 @@
+// src/layouts/appLayout.tsx
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
@@ -22,13 +23,80 @@ import {
 import { cn } from '@/lib/utils';
 import { DialogDemo } from '@/components/cars/car-form';
 import { AddClientDialog } from '@/components/customers/add-client-form';
+import { Badge } from '@/components/ui/badge';
+import { Shield } from '@phosphor-icons/react';
+import { useUser } from '@/contexts/user-context';
 
 function Breadcrumbs() {
   const location = useLocation();
   const { entityName, entityHref } = useNavigationContext();
+  const { user } = useUser();
+
+  const isSuperAdmin = user?.role === 'super_admin';
 
   const getBreadcrumbItems = () => {
     const path = location.pathname;
+
+    // ✅ Admin routes
+    if (isSuperAdmin && path.startsWith('/admin')) {
+      if (path === '/admin/dashboard') {
+        return [
+          {
+            title: 'Dashboard',
+            href: '/admin/dashboard',
+            isCurrentPage: true,
+          },
+        ];
+      }
+
+      if (path.startsWith('/admin/users')) {
+        return [
+          { title: 'Users', href: '/admin/users', isCurrentPage: !entityName },
+          ...(entityName
+            ? [{ title: entityName, href: entityHref, isCurrentPage: true }]
+            : []),
+        ];
+      }
+
+      if (path.startsWith('/admin/organizations')) {
+        return [
+          {
+            title: 'Organizations',
+            href: '/admin/organizations',
+            isCurrentPage: !entityName,
+          },
+          ...(entityName
+            ? [{ title: entityName, href: entityHref, isCurrentPage: true }]
+            : []),
+        ];
+      }
+
+      if (path.startsWith('/admin/settings')) {
+        return [
+          {
+            title: 'Settings',
+            href: '/admin/settings',
+            isCurrentPage: !entityName,
+          },
+          ...(entityName
+            ? [{ title: entityName, href: entityHref, isCurrentPage: true }]
+            : []),
+        ];
+      }
+
+      if (path.startsWith('/admin/system')) {
+        return [
+          {
+            title: 'System',
+            href: '/admin/system',
+            isCurrentPage: !entityName,
+          },
+          ...(entityName
+            ? [{ title: entityName, href: entityHref, isCurrentPage: true }]
+            : []),
+        ];
+      }
+    }
 
     // ✅ Cars section
     if (path.startsWith('/dashboard') || path.startsWith('/carDetails')) {
@@ -92,22 +160,33 @@ function Breadcrumbs() {
 
   return (
     <Breadcrumb className="flex w-full justify-between h-full items-center">
-      <BreadcrumbList>
-        {breadcrumbItems.map((item, index) => (
-          <div key={item.title} className="flex items-center">
-            {index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
-            <BreadcrumbItem className="hidden md:block">
-              {item.isCurrentPage ? (
-                <BreadcrumbPage>{item.title}</BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink href={item.href || '#'}>
-                  {item.title}
-                </BreadcrumbLink>
-              )}
-            </BreadcrumbItem>
-          </div>
-        ))}
-      </BreadcrumbList>
+      <div className="flex items-center gap-3">
+        <BreadcrumbList>
+          {breadcrumbItems.map((item, index) => (
+            <div key={item.title} className="flex items-center">
+              {index > 0 && <BreadcrumbSeparator className="hidden md:block" />}
+              <BreadcrumbItem className="hidden md:block">
+                {item.isCurrentPage ? (
+                  <BreadcrumbPage>{item.title}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink href={item.href || '#'}>
+                    {item.title}
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+            </div>
+          ))}
+        </BreadcrumbList>
+
+        {/* Admin Badge in breadcrumbs */}
+        {isSuperAdmin && location.pathname.startsWith('/admin') && (
+          <Badge variant="destructive" className="gap-1 hidden sm:flex">
+            <Shield className="w-3 h-3" />
+            Super Admin
+          </Badge>
+        )}
+      </div>
+
       <div className="flex space-x-3">
         {location.pathname.startsWith('/dashboard') && <DialogDemo />}
         {location.pathname.startsWith('/clients') && <AddClientDialog />}
@@ -140,7 +219,9 @@ export function AppLayout() {
         <div
           className={cn(
             'w-full',
-            location.pathname === '/dashboard' && 'overflow-hidden',
+            (location.pathname === '/dashboard' ||
+              location.pathname === '/admin/dashboard') &&
+              'overflow-hidden',
           )}
         >
           {/* Sticky Header */}

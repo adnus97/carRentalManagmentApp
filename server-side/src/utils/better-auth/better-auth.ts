@@ -126,6 +126,33 @@ export const BETTER_AUTH = {
             );
           },
         },
+        additionalFields: {
+          role: {
+            type: 'string',
+            required: true,
+            defaultValue: 'user',
+            input: false, // Not settable by user
+            returned: true, // ✅ MUST BE TRUE
+          },
+          subscriptionStatus: {
+            type: 'string',
+            required: false,
+            input: false,
+            returned: true, // ✅ MUST BE TRUE
+          },
+          subscriptionStartDate: {
+            type: 'date',
+            required: false,
+            input: false,
+            returned: true,
+          },
+          subscriptionEndDate: {
+            type: 'date',
+            required: false,
+            input: false,
+            returned: true,
+          },
+        },
       },
 
       account: {

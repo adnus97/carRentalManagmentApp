@@ -14,6 +14,11 @@ export const users = pgTable('user', {
   email: varchar({ length: 255 }).notNull().unique(),
   emailVerified: boolean(),
   image: text(),
+  role: varchar({ length: 50 }).notNull().default('user'),
+  subscriptionStatus: varchar({ length: 50 }).notNull().default('inactive'),
+  subscriptionStartDate: timestamp(),
+  subscriptionEndDate: timestamp(),
+  subscriptionType: varchar({ length: 50 }).default('yearly'),
   createdAt: timestamp(),
   updatedAt: timestamp(),
 });

@@ -5,6 +5,7 @@ import { getOrganizationByUser } from '@/api/organization';
 
 export const Route = createFileRoute('/_layout')({
   beforeLoad: async ({ context, location }) => {
+    // ✅ Step 1: Check authentication
     if (!context.auth.is_authenticated) {
       throw redirect({
         to: '/login',
@@ -14,22 +15,61 @@ export const Route = createFileRoute('/_layout')({
       });
     }
 
-    // Check if user has verified email (this should be handled by better-auth)
+    // ✅ Step 2: Check email verification
     if (!context.auth.user?.emailVerified) {
       throw redirect({
         to: '/login',
         search: {
-          redirect: location.href,
+          message: 'Please verify your email before continuing',
         },
       });
     }
 
-    // Check if user has an organization (except for certain routes)
-    const allowedWithoutOrg = ['/organizationForm', '/account-settings'];
+    const user = context.auth.user;
 
-    const currentPath = location.pathname;
+    // ✅ Step 3: SUPER ADMIN CHECK FIRST (before any other checks)
+    if (user.role === 'super_admin') {
+      // Redirect super admin from root to admin dashboard
+      if (location.pathname === '/' || location.pathname === '/dashboard') {
+        throw redirect({
+          to: '/admin/dashboard',
+        });
+      }
+
+      // Super admins bypass all other checks
+      return { user };
+    }
+
+    // ✅ Step 4: Regular user - Check subscription
+    if (user.subscriptionStatus !== 'active') {
+      const allowedWithoutSubscription = [
+        '/subscription-required',
+        '/account-settings',
+      ];
+
+      if (
+        !allowedWithoutSubscription.some((path) =>
+          location.pathname.startsWith(path),
+        )
+      ) {
+        throw redirect({
+          to: '/subscription-required',
+          search: {
+            redirect: location.href,
+          },
+        });
+      }
+    }
+
+    // ✅ Step 5: Regular user - Check organization
+    const allowedWithoutOrg = [
+      '/organizationForm',
+      '/account-settings',
+      '/subscription-required',
+    ];
+
     const shouldCheckOrg = !allowedWithoutOrg.some((path) =>
-      currentPath.startsWith(path),
+      location.pathname.startsWith(path),
     );
 
     if (shouldCheckOrg) {
@@ -44,17 +84,13 @@ export const Route = createFileRoute('/_layout')({
           });
         }
       } catch (error) {
-        // If we can't fetch organizations, redirect to org form
         throw redirect({
           to: '/organizationForm',
-          search: {
-            redirect: location.href,
-          },
         });
       }
     }
 
-    return { user: context.auth.user };
+    return { user };
   },
   component: AppLayout,
 });
