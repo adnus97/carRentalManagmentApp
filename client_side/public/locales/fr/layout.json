@@ -1,0 +1,38 @@
+{
+  "breadcrumbs": {
+    "dashboard": "Tableau de bord",
+    "users": "Utilisateurs",
+    "organizations": "Organisations",
+    "settings": "Paramètres",
+    "system": "Système",
+    "cars": "Voitures",
+    "rents": "Locations",
+    "clients": "Clients",
+    "reports": "Rapports",
+    "organization": "Organisation"
+  },
+  "badges": {
+    "super_admin": "Super administrateur",
+    "admin_panel": "Panneau ADMIN"
+  },
+  "sidebar": {
+    "account_settings": "Paramètres du compte",
+    "sign_out": "Se déconnecter",
+    "confirm_signout_title": "Déconnexion",
+    "confirm_signout_desc": "Êtes-vous sûr de vouloir vous déconnecter ?",
+    "confirm": "Se déconnecter",
+    "cancel": "Annuler",
+    "user_fallback": "Utilisateur",
+    "email_fallback": "utilisateur@exemple.com"
+  },
+  "notifications": {
+    "menu": "Notifications"
+  },
+  "pagination": {
+    "prev": "Précédent",
+    "next": "Suivant",
+    "prev_aria": "Aller à la page précédente",
+    "next_aria": "Aller à la page suivante",
+    "more_pages": "Plus de pages"
+  }
+}

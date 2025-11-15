@@ -1,3 +1,4 @@
+// src/api/admin.ts
 import { api } from './api';
 
 export interface DashboardStats {
@@ -13,8 +14,9 @@ export interface DashboardStats {
   };
   revenue: {
     totalRevenue: number;
-    totalRentals: number;
-    activeRentals: number;
+    pricePerSubscription: number;
+    currency: string;
+    activeSubscriptions: number;
   };
 }
 
@@ -37,36 +39,18 @@ export interface UsersResponse {
   limit: number;
   total: number;
   totalPages: number;
-}
-
-export interface UserDetails {
-  user: User;
-  organization: any;
-  statistics: {
-    rentals: {
-      totalRentals: number;
-      activeRentals: number;
-      completedRentals: number;
-      totalRevenue: number;
-    };
-    cars: {
-      totalCars: number;
-      activeCars: number;
-    };
-  };
+  hasMore: boolean;
 }
 
 export interface ExpiringUser extends User {
   urgency: 'critical' | 'high' | 'medium';
 }
 
-// ✅ Get dashboard statistics
 export const getDashboardStats = async (): Promise<DashboardStats> => {
   const response = await api.get('/admin/stats');
   return response.data;
 };
 
-// ✅ Get all users with pagination and filters
 export const getUsers = async (params: {
   page?: number;
   limit?: number;
@@ -77,72 +61,29 @@ export const getUsers = async (params: {
   return response.data;
 };
 
-// ✅ Get user details
-export const getUserDetails = async (userId: string): Promise<UserDetails> => {
-  const response = await api.get(`/admin/users/${userId}`);
-  return response.data;
-};
-
-// ✅ Activate user subscription
 export const activateSubscription = async (
   userId: string,
   years: number = 1,
 ) => {
-  const response = await api.post(
-    `/admin/users/${userId}/activate`,
-    { years },
-    {
-      headers: { 'Content-Type': 'application/json' },
-    },
-  );
+  const response = await api.post(`/admin/users/${userId}/activate`, {
+    years,
+  });
   return response.data;
 };
 
-// ✅ Deactivate user subscription
 export const deactivateSubscription = async (userId: string) => {
-  const response = await api.post(
-    `/admin/subscription/${userId}/deactivate`, // ← Fixed URL!
-    {}, // Send empty object instead of null
-    {
-      headers: { 'Content-Type': 'application/json' },
-    },
-  );
+  const response = await api.post(`/admin/users/${userId}/deactivate`, {});
   return response.data;
 };
 
-// ✅ Get user subscription status
 export const getUserSubscription = async (userId: string) => {
   const response = await api.get(`/admin/users/${userId}/subscription`);
   return response.data;
 };
 
-// ✅ Get users with expiring subscriptions
 export const getExpiringSubscriptions = async (
   days: number = 30,
 ): Promise<ExpiringUser[]> => {
-  const response = await api.get('/admin/users-expiring', {
-    params: { days },
-  });
-  return response.data;
-};
-
-// ✅ Update user role
-export const updateUserRole = async (
-  userId: string,
-  role: 'user' | 'super_admin',
-) => {
-  const response = await api.patch(
-    `/admin/users/${userId}/role`,
-    { role },
-    {
-      headers: { 'Content-Type': 'application/json' },
-    },
-  );
-  return response.data;
-};
-
-// ✅ Delete user (soft delete)
-export const deleteUser = async (userId: string) => {
-  const response = await api.delete(`/admin/users/${userId}`);
+  const response = await api.get('/admin/users-expiring', { params: { days } });
   return response.data;
 };

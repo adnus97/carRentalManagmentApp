@@ -3,20 +3,14 @@ import { Module } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { SubscriptionController } from './subscription.controller';
 import { SubscriptionAdminController } from './subscription-admin.controller';
-import { SubscriptionCronService } from './subscription-cron.service';
-import { DatabaseService } from 'src/db';
-import { EmailService } from 'src/email/email.service';
-import { NotificationsService } from 'src/notifications/notifications.service';
+import { DatabaseModule } from 'src/db/database.module';
+import { EmailModule } from 'src/email/email.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
+  imports: [DatabaseModule, EmailModule, NotificationsModule],
   controllers: [SubscriptionController, SubscriptionAdminController],
-  providers: [
-    SubscriptionService,
-    SubscriptionCronService,
-    DatabaseService,
-    EmailService,
-    NotificationsService,
-  ],
+  providers: [SubscriptionService],
   exports: [SubscriptionService],
 })
 export class SubscriptionModule {}

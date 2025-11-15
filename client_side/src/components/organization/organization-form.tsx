@@ -21,7 +21,7 @@ import { Building2, Save, XCircle } from 'lucide-react';
 
 const schema = z.object({
   name: z.string().min(2, 'Organization name is too short'),
-  email: z.string().email().optional().or(z.literal('')),
+
   website: z.string().url().optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
   address: z.string().optional().or(z.literal('')),
@@ -60,7 +60,7 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
-      email: '',
+
       website: '',
       phone: '',
       address: '',
@@ -96,7 +96,7 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
   const onSubmit = (values: FormFields) => {
     const payload: CreateOrganizationDto = {
       name: values.name.trim(),
-      email: values.email?.trim() || undefined,
+
       website: values.website?.trim() || undefined,
       phone: values.phone?.trim() || undefined,
       address: values.address?.trim() || undefined,
@@ -187,18 +187,6 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
                 />
                 {errors.name && (
                   <p className="text-xs text-red-500">{errors.name.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Contact Email</Label>
-                <Input
-                  id="email"
-                  placeholder="contact@company.com"
-                  {...register('email')}
-                />
-                {errors.email && (
-                  <p className="text-xs text-red-500">{errors.email.message}</p>
                 )}
               </div>
 

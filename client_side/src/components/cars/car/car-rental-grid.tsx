@@ -19,12 +19,13 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 // ================= Empty State Card (inline) =================
 function EmptyStateCard({
   title,
   description,
-  ctaText = 'Create Rental',
+  ctaText,
   onCta,
 }: {
   title: string;
@@ -41,6 +42,11 @@ function EmptyStateCard({
       </div>
       <h3 className="mb-1 text-lg font-semibold">{title}</h3>
       {description ? <p className="mb-6 text-sm">{description}</p> : null}
+      {onCta && ctaText ? (
+        <Button variant="default" onClick={onCta} className="mt-2">
+          {ctaText}
+        </Button>
+      ) : null}
     </Card>
   );
 }
@@ -50,8 +56,6 @@ function EmptyStateCard({
 function safeNumber(value: number | null | undefined): number {
   return typeof value === 'number' && !isNaN(value) ? value : 0;
 }
-const currencyFormatter = (params: any) =>
-  params.value ? `${params.value.toLocaleString()} DHS` : '';
 
 export default function CarRentalsGrid({
   carId,
@@ -64,6 +68,9 @@ export default function CarRentalsGrid({
     avgRentPrice: number;
   };
 }) {
+  const { t, i18n } = useTranslation('cars');
+  const lang = i18n.language || 'en';
+
   const [page, setPage] = useState(1);
   const pageSize = 5;
 
@@ -80,10 +87,10 @@ export default function CarRentalsGrid({
     },
   });
 
-  if (isLoading) return <p>Loading rentals...</p>;
+  if (isLoading) return <p>{t('rental.loading', 'Loading rentals...')}</p>;
 
   const totalPages = data?.totalPages || 1;
-  const isEmpty = (data?.total ?? 0) === 0; // <-- key empty-state flag
+  const isEmpty = (data?.total ?? 0) === 0;
 
   // ✅ Find current active rent
   const currentRent = data.data.find(
@@ -103,9 +110,15 @@ export default function CarRentalsGrid({
     return pages;
   };
 
+  const currency = t('currency', 'DHS');
+  const currencyFormatter = (params: any) =>
+    params.value || params.value === 0
+      ? `${new Intl.NumberFormat(lang).format(params.value)} ${currency}`
+      : '';
+
   const columnDefs = [
     {
-      headerName: 'Start Date',
+      headerName: t('rental.grid.start_date', 'Start Date'),
       field: 'startDate',
       valueFormatter: (p: { value: string }) => {
         if (!p.value) return '';
@@ -115,22 +128,34 @@ export default function CarRentalsGrid({
       flex: 1,
     },
     {
-      headerName: 'End Date',
+      headerName: t('rental.grid.end_date', 'End Date'),
       field: 'endDate',
       valueFormatter: (p: { value: string | null }) => {
-        if (!p.value) return 'Ongoing';
+        if (!p.value) return t('rental.ongoing', 'Ongoing');
         const parsed = parseISO(p.value);
-        return isValid(parsed) ? format(parsed, 'dd/MM/yyyy') : 'Invalid';
+        return isValid(parsed)
+          ? format(parsed, 'dd/MM/yyyy')
+          : t('rental.invalid_date', 'Invalid');
       },
       flex: 1,
     },
     {
-      headerName: 'Revenue',
+      headerName: t('rental.grid.revenue', 'Revenue'),
       field: 'totalPrice',
       valueFormatter: currencyFormatter,
       flex: 1,
     },
-    { headerName: 'Status', field: 'status', flex: 1 },
+    {
+      headerName: t('rental.grid.status', 'Status'),
+      field: 'status',
+      flex: 1,
+      valueFormatter: (p: any) =>
+        p?.value
+          ? t(`rental.status.${p.value}`, {
+              defaultValue: p.value.charAt(0).toUpperCase() + p.value.slice(1),
+            })
+          : '',
+    },
   ];
 
   // Optional: open your create-rental dialog
@@ -138,14 +163,17 @@ export default function CarRentalsGrid({
     // TODO: setCreateRentalOpen(true)
   };
 
-  // ===== EMPTY STATE: show only the card and hide everything else =====
+  // ===== EMPTY STATE =====
   if (isEmpty) {
     return (
       <div className="w-full max-w-[1200px] mx-auto min-h-[60vh] flex items-center justify-center py-10">
         <EmptyStateCard
-          title="No rentals found"
-          description="This car doesn't have any rental history yet."
-          ctaText="Create Rental"
+          title={t('rental.empty.title', 'No rentals found')}
+          description={t(
+            'rental.empty.subtitle',
+            "This car doesn't have any rental history yet.",
+          )}
+          ctaText={t('rental.empty.cta', 'Create Rental')}
           onCta={handleCreateRental}
         />
       </div>
@@ -169,47 +197,65 @@ export default function CarRentalsGrid({
         {/* Dark-mode glow orbs */}
         <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
         <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
+
         {currentRent ? (
           <>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-base">
-                Current Rent:{' '}
+                {t('rental.summary.current', 'Current Rent')}:{' '}
                 {format(parseISO(currentRent.startDate), 'dd MMM')} -{' '}
                 {currentRent.endDate
                   ? format(parseISO(currentRent.endDate), 'dd MMM')
-                  : 'Ongoing'}
+                  : t('rental.ongoing', 'Ongoing')}
               </h3>
               <Badge variant="warning" className="px-2 py-0.5 text-xs">
-                🚗 Active
+                🚗 {t('rental.status.active', 'Active')}
               </Badge>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-xs mb-4">
               <div>
-                <p className="text-muted-foreground">Total Price</p>
+                <p className="text-muted-foreground">
+                  {t('rental.summary.total_price', 'Total Price')}
+                </p>
                 <p className="font-bold text-sm">
-                  {currentRent.isOpenContract
-                    ? safeNumber(currentRent.totalPaid).toLocaleString()
-                    : safeNumber(currentRent.totalPrice).toLocaleString()}
-                  MAD
+                  {new Intl.NumberFormat(lang).format(
+                    currentRent.isOpenContract
+                      ? safeNumber(currentRent.totalPaid)
+                      : safeNumber(currentRent.totalPrice),
+                  )}{' '}
+                  {currency}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Total Paid</p>
+                <p className="text-muted-foreground">
+                  {t('rental.summary.total_paid', 'Total Paid')}
+                </p>
                 <p className="font-bold text-sm">
-                  {safeNumber(currentRent.totalPaid).toLocaleString()} MAD
+                  {new Intl.NumberFormat(lang).format(
+                    safeNumber(currentRent.totalPaid),
+                  )}{' '}
+                  {currency}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Status</p>
-                <p className="font-bold text-sm">{currentRent.status}</p>
+                <p className="text-muted-foreground">
+                  {t('rental.grid.status', 'Status')}
+                </p>
+                <p className="font-bold text-sm">
+                  {t(`rental.status.${currentRent.status}`, {
+                    defaultValue:
+                      currentRent.status.charAt(0).toUpperCase() +
+                      currentRent.status.slice(1),
+                  })}
+                </p>
               </div>
             </div>
 
             {/* ✅ Progress Bar */}
             <div>
               <p className="text-xs text-muted-foreground mb-1">
-                Payment Progress
+                {t('rental.payment_progress.title', 'Payment Progress')}
               </p>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                 <div
@@ -218,7 +264,7 @@ export default function CarRentalsGrid({
                     width: `${
                       Math.min(
                         (safeNumber(currentRent.totalPaid) /
-                          safeNumber(currentRent.totalPrice)) *
+                          Math.max(safeNumber(currentRent.totalPrice), 1)) *
                           100,
                         100,
                       ) || 0
@@ -227,29 +273,49 @@ export default function CarRentalsGrid({
                 />
               </div>
               <p className="text-xs mt-1">
-                {safeNumber(currentRent.totalPaid).toLocaleString()} /{' '}
-                {safeNumber(currentRent.totalPrice).toLocaleString()} MAD
+                {new Intl.NumberFormat(lang).format(
+                  safeNumber(currentRent.totalPaid),
+                )}{' '}
+                /{' '}
+                {new Intl.NumberFormat(lang).format(
+                  safeNumber(currentRent.totalPrice),
+                )}{' '}
+                {currency}
               </p>
             </div>
           </>
         ) : (
           <>
-            <h3 className="font-semibold text-base mb-2">Rental Summary</h3>
+            <h3 className="font-semibold text-base mb-2">
+              {t('rental.summary.title', 'Rental Summary')}
+            </h3>
             <div className="grid grid-cols-2 gap-4 text-xs mb-4">
               <div>
-                <p className="text-muted-foreground">Total Revenue</p>
+                <p className="text-muted-foreground">
+                  {t('rental.summary.total_revenue', 'Total Revenue')}
+                </p>
                 <p className="font-bold text-sm">
-                  {safeNumber(financialStats.totalRevenue).toLocaleString()} MAD
+                  {new Intl.NumberFormat(lang).format(
+                    safeNumber(financialStats.totalRevenue),
+                  )}{' '}
+                  {currency}
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Total Rentals</p>
+                <p className="text-muted-foreground">
+                  {t('rental.summary.total_rentals', 'Total Rentals')}
+                </p>
                 <p className="font-bold text-sm">{financialStats.totalRents}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Avg Rent Price</p>
+                <p className="text-muted-foreground">
+                  {t('rental.summary.avg_price', 'Avg Rent Price')}
+                </p>
                 <p className="font-bold text-sm">
-                  {safeNumber(financialStats.avgRentPrice).toLocaleString()} MAD
+                  {new Intl.NumberFormat(lang).format(
+                    safeNumber(financialStats.avgRentPrice),
+                  )}{' '}
+                  {currency}
                 </p>
               </div>
             </div>
@@ -259,7 +325,9 @@ export default function CarRentalsGrid({
 
       {/* ✅ History Grid */}
       <div className="lg:col-span-2">
-        <h3 className="text-md font-semibold mb-2">Rentals History</h3>
+        <h3 className="text-md font-semibold mb-2">
+          {t('rental.history_title', 'Rentals History')}
+        </h3>
         <div className="flex flex-col h-full">
           <div className="flex-1 max-h-[300px] overflow-hidden">
             <CarDataGrid<RentalRow>

@@ -1,21 +1,21 @@
 // src/contexts/user-context.tsx
 import { Loader } from '@/components/loader';
-import type { User } from '@/types/user'; // ✅ Import from types
-import { getCurrentUser } from '@/api/auth';
+import type { User } from '@/types/user';
+import { authClient } from '@/lib/auth-client';
 import {
   createContext,
   useContext,
   ReactNode,
-  useState,
   useEffect,
-  useRef,
+  useState,
 } from 'react';
 
 export interface UserContextType {
   user: User | null;
-  setUser: (user: User | null) => void; // ✅ Change to function signature
+  setUser: (user: User | null) => Promise<void>;
   is_authenticated: boolean;
   refreshUser: () => Promise<void>;
+  isLoading: boolean;
 }
 
 export const UserContext = createContext<UserContextType | undefined>(
@@ -23,81 +23,60 @@ export const UserContext = createContext<UserContextType | undefined>(
 );
 
 export const useUser = () => {
-  const context = useContext(UserContext);
-  if (!context) {
-    throw new Error('useUser must be used within a UserProvider');
-  }
-  return context;
+  const ctx = useContext(UserContext);
+  if (!ctx) throw new Error('useUser must be used within a UserProvider');
+  return ctx;
 };
 
 interface UserProviderProps {
   children: ReactNode;
 }
 
-const AUTH_KEY = 'authUser';
+export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
+  const { data: session, isPending, error } = authClient.useSession();
+  const [mounted, setMounted] = useState(false);
 
-const useAuthProvider = (): UserContextType => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false); // ✅ Add this
+  const user = (session?.user as User) || null;
   const is_authenticated = !!user;
 
+  // No-op refresh: useSession will update on auth changes
   const refreshUser = async () => {
-    try {
-      const userData = await getCurrentUser();
+    // Optional: force getSession once, but not necessary
+    await authClient.getSession();
+  };
 
-      if (userData) {
-        setUser(userData);
-        localStorage.setItem(AUTH_KEY, JSON.stringify(userData));
-      } else {
-        setUser(null);
-        localStorage.removeItem(AUTH_KEY);
-      }
-    } catch (error) {
-      console.error('Failed to refresh user:', error);
-      setUser(null);
-      localStorage.removeItem(AUTH_KEY);
-    } finally {
-      setLoading(false);
-      setInitialized(true); // ✅ Mark as initialized after first fetch
+  // setUser wrapper to keep interface compatible
+  const setUser = async (newUser: User | null) => {
+    if (!newUser) {
+      await authClient.signOut();
+    } else {
+      // Typically you don’t set user manually when using useSession
+      await refreshUser();
     }
   };
 
   useEffect(() => {
-    const initializeUser = async () => {
-      // ✅ Don't load from localStorage first - go straight to fresh data
-      await refreshUser();
-    };
-
-    initializeUser();
+    const timer = setTimeout(() => setMounted(true), 300);
+    return () => clearTimeout(timer);
   }, []);
 
-  return {
-    user,
-    setUser,
-    is_authenticated,
-    refreshUser,
-  };
-};
+  if (!mounted || isPending) return <Loader />;
 
-export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-  const auth = useAuthProvider();
-  const [mounted, setMounted] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    timer.current = setTimeout(() => {
-      setMounted(true);
-    }, 500);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, []);
-
-  // ✅ Show loader while auth is initializing
-  if (!mounted) {
-    return <Loader />;
+  if (error) {
+    console.error('Session error:', error);
   }
 
-  return <UserContext.Provider value={auth}>{children}</UserContext.Provider>;
+  return (
+    <UserContext.Provider
+      value={{
+        user,
+        setUser,
+        is_authenticated,
+        refreshUser,
+        isLoading: isPending,
+      }}
+    >
+      {children}
+    </UserContext.Provider>
+  );
 };

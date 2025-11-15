@@ -5,8 +5,9 @@ import {
   Get,
   Param,
   Body,
-  HttpStatus,
-  HttpCode,
+  Query,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { Auth } from 'src/auth/auth.guard';
@@ -14,25 +15,61 @@ import { SuperAdmin } from 'src/auth/super-admin.guard';
 
 @Auth()
 @SuperAdmin()
-@Controller('admin/subscription')
+@Controller('admin')
 export class SubscriptionAdminController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
-  @Post(':userId/activate')
+  // Dashboard stats
+  @Get('stats')
+  async getDashboardStats() {
+    return this.subscriptionService.getDashboardStats();
+  }
+
+  // Get all users
+  @Get('users')
+  async getAllUsers(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.subscriptionService.getAllUsers(page, limit, status, search);
+  }
+
+  // Get expiring subscriptions
+  @Get('users-expiring')
+  async getExpiringSubscriptions(
+    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
+  ) {
+    return this.subscriptionService.getExpiringSubscriptions(days);
+  }
+
+  // Activate subscription
+  @Post('users/:userId/activate')
   async activateSubscription(
     @Param('userId') userId: string,
-    @Body('years') years: number = 1,
+    @Body() body: { years?: number },
   ) {
+    const years = body?.years || 1;
     return this.subscriptionService.activateSubscription(userId, years);
   }
 
-  @Post(':userId/deactivate')
+  // Deactivate subscription
+  @Post('users/:userId/deactivate')
   async deactivateSubscription(@Param('userId') userId: string) {
     return this.subscriptionService.deactivateSubscription(userId);
   }
 
-  @Get(':userId/status')
+  // Get subscription status
+  @Get('users/:userId/subscription')
   async getSubscriptionStatus(@Param('userId') userId: string) {
     return this.subscriptionService.getSubscriptionStatus(userId);
+  }
+
+  // Manual trigger to notify admins about expiring subscriptions
+  @Post('notify-expiring')
+  async notifyAdminsOfExpiring() {
+    await this.subscriptionService.notifyAdminsOfExpiringSubscriptions();
+    return { success: true, message: 'Admin notifications sent' };
   }
 }

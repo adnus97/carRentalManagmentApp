@@ -21,35 +21,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslation } from 'react-i18next';
 
 const currentYear = new Date().getFullYear();
 
 const schema = z.object({
-  plateNumber: z.string().min(1, 'Plate number is required'),
-  make: z.string().nonempty('Make is required'),
-  model: z.string().nonempty('Model is required'),
+  plateNumber: z.string().min(1, 'form.errors.plate_required'),
+  make: z.string().nonempty('form.errors.make_required'),
+  model: z.string().nonempty('form.errors.model_required'),
   year: z
-    .number({ invalid_type_error: 'Year must be a number' })
-    .min(2010, 'Year must be greater than 2010')
-    .max(currentYear, 'Year must be less than or equal to current year'),
+    .number({ invalid_type_error: 'form.errors.year_number' })
+    .min(2010, 'form.errors.year_min')
+    .max(currentYear, 'form.errors.year_max'),
   purchasePrice: z
-    .number({ invalid_type_error: 'Price must be a number' })
-    .min(1, 'Price must be greater than 0'),
+    .number({ invalid_type_error: 'form.errors.price_number' })
+    .min(1, 'form.errors.price_min'),
   pricePerDay: z
-    .number({ invalid_type_error: 'Rent price must be a number' })
-    .min(1, 'Rent price must be greater than 0'),
-  mileage: z.number().min(0, 'Mileage must be a positive number'),
+    .number({ invalid_type_error: 'form.errors.rent_number' })
+    .min(1, 'form.errors.rent_min'),
+  mileage: z
+    .number({ invalid_type_error: 'form.errors.mileage_number' })
+    .min(0, 'form.errors.mileage_min'),
   color: z.string().optional(),
   fuelType: z.string().optional(),
   monthlyLeasePrice: z
-    .number()
-    .min(0, 'Monthly lease price must be a positive number'),
+    .number({ invalid_type_error: 'form.errors.monthly_number' })
+    .min(0, 'form.errors.monthly_min'),
   insuranceExpiryDate: z.date().refine((date) => date > new Date(), {
-    message: 'Insurance expiry date must be in the future',
+    message: 'form.errors.insurance_future',
   }),
   technicalVisiteExpiryDate: z.date().refine((date) => date > new Date(), {
-    message: 'Technical visit expiry date must be in the future',
+    message: 'form.errors.tech_future',
   }),
+
   status: z.enum(['active', 'sold', 'leased', 'maintenance', 'deleted']),
 });
 
@@ -64,6 +68,7 @@ export function EditCarFormDialog({
   onOpenChange: (open: boolean) => void;
   car: Car | null;
 }) {
+  const { t } = useTranslation(['cars', 'common']);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -74,15 +79,26 @@ export function EditCarFormDialog({
       onOpenChange(false);
       toast({
         type: 'success',
-        title: 'Car Updated',
-        description: 'The car details have been updated successfully.',
+        title: t('toasts.update_success_title', {
+          ns: 'cars',
+          defaultValue: 'Car Updated',
+        }),
+        description: t('toasts.update_success_desc', {
+          ns: 'cars',
+          defaultValue: 'The car details have been updated successfully.',
+        }),
       });
     },
     onError: (error: any) => {
       toast({
         type: 'error',
-        title: 'Error',
-        description: error?.response?.data?.message || 'Failed to update car.',
+        title: t('common.error', 'Error'),
+        description:
+          error?.response?.data?.message ||
+          t('toasts.update_error', {
+            ns: 'cars',
+            defaultValue: 'Failed to update car.',
+          }),
       });
     },
   });
@@ -135,37 +151,11 @@ export function EditCarFormDialog({
   const onSubmit = (data: formFields) => {
     if (!car) return;
 
-    console.log('Raw form data:', data);
-    console.log(
-      'Insurance date type:',
-      typeof data.insuranceExpiryDate,
-      data.insuranceExpiryDate,
-    );
-    console.log(
-      'Technical visit date type:',
-      typeof data.technicalVisiteExpiryDate,
-      data.technicalVisiteExpiryDate,
-    );
-
-    // ✅ Force conversion to native Date objects
     const formattedData = {
       ...data,
-      // Force conversion to native Date objects
       insuranceExpiryDate: new Date(data.insuranceExpiryDate),
       technicalVisiteExpiryDate: new Date(data.technicalVisiteExpiryDate),
     };
-
-    console.log('Formatted data:', formattedData);
-    console.log(
-      'Insurance date after conversion:',
-      formattedData.insuranceExpiryDate,
-      typeof formattedData.insuranceExpiryDate,
-    );
-    console.log(
-      'Technical visit date after conversion:',
-      formattedData.technicalVisiteExpiryDate,
-      typeof formattedData.technicalVisiteExpiryDate,
-    );
 
     mutation.mutate({ id: car.id, data: formattedData });
   };
@@ -195,28 +185,34 @@ export function EditCarFormDialog({
       }}
     >
       <DialogContent className="sm:max-w-[600px] pt-4 max-h-[90vh] overflow-hidden">
-        <DialogTitle className="text-lg font-semibold">Edit Car</DialogTitle>
+        <DialogTitle className="text-lg font-semibold">
+          {t('form.edit_title', { ns: 'cars', defaultValue: 'Edit Car' })}
+        </DialogTitle>
         <p className="text-sm text-muted-foreground">
-          Update the details below to modify the car information.
+          {t('form.edit_subtitle', {
+            ns: 'cars',
+            defaultValue:
+              'Update the details below to modify the car information.',
+          })}
         </p>
         <Separator />
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-[9px]">
-            {/* Plate Number - Full width */}
+            {/* Plate Number */}
             <div className="flex flex-col sm:col-span-2">
               <Label htmlFor="plateNumber" className="mb-1">
-                Plate Number *
+                {t('form.labels.plate', 'Plate Number')} *
               </Label>
               <Input
                 id="plateNumber"
                 className="w-full font-mono"
-                placeholder="e.g. 123-A-456"
+                placeholder={t('form.placeholders.plate', 'e.g. 123-A-456')}
                 {...register('plateNumber')}
               />
               {errors.plateNumber && (
                 <span className="text-red-500 text-xs mt-1">
-                  {errors.plateNumber.message}
+                  {t(errors.plateNumber.message as any)}
                 </span>
               )}
             </div>
@@ -224,16 +220,16 @@ export function EditCarFormDialog({
             {/* Make */}
             <div className="flex flex-col">
               <Label htmlFor="make" className="mb-1">
-                Make *
+                {t('form.labels.make', 'Make')} *
               </Label>
               <Input
                 id="make"
-                placeholder="e.g. Toyota"
+                placeholder={t('form.placeholders.make', 'e.g. Toyota')}
                 {...register('make')}
               />
               {errors.make && (
                 <span className="text-red-500 text-xs">
-                  {errors.make.message}
+                  {t(errors.make.message as any)}
                 </span>
               )}
             </div>
@@ -241,34 +237,51 @@ export function EditCarFormDialog({
             {/* Model */}
             <div className="flex flex-col">
               <Label htmlFor="model" className="mb-1">
-                Model *
+                {t('form.labels.model', 'Model')} *
               </Label>
               <Input
                 id="model"
-                placeholder="e.g. Corolla"
+                placeholder={t('form.placeholders.model', 'e.g. Corolla')}
                 {...register('model')}
               />
               {errors.model && (
                 <span className="text-red-500 text-xs">
-                  {errors.model.message}
+                  {t(errors.model.message as any)}
                 </span>
               )}
             </div>
+
+            {/* Fuel Type */}
             <div>
-              <Label htmlFor="fuelType">Fuel Type</Label>
+              <Label htmlFor="fuelType">
+                {t('form.labels.fuel', 'Fuel Type')}
+              </Label>
               <Controller
                 control={control}
                 name="fuelType"
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field?.value}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select fuel type" />
+                      <SelectValue
+                        placeholder={t(
+                          'form.placeholders.select_fuel',
+                          'Select fuel type',
+                        )}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gasoline">Gasoline</SelectItem>
-                      <SelectItem value="diesel">Diesel</SelectItem>
-                      <SelectItem value="hybrid">Hybrid</SelectItem>
-                      <SelectItem value="electric">Electric</SelectItem>
+                      <SelectItem value="gasoline">
+                        {t('fuel.gasoline', 'Gasoline')}
+                      </SelectItem>
+                      <SelectItem value="diesel">
+                        {t('fuel.diesel', 'Diesel')}
+                      </SelectItem>
+                      <SelectItem value="hybrid">
+                        {t('fuel.hybrid', 'Hybrid')}
+                      </SelectItem>
+                      <SelectItem value="electric">
+                        {t('fuel.electric', 'Electric')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -277,7 +290,7 @@ export function EditCarFormDialog({
 
             {/* Color */}
             <div>
-              <Label htmlFor="color">Color</Label>
+              <Label htmlFor="color">{t('form.labels.color', 'Color')}</Label>
               <Controller
                 control={control}
                 name="color"
@@ -289,46 +302,53 @@ export function EditCarFormDialog({
                     <SelectTrigger
                       className={errors.color ? 'border-red-500' : ''}
                     >
-                      <SelectValue placeholder="Select color" />
+                      <SelectValue
+                        placeholder={t(
+                          'form.placeholders.select_color',
+                          'Select color',
+                        )}
+                      />
                     </SelectTrigger>
                     <SelectContent className="overflow-y-auto h-[300px]">
-                      {colorOptions.map((color) => (
-                        <SelectItem key={color} value={color.toLowerCase()}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-4 h-4 rounded-full border border-gray-300"
-                              style={{ backgroundColor: color.toLowerCase() }}
-                            />
-                            {color}
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {colorOptions.map((color) => {
+                        const v = color.toLowerCase();
+                        return (
+                          <SelectItem key={v} value={v}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-4 h-4 rounded-full border border-gray-300"
+                                style={{ backgroundColor: v }}
+                              />
+                              {t(`colors.${v}`, color)}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 )}
               />
               {errors.color && (
                 <p className="text-red-500 text-sm mt-1">
-                  {errors.color.message}
+                  {t(errors.color.message as any)}
                 </p>
               )}
             </div>
 
-            {/* Fuel Type */}
             {/* Year */}
             <div className="flex flex-col">
               <Label htmlFor="year" className="mb-1">
-                Year *
+                {t('form.labels.year', 'Year')} *
               </Label>
               <Input
                 id="year"
                 type="number"
-                placeholder="e.g. 2020"
+                placeholder={t('form.placeholders.year', 'e.g. 2020')}
                 {...register('year', { valueAsNumber: true })}
               />
               {errors.year && (
                 <span className="text-red-500 text-xs">
-                  {errors.year.message}
+                  {t(errors.year.message as any)}
                 </span>
               )}
             </div>
@@ -336,17 +356,17 @@ export function EditCarFormDialog({
             {/* Price/Day */}
             <div className="flex flex-col">
               <Label htmlFor="pricePerDay" className="mb-1">
-                Price/Day (DHS) *
+                {t('form.labels.price_per_day', 'Price/Day (DHS)')} *
               </Label>
               <Input
                 id="pricePerDay"
                 type="number"
-                placeholder="e.g. 150"
+                placeholder={t('form.placeholders.price_per_day', 'e.g. 150')}
                 {...register('pricePerDay', { valueAsNumber: true })}
               />
               {errors.pricePerDay && (
                 <span className="text-red-500 text-xs">
-                  {errors.pricePerDay.message}
+                  {t(errors.pricePerDay.message as any)}
                 </span>
               )}
             </div>
@@ -354,17 +374,20 @@ export function EditCarFormDialog({
             {/* Purchase Price */}
             <div className="flex flex-col">
               <Label htmlFor="purchasePrice" className="mb-1">
-                Purchase Price (DHS) *
+                {t('form.labels.purchase_price', 'Purchase Price (DHS)')} *
               </Label>
               <Input
                 id="purchasePrice"
                 type="number"
-                placeholder="e.g. 280000"
+                placeholder={t(
+                  'form.placeholders.purchase_price',
+                  'e.g. 280000',
+                )}
                 {...register('purchasePrice', { valueAsNumber: true })}
               />
               {errors.purchasePrice && (
                 <span className="text-red-500 text-xs">
-                  {errors.purchasePrice.message}
+                  {t(errors.purchasePrice.message as any)}
                 </span>
               )}
             </div>
@@ -372,17 +395,17 @@ export function EditCarFormDialog({
             {/* Monthly Lease Price */}
             <div className="flex flex-col">
               <Label htmlFor="monthlyLeasePrice" className="mb-1">
-                Monthly Lease (DHS) *
+                {t('form.labels.monthly_lease', 'Monthly Lease (DHS)')} *
               </Label>
               <Input
                 id="monthlyLeasePrice"
                 type="number"
-                placeholder="e.g. 4000"
+                placeholder={t('form.placeholders.monthly_lease', 'e.g. 4000')}
                 {...register('monthlyLeasePrice', { valueAsNumber: true })}
               />
               {errors.monthlyLeasePrice && (
                 <span className="text-red-500 text-xs">
-                  {errors.monthlyLeasePrice.message}
+                  {t(errors.monthlyLeasePrice.message as any)}
                 </span>
               )}
             </div>
@@ -390,51 +413,70 @@ export function EditCarFormDialog({
             {/* Mileage */}
             <div className="flex flex-col">
               <Label htmlFor="mileage" className="mb-1">
-                Mileage (km) *
+                {t('form.labels.mileage', 'Mileage (km)')} *
               </Label>
               <Input
                 id="mileage"
                 type="number"
-                placeholder="e.g. 120000"
+                placeholder={t('form.placeholders.mileage', 'e.g. 120000')}
                 {...register('mileage', { valueAsNumber: true })}
               />
               {errors.mileage && (
                 <span className="text-red-500 text-xs">
-                  {errors.mileage.message}
+                  {t(errors.mileage.message as any)}
                 </span>
               )}
             </div>
 
             {/* Status */}
             <div className="flex flex-col">
-              <Label className="mb-1">Status</Label>
+              <Label className="mb-1">
+                {t('columns.status', { ns: 'cars', defaultValue: 'Status' })}
+              </Label>
               <Controller
                 control={control}
                 name="status"
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue
+                        placeholder={t('form.placeholders.select_status', {
+                          ns: 'cars',
+                          defaultValue: 'Select status',
+                        })}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                      <SelectItem value="active">
+                        {t('status.active', {
+                          ns: 'cars',
+                          defaultValue: 'Active',
+                        })}
+                      </SelectItem>
+                      <SelectItem value="sold">
+                        {t('status.sold', { ns: 'cars', defaultValue: 'Sold' })}
+                      </SelectItem>
+                      <SelectItem value="maintenance">
+                        {t('status.maintenance', {
+                          ns: 'cars',
+                          defaultValue: 'Maintenance',
+                        })}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 )}
               />
               {errors.status && (
                 <span className="text-red-500 text-xs">
-                  {errors.status.message}
+                  {t(errors.status.message as any)}
                 </span>
               )}
             </div>
 
-            {/* Insurance Expiry - Full width */}
+            {/* Insurance Expiry */}
             <div className="flex flex-col">
               <Label htmlFor="insuranceExpiryDate" className="mb-1">
-                Insurance Expiry *
+                {t('form.labels.insurance_expiry', 'Insurance Expiry')} *
               </Label>
               <Controller
                 control={control}
@@ -443,21 +485,24 @@ export function EditCarFormDialog({
                   <FormDatePicker
                     value={field.value}
                     onChange={field.onChange}
-                    placeholder="Select insurance expiry date"
+                    placeholder={t(
+                      'form.placeholders.insurance_expiry',
+                      'Select insurance expiry date',
+                    )}
                   />
                 )}
               />
               {errors.insuranceExpiryDate && (
                 <span className="text-red-500 text-xs">
-                  {errors.insuranceExpiryDate.message}
+                  {t(errors.insuranceExpiryDate.message as any)}
                 </span>
               )}
             </div>
 
-            {/* Technical Visit Expiry - Full width */}
+            {/* Technical Visit Expiry */}
             <div className="flex flex-col">
               <Label htmlFor="technicalVisiteExpiryDate" className="mb-1">
-                Technical Visit Expiry *
+                {t('form.labels.tech_expiry', 'Technical Visit Expiry')} *
               </Label>
               <Controller
                 control={control}
@@ -466,13 +511,16 @@ export function EditCarFormDialog({
                   <FormDatePicker
                     value={field.value}
                     onChange={field.onChange}
-                    placeholder="Select technical visit expiry date"
+                    placeholder={t(
+                      'form.placeholders.tech_expiry',
+                      'Select technical visit expiry date',
+                    )}
                   />
                 )}
               />
               {errors.technicalVisiteExpiryDate && (
                 <span className="text-red-500 text-xs">
-                  {errors.technicalVisiteExpiryDate.message}
+                  {t(errors.technicalVisiteExpiryDate.message as any)}
                 </span>
               )}
             </div>
@@ -481,10 +529,8 @@ export function EditCarFormDialog({
           {/* Save button */}
           <div className="text-right mt-6">
             <Button type="submit" disabled={isSubmitting || mutation.isPending}>
-              {mutation.isPending ? (
-                <Loader className="animate-spin mr-2" />
-              ) : null}
-              Save Changes
+              {mutation.isPending ? <Loader /> : null}
+              <span className="ml-2">{t('form.actions.save', 'Save')}</span>
             </Button>
           </div>
         </form>

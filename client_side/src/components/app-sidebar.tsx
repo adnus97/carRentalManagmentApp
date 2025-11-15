@@ -1,4 +1,5 @@
-// src/components/app-sidebar.tsx
+'use client';
+
 import * as React from 'react';
 import {
   Sidebar,
@@ -26,14 +27,16 @@ import { authClient } from '@/lib/auth-client';
 import { ConfirmationDialog } from './confirmation-dialog';
 import { navigationConfig } from '@/config/navigation';
 import { NotificationsDropdown } from './notifications/notification-dropdown';
+import { useTranslation } from 'react-i18next';
+import LanguageSelector from './language-selector';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, setUser } = useUser();
   const queryClient = useQueryClient();
   const router = useRouter();
   const [showSignOutDialog, setShowSignOutDialog] = React.useState(false);
+  const { t } = useTranslation('layout');
 
-  // Check if user is super admin
   const isSuperAdmin = user?.role === 'super_admin';
 
   const { data, isLoading } = useQuery<Organization[]>({
@@ -49,12 +52,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     router.navigate({ to: '/login' });
   };
 
-  // Conditionally select navigation items
   const navigationItems = isSuperAdmin
     ? navigationConfig.navAdmin
-    : navigationConfig.navMain.slice(0, -1); // Exclude notifications placeholder
+    : navigationConfig.navMain.slice(0, -1);
 
-  // Conditionally select avatar gradient
   const avatarGradient = isSuperAdmin
     ? 'from-red-500 to-orange-600'
     : 'from-blue-500 to-purple-600';
@@ -65,12 +66,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarHeader className="h-0 p-0 border-0 m-0" />
 
         <SidebarContent className="px-4 py-2">
-          {/* Conditional Admin Badge */}
           {isSuperAdmin && (
             <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md">
               <Shield size={16} className="text-red-600 dark:text-red-400" />
               <span className="text-xs font-semibold text-red-600 dark:text-red-400">
-                ADMIN PANEL
+                {t('badges.admin_panel')}
               </span>
             </div>
           )}
@@ -85,7 +85,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       className="hover:bg-gray-4 data-[status=active]:bg-gray-4"
                     >
                       {item.icon}
-                      <span className="ml-3">{item.title}</span>
+                      <span className="ml-3">{t(item.title)}</span>
+                      {/* If navigationConfig titles need translation,
+                          store keys instead of labels and call t(...) here. */}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -95,7 +97,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
           <div className="flex-1" />
 
-          <div className="flex justify-end pb-2">
+          <div className="flex justify-between pb-2">
+            <div>
+              <LanguageSelector />
+            </div>
             <NotificationsDropdown />
           </div>
         </SidebarContent>
@@ -118,17 +123,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                           <div
                             className={`w-10 h-10 bg-gradient-to-br ${avatarGradient} rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md`}
                           >
-                            {(user?.name || 'U').charAt(0).toUpperCase()}
+                            {(user?.name || t('sidebar.user_fallback'))
+                              .charAt(0)
+                              .toUpperCase()}
                           </div>
                         )}
                       </div>
 
                       <div className="flex flex-col justify-center min-w-0 flex-1">
                         <span className="text-sm font-medium text-gray-12 truncate">
-                          {user?.name || 'User'}
+                          {user?.name || t('sidebar.user_fallback')}
                         </span>
                         <span className="text-xs text-gray-10 truncate">
-                          {user?.email || 'user@example.com'}
+                          {user?.email || t('sidebar.email_fallback')}
                         </span>
                       </div>
 
@@ -158,17 +165,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <div
                           className={`w-10 h-10 bg-gradient-to-br ${avatarGradient} rounded-full flex items-center justify-center text-white text-sm font-bold`}
                         >
-                          {(user?.name || 'U').charAt(0).toUpperCase()}
+                          {(user?.name || t('sidebar.user_fallback'))
+                            .charAt(0)
+                            .toUpperCase()}
                         </div>
                       )}
                     </div>
 
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-sm font-medium text-gray-12 truncate">
-                        {user?.name || 'User'}
+                        {user?.name || t('sidebar.user_fallback')}
                       </span>
                       <span className="text-xs text-gray-10 truncate">
-                        {user?.email || 'user@example.com'}
+                        {user?.email || t('sidebar.email_fallback')}
                       </span>
                     </div>
                   </div>
@@ -185,7 +194,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     >
                       <User size={18} className="text-gray-10" />
                       <span className="text-sm font-medium">
-                        Account Settings
+                        {t('sidebar.account_settings')}
                       </span>
                     </Link>
                   </DropdownMenuItem>
@@ -195,7 +204,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600"
                   >
                     <SignOut size={18} />
-                    <span className="text-sm font-medium">Sign Out</span>
+                    <span className="text-sm font-medium">
+                      {t('sidebar.sign_out')}
+                    </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -208,10 +219,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         open={showSignOutDialog}
         onOpenChange={setShowSignOutDialog}
         onConfirm={handleSignOut}
-        title="Sign Out"
-        description="Are you sure you want to sign out?"
-        confirmText="Sign Out"
-        cancelText="Cancel"
+        title={t('sidebar.confirm_signout_title')}
+        description={t('sidebar.confirm_signout_desc')}
+        confirmText={t('sidebar.confirm')}
+        cancelText={t('sidebar.cancel')}
         variant="destructive"
       />
     </>

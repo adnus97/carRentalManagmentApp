@@ -10,11 +10,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useUpdateCar } from '@/hooks/use-update-car';
+import { useTranslation } from 'react-i18next';
 
 export default function UpdateMileageDialog({
   carId,
@@ -24,14 +25,30 @@ export default function UpdateMileageDialog({
   currentMileage: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { t } = useTranslation(['cars', 'common']);
 
-  // ✅ Zod schema with min/max validation
-  const mileageSchema = z.object({
-    mileage: z
-      .number({ invalid_type_error: 'Mileage must be a number' })
-      .min(currentMileage, `Mileage cannot be less than ${currentMileage} km`)
-      .max(1_000_000, 'Mileage cannot exceed 1,000,000 km'),
-  });
+  // Zod schema with localized messages (built with current mileage)
+  const mileageSchema = useMemo(
+    () =>
+      z.object({
+        mileage: z
+          .number({ invalid_type_error: 'cars.form.errors.mileage_number' })
+          .min(
+            currentMileage,
+            t('car_details.mileage_min', {
+              defaultValue: 'Mileage cannot be less than {{min}} km',
+              min: currentMileage,
+            }),
+          )
+          .max(
+            1_000_000,
+            t('car_details.mileage_max', {
+              defaultValue: 'Mileage cannot exceed 1,000,000 km',
+            }),
+          ),
+      }),
+    [currentMileage, t],
+  );
 
   type MileageFormFields = z.infer<typeof mileageSchema>;
 
@@ -51,7 +68,7 @@ export default function UpdateMileageDialog({
     mutation.mutate(data, {
       onSuccess: () => {
         reset({ mileage: data.mileage });
-        setIsOpen(false); // ✅ close dialog on success
+        setIsOpen(false);
       },
     });
   };
@@ -59,23 +76,32 @@ export default function UpdateMileageDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Update Mileage</Button>
+        <Button variant="outline">
+          {t('car_details.update_mileage.open', 'Update Mileage')}
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Update Mileage</DialogTitle>
+          <DialogTitle>
+            {t('car_details.update_mileage.title', 'Update Mileage')}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Mileage Input */}
           <div>
-            <Label>Mileage (km)</Label>
+            <Label>{t('car_details.mileage_label', 'Mileage (km)')}</Label>
             <Input
               type="number"
               {...register('mileage', { valueAsNumber: true })}
             />
             {errors.mileage && (
-              <p className="text-red-500 text-xs">{errors.mileage.message}</p>
+              <p className="text-red-500 text-xs">
+                {t(
+                  (errors.mileage.message as string) ||
+                    'cars.form.errors.mileage_number',
+                )}
+              </p>
             )}
           </div>
 
@@ -85,7 +111,9 @@ export default function UpdateMileageDialog({
             className="w-full"
             disabled={isSubmitting || mutation.isPending}
           >
-            {isSubmitting || mutation.isPending ? 'Saving...' : 'Save'}
+            {isSubmitting || mutation.isPending
+              ? t('car_details.saving', 'Saving...')
+              : t('form.actions.save', { ns: 'cars', defaultValue: 'Save' })}
           </Button>
         </form>
       </DialogContent>

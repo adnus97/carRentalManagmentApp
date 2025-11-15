@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,24 +37,30 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import type { User } from '../../types/user';
+import { useNavigate } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 
 const updateProfileSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  image: z.string().url('Invalid URL').optional().or(z.literal('')),
+  name: z.string().min(2, 'account.validators.name_min'),
+  image: z
+    .string()
+    .url('account.validators.image_url')
+    .optional()
+    .or(z.literal('')),
 });
 
 const changeEmailSchema = z.object({
-  newEmail: z.string().email('Invalid email address'),
+  newEmail: z.string().email('account.validators.email_invalid'),
 });
 
 const changePasswordSchema = z
   .object({
-    currentPassword: z.string().min(1, 'Current password is required'),
-    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    currentPassword: z.string().min(1, 'account.validators.current_required'),
+    newPassword: z.string().min(8, 'account.validators.password_min'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
+    message: 'account.validators.passwords_mismatch',
     path: ['confirmPassword'],
   });
 
@@ -68,7 +74,6 @@ type LinkedAccount = {
   providerAccountId: string;
 };
 
-// The raw shape your API returns (adjust if needed)
 type ApiAccount = {
   id: string;
   provider: string;
@@ -87,18 +92,29 @@ function mapApiToLinkedAccount(a: ApiAccount): LinkedAccount {
 }
 
 export function AccountSettings() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const { user, setUser } = useUser();
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const profileDefaults = useMemo(
+    () => ({
+      name: user?.name ?? '',
+      image: user?.image ?? '',
+    }),
+    [user?.name, user?.image],
+  );
+
   const profileForm = useForm<UpdateProfileFields>({
     resolver: zodResolver(updateProfileSchema),
-    defaultValues: {
-      name: user?.name || '',
-      image: user?.image || '',
-    },
+    defaultValues: profileDefaults,
   });
+
+  useEffect(() => {
+    profileForm.reset(profileDefaults);
+  }, [profileDefaults, profileForm]);
 
   const emailForm = useForm<ChangeEmailFields>({
     resolver: zodResolver(changeEmailSchema),
@@ -139,27 +155,26 @@ export function AccountSettings() {
         image: data.image || undefined,
       });
 
-      setUser((prev: User | null): User | null => {
-        if (!prev) return prev; // nothing to merge
+      if (user) {
         const nextUser: User = {
-          ...prev,
+          ...user,
           name: data.name,
-          image: data.image || prev.image || '',
+          image: data.image || user.image || '',
         };
         localStorage.setItem('authUser', JSON.stringify(nextUser));
-        return nextUser;
-      });
+        setUser(nextUser);
+      }
 
       toast({
         type: 'success',
-        title: 'Profile Updated',
-        description: 'Your profile has been successfully updated',
+        title: t('account.profile.updated_toast_title'),
+        description: t('account.profile.updated_toast_desc'),
       });
     } catch (error: any) {
       toast({
         type: 'error',
-        title: 'Error',
-        description: error?.message ?? 'Failed to update profile',
+        title: t('account.profile.error_toast_title'),
+        description: error?.message ?? t('account.profile.error_update_desc'),
       });
     } finally {
       setIsSubmitting(false);
@@ -169,46 +184,143 @@ export function AccountSettings() {
   const onChangeEmail = async (data: ChangeEmailFields) => {
     setIsSubmitting(true);
     try {
-      await changeEmailApi({
+      const res: unknown = await changeEmailApi({
         newEmail: data.newEmail,
         callbackURL: '/account-settings',
       });
+
+      // Normalize: extract status/code/message from common shapes
+      const status =
+        (res as any)?.status ??
+        (res as any)?.response?.status ??
+        (res as any)?.data?.status;
+
+      const code =
+        (res as any)?.code ??
+        (res as any)?.error?.code ??
+        (res as any)?.data?.code;
+
+      const message =
+        (res as any)?.message ??
+        (res as any)?.error?.message ??
+        (res as any)?.data?.message;
+
+      // If server reported an error or an HTTP error, treat as failure
+      if (code || (typeof status === 'number' && status >= 400)) {
+        const friendly =
+          message ||
+          (code === 'EMAIL_SAME'
+            ? 'Email is the same'
+            : code === 'EMAIL_EXISTS'
+              ? 'Email already exists'
+              : t('account.email.error_change_desc'));
+        const err = Object.assign(new Error(friendly), { code, status });
+        throw err;
+      }
+
+      // Some wrappers use { ok: boolean }
+      if ((res as any)?.ok === false) {
+        throw new Error(t('account.email.error_change_desc'));
+      }
+
+      // Success
       toast({
         type: 'success',
-        title: 'Verification Email Sent',
-        description: 'Check your current email to approve the change',
+        title: t('account.email.sent_toast_title'),
+        description: t('account.email.sent_toast_desc'),
       });
       emailForm.reset();
     } catch (error: any) {
+      const code =
+        error?.code ?? error?.response?.data?.code ?? error?.data?.code;
+
+      const msg =
+        error?.message ||
+        (code === 'EMAIL_IS_THE_SAME'
+          ? 'Email is the same'
+          : code === 'COULDNT_UPDATE_YOUR_EMAIL'
+            ? 'Email already exists'
+            : t('account.email.error_change_desc'));
+
       toast({
         type: 'error',
-        title: 'Error',
-        description: error?.message ?? 'Failed to change email',
+        title: t('account.profile.error_toast_title'),
+        description: msg,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+  type ApiErrorShape = { code?: string; message?: string; status?: number };
 
   const onChangePassword = async (data: ChangePasswordFields) => {
     setIsSubmitting(true);
     try {
-      await changePasswordApi({
+      const res: unknown = await changePasswordApi({
         newPassword: data.newPassword,
         currentPassword: data.currentPassword,
         revokeOtherSessions: true,
       });
+
+      const status =
+        (res as any)?.status ??
+        (res as any)?.response?.status ??
+        (res as any)?.data?.status;
+
+      const code =
+        (res as any)?.code ??
+        (res as any)?.error?.code ??
+        (res as any)?.data?.code;
+
+      const message =
+        (res as any)?.message ??
+        (res as any)?.error?.message ??
+        (res as any)?.data?.message;
+
+      if (code || (typeof status === 'number' && status >= 400)) {
+        const friendly =
+          code === 'INVALID_PASSWORD'
+            ? t('account.password.invalid_current')
+            : message || t('account.password.error_change_desc');
+        const err: ApiErrorShape & Error = Object.assign(new Error(friendly), {
+          code,
+          status,
+        });
+        throw err;
+      }
+
+      if ((res as any)?.ok === false) {
+        throw new Error(t('account.password.error_change_desc'));
+      }
+
       toast({
         type: 'success',
-        title: 'Password Changed',
-        description: 'Your password has been successfully changed',
+        title: t('account.password.changed_toast_title'),
+        description: t('account.password.changed_toast_desc'),
       });
+
       passwordForm.reset();
+      try {
+        localStorage.removeItem('authUser');
+      } catch {}
+      try {
+        setUser?.(null as any);
+      } catch {}
+
+      navigate({ to: '/login' });
     } catch (error: any) {
+      const code =
+        error?.code ?? error?.response?.data?.code ?? error?.data?.code;
+
+      const message =
+        code === 'INVALID_PASSWORD'
+          ? t('account.password.invalid_current')
+          : error?.message || t('account.password.error_change_desc');
+
       toast({
         type: 'error',
-        title: 'Error',
-        description: error?.message ?? 'Failed to change password',
+        title: t('account.profile.error_toast_title'),
+        description: message,
       });
     } finally {
       setIsSubmitting(false);
@@ -224,8 +336,10 @@ export function AccountSettings() {
     } catch (error: any) {
       toast({
         type: 'error',
-        title: 'Error',
-        description: error?.message ?? `Failed to link ${provider} account`,
+        title: t('account.profile.error_toast_title'),
+        description:
+          error?.message ??
+          t('account.linked_accounts.link_error_desc', { provider }),
       });
     }
   };
@@ -250,14 +364,20 @@ export function AccountSettings() {
       await refreshAccounts();
       toast({
         type: 'success',
-        title: 'Account Unlinked',
-        description: `${providerId} account has been unlinked`,
+        title: t('account.linked_accounts.unlink_success_title'),
+        description: t('account.linked_accounts.unlink_success_desc', {
+          provider: providerId,
+        }),
       });
     } catch (error: any) {
       toast({
         type: 'error',
-        title: 'Error',
-        description: error?.message ?? `Failed to unlink ${providerId} account`,
+        title: t('account.profile.error_toast_title'),
+        description:
+          error?.message ??
+          t('account.linked_accounts.unlink_error_desc', {
+            provider: providerId,
+          }),
       });
     }
   };
@@ -267,15 +387,15 @@ export function AccountSettings() {
       await deleteUserApi();
       toast({
         type: 'success',
-        title: 'Account Deleted',
-        description: 'Your account has been successfully deleted',
+        title: t('account.danger.deleted_toast_title'),
+        description: t('account.danger.deleted_toast_desc'),
       });
-      window.location.href = '/login';
+      navigate({ to: '/login' });
     } catch (error: any) {
       toast({
         type: 'error',
-        title: 'Error',
-        description: error?.message ?? 'Failed to delete account',
+        title: t('account.profile.error_toast_title'),
+        description: error?.message ?? t('account.danger.delete_error_desc'),
       });
     }
   };
@@ -283,26 +403,25 @@ export function AccountSettings() {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Account Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account settings and preferences.
-        </p>
+        <h1 className="text-3xl font-bold">{t('account.title')}</h1>
+        <p className="text-muted-foreground">{t('account.subtitle')}</p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="accounts">Linked Accounts</TabsTrigger>
-          <TabsTrigger value="danger">Danger Zone</TabsTrigger>
+          <TabsTrigger value="profile">{t('account.tabs.profile')}</TabsTrigger>
+          <TabsTrigger value="security">
+            {t('account.tabs.security')}
+          </TabsTrigger>
+          <TabsTrigger value="danger">{t('account.tabs.danger')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle>{t('account.profile.card_title')}</CardTitle>
               <CardDescription>
-                Update your profile information.
+                {t('account.profile.card_desc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -311,7 +430,7 @@ export function AccountSettings() {
                 className="space-y-4"
               >
                 <div>
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="name">{t('account.profile.name')}</Label>
                   <Input
                     id="name"
                     {...profileForm.register('name')}
@@ -321,44 +440,27 @@ export function AccountSettings() {
                   />
                   {profileForm.formState.errors.name && (
                     <span className="text-red-600 text-sm">
-                      {profileForm.formState.errors.name.message}
+                      {t(profileForm.formState.errors.name.message as any)}
                     </span>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t('account.profile.email')}</Label>
                   <Input id="email" value={user?.email ?? ''} disabled />
                   <p className="text-[12px] text-amber-600">
-                    To change your email, use the Security tab.
+                    {t('account.profile.email_hint')}
                   </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="image">Profile Image URL</Label>
-                  <Input
-                    id="image"
-                    placeholder="https://example.com/image.jpg"
-                    {...profileForm.register('image')}
-                    className={
-                      profileForm.formState.errors.image ? 'border-red-600' : ''
-                    }
-                  />
-                  {profileForm.formState.errors.image && (
-                    <span className="text-red-600 text-sm">
-                      {profileForm.formState.errors.image.message}
-                    </span>
-                  )}
                 </div>
 
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader />
-                      <span>Updating...</span>
+                      <span>{t('account.profile.updating')}</span>
                     </>
                   ) : (
-                    'Update Profile'
+                    t('account.profile.update_btn')
                   )}
                 </Button>
               </form>
@@ -369,10 +471,8 @@ export function AccountSettings() {
         <TabsContent value="security" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Change Email</CardTitle>
-              <CardDescription>
-                Change your account email address.
-              </CardDescription>
+              <CardTitle>{t('account.email.card_title')}</CardTitle>
+              <CardDescription>{t('account.email.card_desc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <form
@@ -380,7 +480,9 @@ export function AccountSettings() {
                 className="space-y-4"
               >
                 <div>
-                  <Label htmlFor="newEmail">New Email</Label>
+                  <Label htmlFor="newEmail">
+                    {t('account.email.new_email')}
+                  </Label>
                   <Input
                     id="newEmail"
                     type="email"
@@ -393,7 +495,7 @@ export function AccountSettings() {
                   />
                   {emailForm.formState.errors.newEmail && (
                     <span className="text-red-600 text-sm">
-                      {emailForm.formState.errors.newEmail.message}
+                      {t(emailForm.formState.errors.newEmail.message as any)}
                     </span>
                   )}
                 </div>
@@ -401,10 +503,10 @@ export function AccountSettings() {
                   {isSubmitting ? (
                     <>
                       <Loader />
-                      <span>Sending...</span>
+                      <span>{t('account.email.sending')}</span>
                     </>
                   ) : (
-                    'Change Email'
+                    t('account.email.change_btn')
                   )}
                 </Button>
               </form>
@@ -413,8 +515,10 @@ export function AccountSettings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Change Password</CardTitle>
-              <CardDescription>Update your account password.</CardDescription>
+              <CardTitle>{t('account.password.card_title')}</CardTitle>
+              <CardDescription>
+                {t('account.password.card_desc')}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form
@@ -422,7 +526,9 @@ export function AccountSettings() {
                 className="space-y-4"
               >
                 <div>
-                  <Label htmlFor="currentPassword">Current Password</Label>
+                  <Label htmlFor="currentPassword">
+                    {t('account.password.current')}
+                  </Label>
                   <Input
                     id="currentPassword"
                     type="password"
@@ -435,13 +541,18 @@ export function AccountSettings() {
                   />
                   {passwordForm.formState.errors.currentPassword && (
                     <span className="text-red-600 text-sm">
-                      {passwordForm.formState.errors.currentPassword.message}
+                      {t(
+                        passwordForm.formState.errors.currentPassword
+                          .message as any,
+                      )}
                     </span>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="newPassword">New Password</Label>
+                  <Label htmlFor="newPassword">
+                    {t('account.password.new')}
+                  </Label>
                   <Input
                     id="newPassword"
                     type="password"
@@ -454,13 +565,18 @@ export function AccountSettings() {
                   />
                   {passwordForm.formState.errors.newPassword && (
                     <span className="text-red-600 text-sm">
-                      {passwordForm.formState.errors.newPassword.message}
+                      {t(
+                        passwordForm.formState.errors.newPassword
+                          .message as any,
+                      )}
                     </span>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <Label htmlFor="confirmPassword">
+                    {t('account.password.confirm')}
+                  </Label>
                   <Input
                     id="confirmPassword"
                     type="password"
@@ -473,7 +589,10 @@ export function AccountSettings() {
                   />
                   {passwordForm.formState.errors.confirmPassword && (
                     <span className="text-red-600 text-sm">
-                      {passwordForm.formState.errors.confirmPassword.message}
+                      {t(
+                        passwordForm.formState.errors.confirmPassword
+                          .message as any,
+                      )}
                     </span>
                   )}
                 </div>
@@ -482,10 +601,10 @@ export function AccountSettings() {
                   {isSubmitting ? (
                     <>
                       <Loader />
-                      <span>Changing...</span>
+                      <span>{t('account.password.changing')}</span>
                     </>
                   ) : (
-                    'Change Password'
+                    t('account.password.change_btn')
                   )}
                 </Button>
               </form>
@@ -496,16 +615,20 @@ export function AccountSettings() {
         <TabsContent value="accounts">
           <Card>
             <CardHeader>
-              <CardTitle>Linked Accounts</CardTitle>
+              <CardTitle>{t('account.linked_accounts.card_title')}</CardTitle>
               <CardDescription>
-                Manage your connected social accounts.
+                {t('account.linked_accounts.card_desc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <h4 className="font-medium">Connected Accounts</h4>
+                <h4 className="font-medium">
+                  {t('account.linked_accounts.connected_heading')}
+                </h4>
                 {loadingAccounts ? (
-                  <p className="text-muted-foreground">Loading...</p>
+                  <p className="text-muted-foreground">
+                    {t('account.linked_accounts.loading')}
+                  </p>
                 ) : accounts.length > 0 ? (
                   accounts.map((account) => (
                     <div
@@ -526,18 +649,22 @@ export function AccountSettings() {
                             handleUnlinkAccount(account.providerId)
                           }
                         >
-                          Unlink
+                          {t('account.linked_accounts.unlink')}
                         </Button>
                       )}
                     </div>
                   ))
                 ) : (
-                  <p className="text-muted-foreground">No linked accounts</p>
+                  <p className="text-muted-foreground">
+                    {t('account.linked_accounts.none')}
+                  </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <h4 className="font-medium">Link New Account</h4>
+                <h4 className="font-medium">
+                  {t('account.linked_accounts.link_new_heading')}
+                </h4>
                 {!accounts.some((acc) => acc.providerId === 'google') && (
                   <Button
                     variant="outline"
@@ -550,7 +677,7 @@ export function AccountSettings() {
                         fill="currentColor"
                       />
                     </svg>
-                    Link Google Account
+                    {t('account.linked_accounts.link_google')}
                   </Button>
                 )}
               </div>
@@ -561,33 +688,36 @@ export function AccountSettings() {
         <TabsContent value="danger">
           <Card className="border-red-200">
             <CardHeader>
-              <CardTitle className="text-red-600">Danger Zone</CardTitle>
-              <CardDescription>
-                Irreversible actions. Please be careful.
-              </CardDescription>
+              <CardTitle className="text-red-600">
+                {t('account.danger.title')}
+              </CardTitle>
+              <CardDescription>{t('account.danger.desc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="ghost">Delete Account</Button>
+                  <Button variant="ghost">
+                    {t('account.danger.delete_btn')}
+                  </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      Are you absolutely sure?
+                      {t('account.danger.dialog_title')}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete
-                      your account and remove your data from our servers.
+                      {t('account.danger.dialog_desc')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>
+                      {t('account.danger.cancel')}
+                    </AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-red-600 hover:bg-red-700"
                       onClick={handleDeleteAccount}
                     >
-                      Delete Account
+                      {t('account.danger.confirm_delete')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

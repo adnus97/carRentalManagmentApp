@@ -39,6 +39,14 @@ import {
 } from '../ui/tooltip';
 import { useNavigationContext } from '@/contexts/navigation-context';
 import { Separator } from '../ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useTranslation } from 'react-i18next';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -49,6 +57,8 @@ ModuleRegistry.registerModules([
 ]);
 
 export const CarsGrid = () => {
+  const { t } = useTranslation('cars');
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Car[]>([]);
   const [rentDialogOpen, setRentDialogOpen] = useState(false);
@@ -65,6 +75,11 @@ export const CarsGrid = () => {
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
   const queryClient = useQueryClient();
 
+  // Availability filter: 'all' | 'available' | 'not_available'
+  const [availabilityFilter, setAvailabilityFilter] = useState<
+    'all' | 'available' | 'not_available'
+  >('all');
+
   // Responsive pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(() =>
@@ -72,9 +87,10 @@ export const CarsGrid = () => {
   );
 
   useEffect(() => {
-    setEntity(null); // root breadcrumb = "Cars"
+    setEntity(null);
     return () => setEntity(null);
   }, [setEntity]);
+
   useEffect(() => {
     const handleResize = () => {
       setPageSize(window.innerWidth < 1700 ? 7 : 12);
@@ -90,7 +106,6 @@ export const CarsGrid = () => {
     placeholderData: (prev) => prev,
     refetchOnWindowFocus: false,
     retry: (failureCount, error: any) => {
-      // Don't retry if user has no organization
       if (
         error?.response?.status === 400 &&
         error?.response?.data?.message?.includes('No organization')
@@ -100,6 +115,26 @@ export const CarsGrid = () => {
       return failureCount < 3;
     },
   });
+  const [isSmallScreen, setIsSmallScreen] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 640 : false, // sm breakpoint
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsSmallScreen(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  // Client-side filtered rows by availability
+  const rawRows: Car[] = data?.data || [];
+  const filteredRows = useMemo(() => {
+    if (availabilityFilter === 'available') {
+      return rawRows.filter((r) => r.isAvailable === true);
+    }
+    if (availabilityFilter === 'not_available') {
+      return rawRows.filter((r) => r.isAvailable === false);
+    }
+    return rawRows;
+  }, [rawRows, availabilityFilter]);
 
   // Handle no organization case
   if (
@@ -108,16 +143,15 @@ export const CarsGrid = () => {
   ) {
     return (
       <div className="p-4 text-center">
-        <h2 className="text-xl mb-4">No Organization Found</h2>
-        <p className="mb-4">
-          You need to create or join an organization first.
-        </p>
+        <h2 className="text-xl mb-4">{t('no_org.title')}</h2>
+        <p className="mb-4">{t('no_org.desc')}</p>
         <Button onClick={() => router.navigate({ to: '/organization' })}>
-          Set Up Organization
+          {t('no_org.cta')}
         </Button>
       </div>
     );
   }
+
   // Helper: can a car be deleted?
   const canBeDeleted = (car: Car): boolean => {
     return car.isAvailable && car.status !== 'deleted';
@@ -130,16 +164,15 @@ export const CarsGrid = () => {
       queryClient.invalidateQueries({ queryKey: ['cars'] });
       toast({
         type: 'success',
-        title: 'Car Deleted',
-        description: 'The car(s) have been successfully deleted.',
+        title: t('toasts.delete_success_title'),
+        description: t('toasts.delete_success_desc'),
       });
     },
     onError: (error: any) => {
       toast({
         type: 'error',
-        title: 'Error',
-        description:
-          error?.response?.data?.message || 'Failed to delete car(s).',
+        title: t('common.error', { ns: 'common', defaultValue: 'Error' }),
+        description: error?.response?.data?.message || t('toasts.delete_error'),
       });
     },
   });
@@ -151,17 +184,19 @@ export const CarsGrid = () => {
     if (blockedRows.length > 0) {
       toast({
         type: 'warning',
-        title: 'Some cars cannot be deleted',
-        description: `${blockedRows.length} selected car(s) cannot be deleted. Only ${deletableRows.length} will be deleted.`,
+        title: t('delete.partial_title'),
+        description: t('delete.partial_desc', {
+          blocked: blockedRows.length,
+          allowed: deletableRows.length,
+        }),
       });
     }
 
     if (deletableRows.length === 0) {
       toast({
         type: 'error',
-        title: 'Cannot delete',
-        description:
-          'No selected cars can be deleted. Cars must be available and not already deleted.',
+        title: t('delete.none_title'),
+        description: t('delete.none_desc'),
       });
       setShowDeleteDialog(false);
       return;
@@ -180,12 +215,7 @@ export const CarsGrid = () => {
   };
 
   const currencyFormatter = (params: any) =>
-    params.value ? `${params.value.toLocaleString()} DHS` : '';
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    return format(new Date(dateStr), 'dd/MM/yyyy');
-  };
+    params.value ? `${params.value.toLocaleString()} ${t('currency')}` : '';
 
   const statusBadge = (status: Car['status']) => {
     const colors: Record<Car['status'], string> = {
@@ -199,7 +229,7 @@ export const CarsGrid = () => {
       <span
         className={`px-2 py-1 rounded text-white text-xs ${colors[status]}`}
       >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {t(`status.${status}`)}
       </span>
     );
   };
@@ -215,70 +245,81 @@ export const CarsGrid = () => {
       suppressMovable: true,
     },
     {
-      field: 'plateNumber', // 🆕 New plate number column
-      headerName: 'Plate Number',
+      field: 'plateNumber',
+      headerName: t('columns.plate'),
       width: 130,
       sortable: true,
       filter: 'agTextColumnFilter',
       cellRenderer: (params: any) => (
         <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-          {params.value || 'N/A'}
+          {params.value ||
+            t('common.na', { ns: 'common', defaultValue: 'N/A' })}
         </span>
       ),
     },
     {
       field: 'make',
-      headerName: 'Make',
-      width: 120, // Reduced to make room
+      headerName: t('columns.make'),
+      width: 120,
       sortable: true,
       filter: 'agTextColumnFilter',
     },
     {
       field: 'model',
-      headerName: 'Model',
-      width: 120, // Reduced to make room
+      headerName: t('columns.model'),
+      width: 120,
       sortable: true,
       filter: 'agTextColumnFilter',
     },
-    { field: 'year', headerName: 'Year', width: 80, sortable: true },
+    { field: 'year', headerName: t('columns.year'), width: 80, sortable: true },
     {
-      field: 'color', // 🆕 New color column
-      headerName: 'Color',
-      width: 100,
+      field: 'color',
+      headerName: t('columns.color'),
+      width: 120,
       sortable: true,
       filter: 'agTextColumnFilter',
-      cellRenderer: (params: any) => (
-        <div className="flex items-center gap-2">
-          {params.value && (
-            <div
-              className="w-4 h-4 rounded-full border border-gray-300"
-              style={{ backgroundColor: params.value.toLowerCase() }}
-            />
-          )}
-          <span>{params.value || 'N/A'}</span>
-        </div>
-      ),
+      cellRenderer: (params: any) => {
+        const raw = (params.value ?? '').toString().trim();
+        // Translate only if a matching key exists; otherwise show the raw value
+        const translated = raw ? t(`colors.${raw}`) : '';
+        const label =
+          translated && translated !== `colors.${raw}`
+            ? translated
+            : raw || t('common.na', { ns: 'common', defaultValue: 'N/A' });
+
+        return (
+          <div className="flex items-center gap-2">
+            {raw && (
+              <div
+                className="w-4 h-4 rounded-full border border-gray-300"
+                style={{ backgroundColor: raw }}
+              />
+            )}
+            <span>{label}</span>
+          </div>
+        );
+      },
     },
     {
       field: 'purchasePrice',
-      headerName: 'Purchase Price',
+      headerName: t('columns.purchase_price'),
       width: 130,
       valueFormatter: currencyFormatter,
     },
     {
       field: 'pricePerDay',
-      headerName: 'Price/Day',
+      headerName: t('columns.price_per_day'),
       width: 100,
       valueFormatter: currencyFormatter,
     },
     {
-      headerName: 'Status',
+      headerName: t('columns.status'),
       field: 'status',
       width: 110,
       cellRenderer: (params: any) => statusBadge(params.value),
     },
     {
-      headerName: 'Availability',
+      headerName: t('columns.availability'),
       field: 'isAvailable',
       width: 140,
       cellRenderer: (params: any) => {
@@ -289,43 +330,39 @@ export const CarsGrid = () => {
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: available ? '#22c55e' : '#ef4444' }}
             ></span>
-            <span>{available ? 'Available' : 'Not Available'}</span>
+            <span>{available ? t('available') : t('not_available')}</span>
           </div>
         );
       },
     },
     {
-      headerName: 'Next Available',
+      headerName: t('columns.next_available'),
       field: 'nextAvailableDate',
       width: 140,
       cellRenderer: (params: { value: string; data: Car }) => {
         const { value: nextAvailableDate, data: car } = params;
 
-        // If car is not available and no next available date, it's likely an open contract
         if (!car.isAvailable && !nextAvailableDate) {
           return (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="cursor-help underline decoration-dotted text-orange-500 font-semibold">
-                    Open Contract
+                    {t('open_contract')}
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  This car is currently rented under an open contract with no
-                  defined end date
+                  {t('open_contract_hint')}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           );
         }
 
-        // If no next available date and car is available, then it's truly available now
         if (!nextAvailableDate) {
-          return <span>Available now</span>;
+          return <span>{t('available_now')}</span>;
         }
 
-        // Otherwise show the next available date
         const parsed = new Date(nextAvailableDate);
         const shortDate = format(parsed, 'dd/MM/yyyy');
         const fullDate = format(parsed, 'dd/MM/yyyy HH:mm:ss');
@@ -345,7 +382,7 @@ export const CarsGrid = () => {
       },
     },
     {
-      headerName: 'Insurance Expiry',
+      headerName: t('columns.insurance_expiry'),
       field: 'insuranceExpiryDate',
       width: 130,
       cellRenderer: (params: { value: string }) => {
@@ -356,14 +393,14 @@ export const CarsGrid = () => {
         const soon = addDays(today, 30);
 
         let color = '';
-        let tooltipMessage = 'Insurance is valid';
+        let tooltipMessage = t('insurance.valid');
 
         if (isBefore(expiry, today)) {
           color = '#EC6142';
-          tooltipMessage = 'Insurance has expired';
+          tooltipMessage = t('insurance.expired');
         } else if (isBefore(expiry, soon)) {
           color = '#FFCA16';
-          tooltipMessage = 'Insurance will soon be expired (less than 30 days)';
+          tooltipMessage = t('insurance.soon');
         }
 
         return (
@@ -381,7 +418,7 @@ export const CarsGrid = () => {
       },
     },
     {
-      headerName: 'Technical Inspection Expiry', // ✅ New column
+      headerName: t('columns.tech_inspection_expiry'),
       field: 'technicalVisiteExpiryDate',
       width: 150,
       cellRenderer: (params: { value: string }) => {
@@ -392,15 +429,14 @@ export const CarsGrid = () => {
         const soon = addDays(today, 30);
 
         let color = '';
-        let tooltipMessage = 'Technical visit is valid';
+        let tooltipMessage = t('tech.valid');
 
         if (isBefore(expiry, today)) {
           color = '#EC6142';
-          tooltipMessage = 'Technical visit has expired';
+          tooltipMessage = t('tech.expired');
         } else if (isBefore(expiry, soon)) {
           color = '#FFCA16';
-          tooltipMessage =
-            'Technical visit will soon be expired (less than 30 days)';
+          tooltipMessage = t('tech.soon');
         }
 
         return (
@@ -418,9 +454,9 @@ export const CarsGrid = () => {
       },
     },
     {
-      headerName: 'Actions',
+      headerName: t('columns.actions'),
       pinned: 'right',
-      width: 180,
+      width: isSmallScreen ? 110 : 205, // narrower on small screens
       cellRenderer: (params: any) => (
         <div className="flex gap-2 items-center h-full">
           <Button
@@ -434,9 +470,14 @@ export const CarsGrid = () => {
               !params.data.isAvailable ||
               ['maintenance', 'sold', 'deleted'].includes(params.data.status)
             }
+            aria-label={t('actions.rent')}
+            title={t('actions.rent')}
+            className="gap-2"
           >
-            <ShoppingCart size={16} /> Rent
+            <ShoppingCart size={16} />
+            <span className="hidden sm:inline">{t('actions.rent')}</span>
           </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -445,8 +486,12 @@ export const CarsGrid = () => {
               setSelectedCarForEdit(params.data);
               setEditDialogOpen(true);
             }}
+            aria-label={t('actions.edit')}
+            title={t('actions.edit')}
+            className="gap-2"
           >
-            <Hammer size={16} /> Edit
+            <Hammer size={16} />
+            <span className="hidden sm:inline">{t('actions.edit')}</span>
           </Button>
         </div>
       ),
@@ -457,7 +502,7 @@ export const CarsGrid = () => {
   const getPageNumbers = () => {
     const pages: number[] = [];
     for (let p = 1; p <= totalPages; p++) {
-      if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
+      if (p === 1 || p === totalPages || (p >= page - 2 && p <= p + 2)) {
         pages.push(p);
       }
     }
@@ -473,17 +518,23 @@ export const CarsGrid = () => {
 
   let descriptionText = '';
   if (blockedCars.length > 0) {
-    descriptionText = `${deletableCars.length} car(s) will be deleted: ${deletableNames
-      .slice(0, 5)
-      .join(
-        ', ',
-      )}${deletableCars.length > 5 ? `, and ${deletableCars.length - 5} more` : ''}. ${blockedCars.length} cannot be deleted.`;
+    descriptionText = t('delete.dialog_partial', {
+      count: deletableCars.length,
+      list: deletableNames.slice(0, 5).join(', '),
+      more:
+        deletableCars.length > 5
+          ? t('more', { n: deletableCars.length - 5 })
+          : '',
+      blocked: blockedCars.length,
+    });
   } else {
-    descriptionText = `Are you sure you want to delete the following car(s): ${deletableNames
-      .slice(0, 5)
-      .join(
-        ', ',
-      )}${deletableCars.length > 5 ? `, and ${deletableCars.length - 5} more` : ''}?`;
+    descriptionText = t('delete.dialog_full', {
+      list: deletableNames.slice(0, 5).join(', '),
+      more:
+        deletableCars.length > 5
+          ? t('more', { n: deletableCars.length - 5 })
+          : '',
+    });
   }
 
   return (
@@ -491,59 +542,114 @@ export const CarsGrid = () => {
       className="ag-theme-alpine-dark flex flex-col"
       style={{ width: '100%', height: 'calc(100vh - 100px)' }}
     >
-      <h2 className="text-xl mb-4 font-bold">Your Cars Dashboard</h2>
+      <h2 className="text-xl mb-4 font-bold">{t('title')}</h2>
 
-      <div className="flex  items-center mb-4">
-        <p>Manage your car fleet below:</p>
-      </div>
-      {selectedRows.length > 0 && (
-        <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-          <span className="text-sm font-medium">
-            {selectedRows.length} car {selectedRows.length > 1 ? 's' : ''}{' '}
-            selected
-          </span>
-          <Separator orientation="vertical" className="h-4" />
-          <div className="flex justify-between   gap-2">
-            {selectedRows.length === 1 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const carId = selectedRows[0].id;
-                  router.navigate({
-                    to: '/carDetails/$id',
-                    params: { id: carId },
-                  });
-                }}
-              >
-                View Details
-              </Button>
-            )}
-          </div>
-          <Button
-            variant="secondary"
-            className="ml-auto flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={selectedRows.length === 0}
+      <div className="flex items-center justify-between mb-4">
+        <p>{t('manage_hint')}</p>
+
+        <div className="flex items-center gap-2">
+          <Select
+            value={availabilityFilter}
+            onValueChange={(v) =>
+              setAvailabilityFilter(v as 'all' | 'available' | 'not_available')
+            }
           >
-            <Trash size={20} /> Delete ({deletableCars.length}/
-            {selectedRows.length})
-          </Button>
-          {blockedCars.length > 0 && (
-            <span className="text-xs text-yellow-500">
-              {blockedCars.length} selected car(s) cannot be deleted
+            <SelectTrigger className="w-44">
+              <SelectValue
+                placeholder={t('filters.availability_placeholder', {
+                  defaultValue: 'Filter availability',
+                })}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {t('filters.all', { defaultValue: 'All' })}
+              </SelectItem>
+              <SelectItem value="available">{t('available')}</SelectItem>
+              <SelectItem value="not_available">
+                {t('not_available')}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {selectedRows.length > 0 && (
+        <div
+          className="
+      mb-4 rounded-lg border
+      bg-gray-50 dark:bg-gray-800
+      p-3 sm:p-3
+      flex flex-col gap-3
+      sm:flex-row sm:items-center sm:gap-2
+    "
+        >
+          {/* Left cluster: count + divider + inline actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+            <span className="text-sm font-medium">
+              {t('selected_count', {
+                count: selectedRows.length,
+                s: selectedRows.length > 1 ? 's' : '',
+              })}
             </span>
-          )}
+
+            {/* Divider shows only when items are inline */}
+            <Separator orientation="horizontal" className="my-2 sm:hidden" />
+            <Separator orientation="vertical" className="hidden sm:block h-4" />
+
+            <div className="mt-2 sm:mt-0 flex flex-col sm:flex-row gap-2 sm:gap-2 w-full sm:w-auto">
+              {selectedRows.length === 1 && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const carId = selectedRows[0].id;
+                    router.navigate({
+                      to: '/carDetails/$id',
+                      params: { id: carId },
+                    });
+                  }}
+                  className="w-full sm:w-auto flex items-center justify-center"
+                >
+                  {t('view_details')}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Right cluster: delete + info; moves below on small screens */}
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:ml-auto gap-2 sm:gap-0 w-full sm:w-auto">
+            {blockedCars.length > 0 && (
+              <span className="text-xs text-yellow-500 sm:mr-3">
+                {t('delete.blocked_hint', { n: blockedCars.length })}
+              </span>
+            )}
+
+            <Button
+              variant="secondary"
+              className="bg-red-600 hover:bg-red-700 text-white
+                          w-full sm:w-auto
+                          flex items-center justify-center gap-2"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={selectedRows.length === 0}
+            >
+              <Trash size={20} />
+              {t('actions.delete_with_count', {
+                a: deletableCars.length,
+                b: selectedRows.length,
+              })}
+            </Button>
+          </div>
         </div>
       )}
 
       {isLoading || isFetching ? (
-        <p className="text-white text-center">Loading cars...</p>
+        <p className="text-white text-center">{t('loading')}</p>
       ) : (
         <>
           <div className="flex-1 overflow-y-auto" style={gridStyle}>
             <AgGridReact
               rowHeight={50}
-              rowData={data?.data || []}
+              rowData={filteredRows}
               columnDefs={colDefs}
               rowSelection="multiple"
               pagination={false}
@@ -594,11 +700,17 @@ export const CarsGrid = () => {
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         onConfirm={handleDelete}
-        title="Delete Car(s)"
+        title={t('delete.dialog_title')}
         description={descriptionText}
-        confirmText="Delete"
-        cancelText="Cancel"
-        loadingText="Deleting..."
+        confirmText={t('common.delete', {
+          ns: 'common',
+          defaultValue: 'Delete',
+        })}
+        cancelText={t('common.cancel', {
+          ns: 'common',
+          defaultValue: 'Cancel',
+        })}
+        loadingText={t('deleting')}
         variant="destructive"
       />
 

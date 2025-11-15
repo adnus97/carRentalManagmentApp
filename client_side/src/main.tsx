@@ -12,6 +12,8 @@ import { ThemeProvider } from './components/theme/theme-provider';
 import { Toaster } from 'sonner';
 import { ModeToggle } from './components/mode-toggle';
 
+import i18n from './i18n';
+
 const router = createRouter({
   routeTree,
   context: { auth: undefined! },
@@ -35,7 +37,7 @@ function App() {
     </UserProvider>
   );
 }
-
+console.log('has en/auth:', i18n.hasResourceBundle('en', 'auth'));
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <>

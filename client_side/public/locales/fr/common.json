@@ -1,0 +1,93 @@
+{
+  "welcome": "Bienvenue",
+  "na": "N/A",
+  "error": "Erreur",
+  "delete": "Supprimer",
+  "cancel": "Annuler",
+  "language": {
+    "english": "Anglais",
+    "french": "Français"
+  },
+  "select": { "language": "Choisir Langue" },
+  "header": { "title": "Location de voitures", "logout": "Se déconnecter" },
+  "account": {
+    "title": "Paramètres du compte",
+    "subtitle": "Gérez les paramètres et préférences de votre compte.",
+    "tabs": {
+      "profile": "Profil",
+      "security": "Sécurité",
+      "danger": "Zone de danger",
+      "accounts": "Comptes liés"
+    },
+    "profile": {
+      "card_title": "Informations du profil",
+      "card_desc": "Mettez à jour les informations de votre profil.",
+      "name": "Nom",
+      "email": "E-mail",
+      "email_hint": "Pour modifier votre e-mail, utilisez l’onglet Sécurité.",
+      "updating": "Mise à jour…",
+      "update_btn": "Mettre à jour le profil",
+      "updated_toast_title": "Profil mis à jour",
+      "updated_toast_desc": "Votre profil a été mis à jour avec succès",
+      "error_toast_title": "Erreur",
+      "error_update_desc": "Échec de la mise à jour du profil"
+    },
+    "email": {
+      "card_title": "Changer l’e-mail",
+      "card_desc": "Modifiez l’adresse e-mail de votre compte.",
+      "new_email": "Nouvel e-mail",
+      "sending": "Envoi…",
+      "change_btn": "Changer l’e-mail",
+      "sent_toast_title": "E-mail de vérification envoyé",
+      "sent_toast_desc": "Vérifiez votre e-mail actuel pour approuver la modification",
+      "error_change_desc": "Échec du changement d’e-mail"
+    },
+    "password": {
+      "card_title": "Changer le mot de passe",
+      "card_desc": "Mettez à jour le mot de passe de votre compte.",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe",
+      "confirm": "Confirmer le nouveau mot de passe",
+      "changing": "Modification…",
+      "change_btn": "Changer le mot de passe",
+      "changed_toast_title": "Mot de passe modifié",
+      "changed_toast_desc": "Votre mot de passe a été modifié. Vous serez déconnecté de tous les appareils.",
+      "invalid_current": "Le mot de passe actuel est incorrect",
+      "error_change_desc": "Échec de la modification du mot de passe"
+    },
+    "linked_accounts": {
+      "card_title": "Comptes liés",
+      "card_desc": "Gérez vos comptes sociaux connectés.",
+      "connected_heading": "Comptes connectés",
+      "loading": "Chargement…",
+      "none": "Aucun compte lié",
+      "unlink": "Dissocier",
+      "link_new_heading": "Lier un nouveau compte",
+      "link_google": "Lier le compte Google",
+      "unlink_success_title": "Compte dissocié",
+      "unlink_success_desc": "Le compte {{provider}} a été dissocié",
+      "link_error_desc": "Échec de l’association du compte {{provider}}",
+      "unlink_error_desc": "Échec de la dissociation du compte {{provider}}"
+    },
+    "danger": {
+      "title": "Zone de danger",
+      "desc": "Actions irréversibles. Veuillez faire attention.",
+      "delete_btn": "Supprimer le compte",
+      "dialog_title": "Êtes-vous absolument sûr ?",
+      "dialog_desc": "Cette action est irréversible. Cela supprimera définitivement votre compte et effacera vos données de nos serveurs.",
+      "cancel": "Annuler",
+      "confirm_delete": "Supprimer le compte",
+      "deleted_toast_title": "Compte supprimé",
+      "deleted_toast_desc": "Votre compte a été supprimé avec succès",
+      "delete_error_desc": "Échec de la suppression du compte"
+    },
+    "validators": {
+      "name_min": "Le nom doit comporter au moins 2 caractères",
+      "image_url": "URL invalide",
+      "email_invalid": "Adresse e-mail invalide",
+      "current_required": "Le mot de passe actuel est requis",
+      "password_min": "Le mot de passe doit comporter au moins 8 caractères",
+      "passwords_mismatch": "Les mots de passe ne correspondent pas"
+    }
+  }
+}

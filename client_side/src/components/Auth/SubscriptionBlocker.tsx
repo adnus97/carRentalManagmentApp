@@ -1,4 +1,5 @@
-// src/components/auth/SubscriptionBlocker.tsx
+'use client';
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { authClient } from '@/lib/auth-client';
@@ -11,10 +12,11 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface SubscriptionStatus {
   subscriptionStatus: 'active' | 'inactive' | 'expired';
-  subscriptionEndDate?: Date;
+  subscriptionEndDate?: Date | string;
   daysRemaining?: number;
   isExpired?: boolean;
   needsRenewal?: boolean;
@@ -23,6 +25,7 @@ interface SubscriptionStatus {
 export function SubscriptionBlocker() {
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const navigate = useNavigate();
+  const { t } = useTranslation('auth');
 
   useEffect(() => {
     checkSubscription();
@@ -44,6 +47,11 @@ export function SubscriptionBlocker() {
     return null;
   }
 
+  const isExpired = status.subscriptionStatus === 'expired';
+  const dateText = status.subscriptionEndDate
+    ? new Date(status.subscriptionEndDate).toLocaleDateString()
+    : '';
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <Card className="max-w-md mx-4">
@@ -52,28 +60,28 @@ export function SubscriptionBlocker() {
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
           <CardTitle>
-            Subscription{' '}
-            {status.subscriptionStatus === 'expired' ? 'Expired' : 'Required'}
+            {isExpired
+              ? t('subscription.title_expired')
+              : t('subscription.title_required')}
           </CardTitle>
           <CardDescription>
-            {status.subscriptionStatus === 'expired'
-              ? `Your subscription expired on ${new Date(status.subscriptionEndDate!).toLocaleDateString()}`
-              : 'Your account does not have an active subscription'}
+            {isExpired
+              ? t('subscription.desc_expired', { date: dateText })
+              : t('subscription.desc_required')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-center text-muted-foreground">
-            Please contact support to renew your subscription and regain access
-            to all features.
+            {t('subscription.help')}
           </p>
           <div className="space-y-2">
             <Button
               className="w-full"
               onClick={() =>
-                (window.location.href = `mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL}`)
+                (window.location.href = `mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@example.com'}`)
               }
             >
-              Contact Support
+              {t('subscription.contact')}
             </Button>
             <Button
               variant="outline"
@@ -83,7 +91,7 @@ export function SubscriptionBlocker() {
                 navigate({ to: '/login' });
               }}
             >
-              Sign Out
+              {t('subscription.signout')}
             </Button>
           </div>
         </CardContent>

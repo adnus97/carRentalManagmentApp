@@ -15,32 +15,32 @@ export const navigationConfig = {
   // Regular user navigation
   navMain: [
     {
-      title: 'Cars',
+      title: 'breadcrumbs.cars',
       url: '/dashboard',
       icon: <CarProfile size={20} weight="duotone" />,
     },
     {
-      title: 'Clients',
+      title: 'breadcrumbs.clients',
       url: '/clients',
       icon: <UserList size={20} weight="duotone" />,
     },
     {
-      title: 'Rents',
+      title: 'breadcrumbs.rents',
       url: '/rents',
       icon: <Key size={20} weight="duotone" />,
     },
     {
-      title: 'Reports',
+      title: 'breadcrumbs.reports',
       url: '/reports',
       icon: <ChartDonut size={20} weight="duotone" />,
     },
     {
-      title: 'Organization',
+      title: 'breadcrumbs.organization',
       url: '/Organization',
       icon: <BuildingOffice size={20} weight="duotone" />,
     },
     {
-      title: 'Notifications',
+      title: 'notifications.menu', // add this key in layout.json or another namespace
       url: '/notifications',
       icon: <Bell size={20} weight="duotone" />,
     },
@@ -49,27 +49,27 @@ export const navigationConfig = {
   // Admin navigation
   navAdmin: [
     {
-      title: 'Dashboard',
+      title: 'breadcrumbs.dashboard',
       url: '/admin/dashboard',
       icon: <SquaresFour size={20} weight="duotone" />,
     },
     {
-      title: 'Users',
+      title: 'breadcrumbs.users',
       url: '/admin/users',
       icon: <Users size={20} weight="duotone" />,
     },
     {
-      title: 'Organizations',
+      title: 'breadcrumbs.organizations',
       url: '/admin/organizations',
       icon: <BuildingOffice size={20} weight="duotone" />,
     },
     {
-      title: 'Settings',
+      title: 'breadcrumbs.settings',
       url: '/admin/settings',
       icon: <Gear size={20} weight="duotone" />,
     },
     {
-      title: 'System',
+      title: 'breadcrumbs.system',
       url: '/admin/system',
       icon: <ShieldCheck size={20} weight="duotone" />,
     },

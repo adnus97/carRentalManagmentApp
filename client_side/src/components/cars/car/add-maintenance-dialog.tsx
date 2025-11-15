@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addMaintenanceLog, getCarDetails } from '@/api/cars';
 import { successToast, errorToast } from '@/components/ui/toast';
@@ -26,39 +26,53 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FormDatePicker } from '@/components/form-date-picker';
-
-const maintenanceSchema = z.object({
-  type: z.string().nonempty('Type is required'),
-  description: z.string().nonempty('Description is required'),
-  cost: z
-    .number({ invalid_type_error: 'Cost must be a number' })
-    .min(0, 'Cost is required'),
-  mileage: z.number().optional(),
-  createdAt: z.date(),
-});
-
-type MaintenanceFormFields = z.infer<typeof maintenanceSchema>;
+import { useTranslation } from 'react-i18next';
 
 export default function AddMaintenanceDialog({ carId }: { carId: string }) {
+  const { t, i18n } = useTranslation('cars');
+  const lang = i18n.language || 'en';
+  const currency = t('currency', 'DHS');
+
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // ✅ Fetch car details (to check rental status)
+  // Fetch car details (to check rental status if needed)
   const { data: carDetails, isLoading: carLoading } = useQuery({
     queryKey: ['carDetails', carId],
     queryFn: () => getCarDetails(carId),
   });
 
-  const car = carDetails?.car;
   const rentalHistory = carDetails?.rentalHistory || [];
-
-  // ✅ Reuse the same "active rent" logic from CarDetailsPage
   const activeRent = rentalHistory.find(
     (r: any) =>
       r.status === 'active' &&
       (!r.returnedAt || new Date(r.returnedAt) > new Date()),
   );
   const isRented = Boolean(activeRent);
+
+  // i18n-aware schema
+  const maintenanceSchema = useMemo(
+    () =>
+      z.object({
+        type: z.string().nonempty('maintenance.form.errors.type_required'),
+        description: z
+          .string()
+          .nonempty('maintenance.form.errors.description_required'),
+        cost: z
+          .number({ invalid_type_error: 'maintenance.form.errors.cost_number' })
+          .min(0, 'maintenance.form.errors.cost_required'),
+        mileage: z
+          .number({ invalid_type_error: 'cars.form.errors.mileage_number' })
+          .optional(),
+        createdAt: z.date({
+          required_error: 'maintenance.form.errors.date_required',
+          invalid_type_error: 'maintenance.form.errors.date_invalid',
+        }),
+      }),
+    [],
+  );
+
+  type MaintenanceFormFields = z.infer<typeof maintenanceSchema>;
 
   const mutation = useMutation({
     mutationFn: (payload: MaintenanceFormFields) =>
@@ -67,10 +81,10 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
         description: payload.description,
         cost: payload.cost,
         mileage: payload.mileage,
-        createdAt: payload.createdAt.toISOString(), // convert Date -> ISO for API
+        createdAt: payload.createdAt.toISOString(),
       }),
     onSuccess: () => {
-      successToast('Maintenance log added');
+      successToast(t('maintenance.toasts.added', 'Maintenance log added'));
       queryClient.invalidateQueries({
         queryKey: ['carMaintenanceLogs', carId],
       });
@@ -80,7 +94,8 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
     },
     onError: (err: any) => {
       errorToast(
-        err?.response?.data?.message || 'Failed to add maintenance log',
+        err?.response?.data?.message ||
+          t('maintenance.toasts.add_failed', 'Failed to add maintenance log'),
       );
     },
   });
@@ -116,18 +131,21 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
             setIsOpen(true);
           }}
         >
-          + Add Maintenance
+          {t('maintenance.actions.add', '+ Add Maintenance')}
         </Button>
       </DialogTrigger>
+
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Add Maintenance Log</DialogTitle>
+          <DialogTitle>
+            {t('maintenance.dialog.title', 'Add Maintenance Log')}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Type */}
           <div>
-            <Label>Type</Label>
+            <Label>{t('maintenance.grid.type', 'Type')}</Label>
             <Controller
               control={control}
               name="type"
@@ -137,58 +155,104 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
                   onValueChange={field.onChange}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue
+                      placeholder={t(
+                        'maintenance.placeholders.type',
+                        'Select type',
+                      )}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="oil_change">Oil Change</SelectItem>
-                    <SelectItem value="tire_rotation">Tire Rotation</SelectItem>
-                    <SelectItem value="inspection">Inspection</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="oil_change">
+                      {t('maintenance.types.oil_change', 'Oil Change')}
+                    </SelectItem>
+                    <SelectItem value="tire_rotation">
+                      {t('maintenance.types.tire_rotation', 'Tire Rotation')}
+                    </SelectItem>
+                    <SelectItem value="inspection">
+                      {t('maintenance.types.inspection', 'Inspection')}
+                    </SelectItem>
+                    <SelectItem value="other">
+                      {t('maintenance.types.other', 'Other')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               )}
             />
             {errors.type && (
-              <p className="text-red-500 text-xs">{errors.type.message}</p>
+              <p className="text-red-500 text-xs">
+                {t(
+                  (errors.type.message as string) ||
+                    'maintenance.form.errors.type_required',
+                )}
+              </p>
             )}
           </div>
 
           {/* Description */}
           <div>
-            <Label>Description</Label>
-            <Input {...register('description')} />
+            <Label>{t('maintenance.grid.description', 'Description')}</Label>
+            <Input
+              placeholder={t(
+                'maintenance.placeholders.description',
+                'Enter description',
+              )}
+              {...register('description')}
+            />
             {errors.description && (
               <p className="text-red-500 text-xs">
-                {errors.description.message}
+                {t(
+                  (errors.description.message as string) ||
+                    'maintenance.form.errors.description_required',
+                )}
               </p>
             )}
           </div>
 
           {/* Cost */}
           <div>
-            <Label>Cost</Label>
+            <Label>{t('maintenance.grid.cost', 'Cost')}</Label>
             <Input
               type="number"
+              placeholder={t('maintenance.placeholders.cost', 'e.g. 500')}
               {...register('cost', { valueAsNumber: true })}
             />
             {errors.cost && (
-              <p className="text-red-500 text-xs">{errors.cost.message}</p>
+              <p className="text-red-500 text-xs">
+                {t(
+                  (errors.cost.message as string) ||
+                    'maintenance.form.errors.cost_required',
+                )}
+              </p>
             )}
           </div>
 
           {/* Mileage */}
           <div>
-            <Label>Mileage (optional)</Label>
+            <Label>
+              {t('form.labels.mileage_optional', {
+                ns: 'cars',
+                defaultValue: 'Mileage (optional)',
+              })}
+            </Label>
             <Input
               type="number"
+              placeholder={t('maintenance.placeholders.mileage', 'e.g. 120000')}
               {...register('mileage', { valueAsNumber: true })}
             />
             {errors.mileage && (
-              <p className="text-red-500 text-xs">{errors.mileage.message}</p>
+              <p className="text-red-500 text-xs">
+                {t(
+                  (errors.mileage.message as string) ||
+                    'cars.form.errors.mileage_number',
+                )}
+              </p>
             )}
           </div>
+
+          {/* Date & Time */}
           <div>
-            <Label>Date & Time</Label>
+            <Label>{t('maintenance.fields.datetime', 'Date & Time')}</Label>
             <Controller
               control={control}
               name="createdAt"
@@ -196,18 +260,27 @@ export default function AddMaintenanceDialog({ carId }: { carId: string }) {
                 <FormDatePicker
                   value={field.value}
                   onChange={field.onChange}
-                  placeholder="Select date and time"
+                  placeholder={t(
+                    'maintenance.placeholders.datetime',
+                    'Select date and time',
+                  )}
                 />
               )}
             />
             {errors.createdAt && (
               <p className="text-red-500 text-xs">
-                {errors.createdAt.message as any}
+                {t(
+                  (errors.createdAt.message as string) ||
+                    'maintenance.form.errors.date_invalid',
+                )}
               </p>
             )}
           </div>
+
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save'}
+            {isSubmitting
+              ? t('targets.actions.saving', 'Saving...')
+              : t('form.actions.save', { ns: 'cars', defaultValue: 'Save' })}
           </Button>
         </form>
       </DialogContent>

@@ -229,18 +229,6 @@ export function UpdateOrganizationForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Contact Email</Label>
-                <Input
-                  id="email"
-                  placeholder="contact@company.com"
-                  {...register('email')}
-                />
-                {errors.email && (
-                  <p className="text-xs text-red-500">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="website">Website</Label>
                 <Input
                   id="website"

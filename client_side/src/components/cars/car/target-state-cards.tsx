@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Target, Calendar } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface TargetStatsCardsProps {
   currentRevenue?: number | null;
@@ -16,6 +17,8 @@ export default function TargetStatsCards({
   targetRents,
   daysRemaining,
 }: TargetStatsCardsProps) {
+  const { t } = useTranslation('cars');
+
   const safeCurrentRevenue = currentRevenue ?? 0;
   const safeTargetRevenue = targetRevenue ?? 0;
   const safeCurrentRents = currentRents ?? 0;
@@ -37,17 +40,20 @@ export default function TargetStatsCards({
       <Card className="shadow-lg border border-border hover:shadow-xl transition-shadow">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Target Revenue
+            {t('targets.cards.revenue.title', 'Target Revenue')}
           </CardTitle>
           <TrendingUp className="h-5 w-5 text-green-500" />
         </CardHeader>
         <CardContent>
           <p className="text-2xl font-bold">
             {safeCurrentRevenue.toLocaleString()} /{' '}
-            {safeTargetRevenue.toLocaleString()} MAD
+            {safeTargetRevenue.toLocaleString()} {t('currency', 'DHS')}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {revenueProgress}% of target reached
+            {t('targets.cards.revenue.progress', {
+              defaultValue: '{{pct}}% of target reached',
+              pct: revenueProgress,
+            })}
           </p>
           <div className="w-full bg-muted rounded-full h-2 mt-3">
             <div
@@ -62,7 +68,7 @@ export default function TargetStatsCards({
       <Card className="shadow-lg border border-border hover:shadow-xl transition-shadow">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Target Rents
+            {t('targets.cards.rents.title', 'Target Rents')}
           </CardTitle>
           <Target className="h-5 w-5 text-blue-500" />
         </CardHeader>
@@ -72,7 +78,10 @@ export default function TargetStatsCards({
             {safeTargetRents.toLocaleString()}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {rentsProgress}% of target reached
+            {t('targets.cards.rents.progress', {
+              defaultValue: '{{pct}}% of target reached',
+              pct: rentsProgress,
+            })}
           </p>
           <div className="w-full bg-muted rounded-full h-2 mt-3">
             <div
@@ -87,14 +96,19 @@ export default function TargetStatsCards({
       <Card className="shadow-lg border border-border hover:shadow-xl transition-shadow">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Days Remaining
+            {t('targets.cards.days.title', 'Days Remaining')}
           </CardTitle>
           <Calendar className="h-5 w-5 text-orange-500" />
         </CardHeader>
         <CardContent>
-          <p className="text-2xl font-bold">{daysRemaining ?? 0} days</p>
+          <p className="text-2xl font-bold">
+            {t('targets.cards.days.value', {
+              defaultValue: '{{days}} days',
+              days: daysRemaining ?? 0,
+            })}
+          </p>
           <p className="text-xs text-muted-foreground mt-1">
-            until target end date
+            {t('targets.cards.days.subtitle', 'until target end date')}
           </p>
         </CardContent>
       </Card>

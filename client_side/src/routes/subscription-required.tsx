@@ -1,4 +1,5 @@
-// src/routes/subscription-required.tsx
+'use client';
+
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   Card,
@@ -12,6 +13,7 @@ import { AlertCircle } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { useUser } from '@/contexts/user-context';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export const Route = createFileRoute('/subscription-required')({
   component: SubscriptionRequired,
@@ -20,11 +22,12 @@ export const Route = createFileRoute('/subscription-required')({
 function SubscriptionRequired() {
   const navigate = useNavigate();
   const { user, setUser, refreshUser } = useUser();
+  const { t } = useTranslation('auth');
 
-  // ✅ Redirect super admins immediately
+  // Redirect super admins immediately
   useEffect(() => {
     if (user?.role === 'super_admin') {
-      navigate({ to: '/admin/dashboard' }); // Fixed path
+      navigate({ to: '/admin/dashboard' });
     }
   }, [user, navigate]);
 
@@ -37,10 +40,9 @@ function SubscriptionRequired() {
 
   const handleRefresh = async () => {
     await refreshUser();
-    // After refresh, the useEffect will redirect if they're super_admin
   };
 
-  // ✅ Don't show anything while redirecting super admin
+  // Don't show anything while redirecting super admin
   if (user?.role === 'super_admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -49,39 +51,44 @@ function SubscriptionRequired() {
     );
   }
 
+  const supportEmail =
+    import.meta.env.VITE_SUPPORT_EMAIL || 'support@yourapp.com';
+
   return (
-    <div className="min-h-screen flex items-center justify-center p- ">
+    <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
             <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
           </div>
-          <CardTitle className="text-2xl">Subscription Required</CardTitle>
-          <CardDescription>
-            Your account does not have an active subscription
-          </CardDescription>
+          <CardTitle className="text-2xl">
+            {t('subscription.title_required')}
+          </CardTitle>
+          <CardDescription>{t('subscription.desc_required')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-center text-muted-foreground">
-            Please contact support to activate your subscription and regain
-            access to all features.
+            {t('subscription.help')}
           </p>
           <div className="space-y-2">
             <Button
               className="w-full"
-              onClick={() =>
-                (window.location.href = `mailto:${process.env.VITE_SUPPORT_EMAIL || 'support@yourapp.com'}`)
-              }
+              onClick={() => (window.location.href = `mailto:${supportEmail}`)}
             >
-              Contact Support
+              {t('subscription.contact')}
             </Button>
             <Button
               variant="outline"
               className="w-full"
               onClick={handleSignOut}
             >
-              Sign Out
+              {t('subscription.signout')}
             </Button>
+
+            {/* Optional refresh button */}
+            {/* <Button variant="ghost" className="w-full" onClick={handleRefresh}>
+              {t('common.submit')}
+            </Button> */}
           </div>
         </CardContent>
       </Card>

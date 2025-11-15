@@ -1,4 +1,5 @@
-// src/components/auth/email-verification-page.tsx
+'use client';
+
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { authClient } from '@/lib/auth-client';
@@ -13,8 +14,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/loader';
 import { toast } from '@/components/ui/toast';
+import { useTranslation } from 'react-i18next';
 
 export function EmailVerificationPage() {
+  const { t } = useTranslation('auth');
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
@@ -30,113 +33,120 @@ export function EmailVerificationPage() {
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setMessage('Invalid verification link - no token provided');
+      setMessage(t('verify.toast.invalid_or_expired'));
       return;
     }
-
     verifyEmail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  const getTitle = () => {
+    switch (verificationType) {
+      case 'change-email':
+        return t('verify.title_change');
+      case 'delete-account':
+        return t('verify.title_delete');
+      default:
+        return t('verify.title');
+    }
+  };
+
+  const getLoadingMessage = () => {
+    switch (verificationType) {
+      case 'change-email':
+        return t('verify.loading_change');
+      case 'delete-account':
+        return t('verify.loading_delete');
+      default:
+        return t('verify.loading');
+    }
+  };
+
+  const getSuccessRedirectMessage = () => {
+    switch (verificationType) {
+      case 'change-email':
+      case 'delete-account':
+        return t('verify.redirect_login');
+      default:
+        return t('verify.redirect');
+    }
+  };
 
   const verifyEmail = async () => {
     setStatus('loading');
-    setMessage('Verifying your email...');
+    setMessage(getLoadingMessage());
 
     try {
       if (verificationType === 'change-email') {
-        await authClient.verifyEmail({
-          query: { token },
-        });
-
-        // Sign out after email change
+        await authClient.verifyEmail({ query: { token } });
         await authClient.signOut();
         localStorage.removeItem('authUser');
         setUser(null);
 
         toast({
           type: 'success',
-          title: 'Email Changed',
-          description: 'Please sign in with your new email address.',
+          title: t('verify.toast.changed_title'),
+          description: t('verify.toast.changed_desc'),
         });
 
-        setTimeout(() => {
-          navigate({ to: '/login' });
-        }, 2000);
+        setTimeout(() => navigate({ to: '/login' }), 2000);
       } else if (verificationType === 'delete-account') {
         setStatus('success');
-        setMessage('Account deletion confirmed.');
+        setMessage(t('verify.done'));
 
         toast({
           type: 'success',
-          title: 'Account Deleted',
-          description: 'Your account has been successfully deleted.',
+          title: t('verify.toast.deleted_title'),
+          description: t('verify.toast.deleted_desc'),
         });
 
-        setTimeout(() => {
-          navigate({ to: '/login' });
-        }, 2000);
+        setTimeout(() => navigate({ to: '/login' }), 2000);
       } else {
-        // Regular email verification
-        const result = await authClient.verifyEmail({
-          query: { token },
-        });
+        const result = await authClient.verifyEmail({ query: { token } });
 
         if (result.data) {
           setStatus('success');
-          setMessage('Email verified successfully!');
-
-          // Refresh user data
+          setMessage(t('verify.success_msg'));
           await refreshUser();
 
           toast({
             type: 'success',
-            title: 'Email Verified',
-            description: 'Your email has been successfully verified!',
+            title: t('verify.toast.verified_title'),
+            description: t('verify.toast.verified_desc'),
           });
 
-          // Check if user is still authenticated
           const session = await authClient.getSession();
-
           setTimeout(() => {
-            if (session?.data?.user) {
-              // User is authenticated, go to org form
-              navigate({ to: '/organizationForm' });
-            } else {
-              // User is not authenticated, go to login
-              navigate({ to: '/login' });
-            }
+            if (session?.data?.user) navigate({ to: '/organizationForm' });
+            else navigate({ to: '/login' });
           }, 2000);
         } else {
-          throw new Error('Failed to verify email');
+          throw new Error('verify_failed');
         }
       }
     } catch (error: any) {
       console.error('Verification error:', error);
       setStatus('error');
 
-      let errorMessage = 'Failed to verify email';
+      let errorMessage = t('verify.toast.failed_title');
 
       if (error?.message) {
         if (
           error.message.includes('invalid') ||
           error.message.includes('not found')
         ) {
-          errorMessage = 'The verification link is invalid or has expired';
+          errorMessage = t('verify.toast.invalid_or_expired');
         } else if (error.message.includes('expired')) {
-          errorMessage =
-            'The verification link has expired. Please request a new one.';
+          errorMessage = t('verify.toast.expired');
         } else if (error.message.includes('already verified')) {
-          errorMessage = 'Email is already verified';
+          errorMessage = t('verify.toast.already_verified');
           setStatus('success');
-
-          // Check authentication and redirect
           const session = await authClient.getSession();
           setTimeout(() => {
             if (session?.data?.user) {
-              if (verificationType === 'email-verification') {
+              if (verificationType === 'email-verification')
                 navigate({ to: '/organizationForm' });
-              } else {
-                navigate({ to: '/account-settings' });
-              }
+              else navigate({ to: '/account-settings' });
             } else {
               navigate({ to: '/login' });
             }
@@ -148,69 +158,24 @@ export function EmailVerificationPage() {
       }
 
       setMessage(errorMessage);
-
       toast({
         type: 'error',
-        title: 'Verification Failed',
+        title: t('verify.toast.failed_title'),
         description: errorMessage,
       });
     }
   };
 
-  const handleRetry = () => {
-    if (token) {
-      verifyEmail();
-    }
-  };
-
-  const getTitle = () => {
-    switch (verificationType) {
-      case 'change-email':
-        return 'Email Change Verification';
-      case 'delete-account':
-        return 'Account Deletion Confirmation';
-      default:
-        return 'Email Verification';
-    }
-  };
-
-  const getLoadingMessage = () => {
-    switch (verificationType) {
-      case 'change-email':
-        return 'Confirming email change...';
-      case 'delete-account':
-        return 'Processing account deletion...';
-      default:
-        return 'Verifying your email address...';
-    }
-  };
-
-  const getSuccessRedirectMessage = () => {
-    switch (verificationType) {
-      case 'change-email':
-        return 'Redirecting to login...';
-      case 'delete-account':
-        return 'Redirecting to login...';
-      default:
-        return 'Redirecting...';
-    }
-  };
-
   const handleSuccessRedirect = async () => {
     const session = await authClient.getSession();
-
     switch (verificationType) {
       case 'change-email':
       case 'delete-account':
         navigate({ to: '/login' });
         break;
       default:
-        if (session?.data?.user) {
-          navigate({ to: '/organizationForm' });
-        } else {
-          navigate({ to: '/login' });
-        }
-        break;
+        if (session?.data?.user) navigate({ to: '/organizationForm' });
+        else navigate({ to: '/login' });
     }
   };
 
@@ -221,8 +186,8 @@ export function EmailVerificationPage() {
           <CardTitle>{getTitle()}</CardTitle>
           <CardDescription>
             {status === 'loading' && getLoadingMessage()}
-            {status === 'success' && 'Verification completed successfully!'}
-            {status === 'error' && 'Verification failed'}
+            {status === 'success' && t('verify.done')}
+            {status === 'error' && t('verify.failed')}
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center space-y-4">
@@ -257,7 +222,7 @@ export function EmailVerificationPage() {
                 {getSuccessRedirectMessage()}
               </p>
               <Button onClick={handleSuccessRedirect} className="w-full">
-                Continue
+                {t('verify.btn_continue')}
               </Button>
             </div>
           )}
@@ -283,11 +248,11 @@ export function EmailVerificationPage() {
               <div className="space-y-2">
                 {token && (
                   <Button
-                    onClick={handleRetry}
+                    onClick={verifyEmail}
                     variant="outline"
                     className="w-full"
                   >
-                    Try Again
+                    {t('common.submit')}
                   </Button>
                 )}
                 <Button
@@ -295,7 +260,7 @@ export function EmailVerificationPage() {
                   variant="ghost"
                   className="w-full"
                 >
-                  Back to Login
+                  {t('common.back_to_login')}
                 </Button>
               </div>
             </div>

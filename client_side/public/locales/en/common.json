@@ -1,0 +1,94 @@
+{
+  "welcome": "Welcome",
+  "na": "N/A",
+  "error": "Error",
+  "delete": "Delete",
+  "cancel": "Cancel",
+
+  "language": {
+    "english": "English",
+    "french": "French"
+  },
+  "select": { "language": "Select Language" },
+  "header": { "title": "Car Renting", "logout": "Log out" },
+  "account": {
+    "title": "Account Settings",
+    "subtitle": "Manage your account settings and preferences.",
+    "tabs": {
+      "profile": "Profile",
+      "security": "Security",
+      "danger": "Danger Zone",
+      "accounts": "Linked Accounts"
+    },
+    "profile": {
+      "card_title": "Profile Information",
+      "card_desc": "Update your profile information.",
+      "name": "Name",
+      "email": "Email",
+      "email_hint": "To change your email, use the Security tab.",
+      "updating": "Updating...",
+      "update_btn": "Update Profile",
+      "updated_toast_title": "Profile Updated",
+      "updated_toast_desc": "Your profile has been successfully updated",
+      "error_toast_title": "Error",
+      "error_update_desc": "Failed to update profile"
+    },
+    "email": {
+      "card_title": "Change Email",
+      "card_desc": "Change your account email address.",
+      "new_email": "New Email",
+      "sending": "Sending...",
+      "change_btn": "Change Email",
+      "sent_toast_title": "Verification Email Sent",
+      "sent_toast_desc": "Check your current email to approve the change",
+      "error_change_desc": "Failed to change email"
+    },
+    "password": {
+      "card_title": "Change Password",
+      "card_desc": "Update your account password.",
+      "current": "Current Password",
+      "new": "New Password",
+      "confirm": "Confirm New Password",
+      "changing": "Changing...",
+      "change_btn": "Change Password",
+      "changed_toast_title": "Password Changed",
+      "changed_toast_desc": "Your password has been changed. You will be signed out on all devices.",
+      "invalid_current": "Current password is incorrect",
+      "error_change_desc": "Failed to change password"
+    },
+    "linked_accounts": {
+      "card_title": "Linked Accounts",
+      "card_desc": "Manage your connected social accounts.",
+      "connected_heading": "Connected Accounts",
+      "loading": "Loading...",
+      "none": "No linked accounts",
+      "unlink": "Unlink",
+      "link_new_heading": "Link New Account",
+      "link_google": "Link Google Account",
+      "unlink_success_title": "Account Unlinked",
+      "unlink_success_desc": "{{provider}} account has been unlinked",
+      "link_error_desc": "Failed to link {{provider}} account",
+      "unlink_error_desc": "Failed to unlink {{provider}} account"
+    },
+    "danger": {
+      "title": "Danger Zone",
+      "desc": "Irreversible actions. Please be careful.",
+      "delete_btn": "Delete Account",
+      "dialog_title": "Are you absolutely sure?",
+      "dialog_desc": "This action cannot be undone. This will permanently delete your account and remove your data from our servers.",
+      "cancel": "Cancel",
+      "confirm_delete": "Delete Account",
+      "deleted_toast_title": "Account Deleted",
+      "deleted_toast_desc": "Your account has been successfully deleted",
+      "delete_error_desc": "Failed to delete account"
+    },
+    "validators": {
+      "name_min": "Name must be at least 2 characters",
+      "image_url": "Invalid URL",
+      "email_invalid": "Invalid email address",
+      "current_required": "Current password is required",
+      "password_min": "Password must be at least 8 characters",
+      "passwords_mismatch": "Passwords don't match"
+    }
+  }
+}

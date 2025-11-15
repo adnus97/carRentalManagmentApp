@@ -1,0 +1,434 @@
+{
+  "title": "Tableau de bord des voitures",
+  "manage_hint": "Gérez votre flotte de voitures ci‑dessous :",
+  "currency": "DHS",
+  "filters": {
+    "availability_placeholder": "Filtrer par disponibilité",
+    "all": "Tous"
+  },
+  "no_org": {
+    "title": "Aucune organisation trouvée",
+    "desc": "Vous devez d’abord créer ou rejoindre une organisation.",
+    "cta": "Configurer une organisation"
+  },
+
+  "columns": {
+    "plate": "Numéro d’immatriculation",
+    "make": "Marque",
+    "model": "Modèle",
+    "year": "Année",
+    "color": "Couleur",
+    "purchase_price": "Prix d’achat",
+    "price_per_day": "Prix/Jour",
+    "status": "Statut",
+    "availability": "Disponibilité",
+    "next_available": "Prochaine disponibilité",
+    "insurance_expiry": "Expiration de l’assurance",
+    "tech_inspection_expiry": "Expiration de la visite technique",
+    "actions": "Actions"
+  },
+
+  "status": {
+    "active": "Active",
+    "maintenance": "Maintenance",
+    "leased": "Louée",
+    "sold": "Vendue",
+    "deleted": "Supprimée"
+  },
+
+  "available": "Disponible",
+  "not_available": "Non disponible",
+  "available_now": "Disponible maintenant",
+  "open_contract": "Contrat ouvert",
+  "open_contract_hint": "Cette voiture est actuellement louée avec un contrat ouvert sans date de fin définie",
+
+  "insurance": {
+    "valid": "L’assurance est valide",
+    "expired": "L’assurance est expirée",
+    "soon": "L’assurance expirera bientôt (moins de 30 jours)"
+  },
+
+  "tech": {
+    "valid": "La visite technique est valide",
+    "expired": "La visite technique est expirée",
+    "soon": "La visite technique expirera bientôt (moins de 30 jours)"
+  },
+
+  "actions": {
+    "rent": "Louer",
+    "edit": "Modifier",
+    "delete_with_count": "Supprimer ({{a}}/{{b}})"
+  },
+
+  "view_details": "Voir les détails",
+  "selected_count": "{{count}} voiture{{s}} sélectionnée{{s}}",
+  "more": ", et {{n}} de plus",
+
+  "delete": {
+    "dialog_title": "Supprimer la/les voiture(s)",
+    "partial_title": "Certaines voitures ne peuvent pas être supprimées",
+    "partial_desc": "{{blocked}} voiture(s) sélectionnée(s) ne peut/vent pas être supprimées.",
+    "none_title": "Impossible de supprimer",
+    "none_desc": "Aucune des voitures sélectionnées ne peut être supprimée. Les voitures doivent être disponibles.",
+    "dialog_partial": "{{count}} voiture(s) sera/ont supprimée(s) : {{list}}{{more}} {{blocked}} ne peut/vent pas être supprimées.",
+    "dialog_full": "Êtes‑vous sûr de vouloir supprimer la/les voiture(s) suivante(s) : {{list}}{{more}} ?",
+    "blocked_hint": "{{n}} voiture(s) sélectionnée(s) ne peut/vent pas être supprimées"
+  },
+
+  "toasts": {
+    "delete_success_title": "Voiture supprimée",
+    "delete_success_desc": "La/les voiture(s) ont été supprimées avec succès.",
+    "delete_error": "Échec de la suppression de la/des voiture(s).",
+    "update_success_title": "Voiture mise à jour",
+    "update_success_desc": "Les informations de la voiture ont été mises à jour avec succès.",
+    "update_error": "Échec de la mise à jour de la voiture."
+  },
+  "form": {
+    "add_car_btn": "Ajouter une voiture",
+    "edit_title": "Modifier la voiture",
+    "edit_subtitle": "Mettez à jour les informations ci-dessous pour modifier la voiture.",
+    "title": "Ajouter une nouvelle voiture",
+    "subtitle": "Remplissez le formulaire ci-dessous pour ajouter une nouvelle voiture au système.",
+    "labels": {
+      "plate": "Numéro d’immatriculation",
+      "make": "Marque",
+      "model": "Modèle",
+      "year": "Année",
+      "color": "Couleur",
+      "fuel": "Type de carburant",
+      "price_per_day": "Prix/Jour (DHS)",
+      "purchase_price": "Prix d’achat (DHS)",
+      "monthly_lease": "Location mensuelle (DHS)",
+      "mileage": "Kilométrage (km)",
+      "insurance_expiry": "Expiration de l’assurance",
+      "tech_expiry": "Expiration de la visite technique",
+      "mileage_optional": "Kilométrage (optionnel)"
+    },
+    "placeholders": {
+      "plate": "ex. 123-A-456",
+      "make": "ex. Toyota",
+      "model": "ex. Corolla",
+      "year": "ex. 2020",
+      "select_color": "Choisir la couleur",
+      "select_fuel": "Choisir le type de carburant",
+      "price_per_day": "ex. 150",
+      "purchase_price": "ex. 280000",
+      "monthly_lease": "ex. 4000",
+      "mileage": "ex. 120000",
+      "insurance_expiry": "Sélectionner la date d’expiration de l’assurance",
+      "tech_expiry": "Sélectionner la date d’expiration de la visite technique",
+      "select_status": "Sélectionner le statut"
+    },
+    "actions": { "save": "Enregistrer" },
+    "toasts": {
+      "success_title": "Succès !",
+      "success_desc": "Votre action a été réalisée avec succès.",
+      "undo": "Annuler",
+      "generic_error": "Une erreur inattendue s’est produite",
+      "duplicate_plate_title": "Numéro d’immatriculation en double",
+      "duplicate_plate_desc": "Ce numéro d’immatriculation est déjà enregistré. Veuillez en utiliser un autre.",
+      "org_issue_msg": "Un problème est survenu avec votre compte. Veuillez contacter le support.",
+      "account_error_title": "Erreur de compte",
+      "account_error_desc": "Veuillez contacter le support pour obtenir de l’aide.",
+      "required_msg": "Veuillez remplir correctement tous les champs obligatoires.",
+      "missing_info_title": "Informations manquantes",
+      "missing_info_desc": "Veuillez vérifier tous les champs obligatoires et réessayer.",
+      "retry": "Réessayer"
+    },
+    "errors": {
+      "required": "Obligatoire",
+      "plate_required": "Le numéro d’immatriculation est requis",
+      "make_required": "La marque est requise",
+      "model_required": "Le modèle est requis",
+      "year_number": "L’année doit être un nombre",
+      "year_min": "L’année doit être supérieure à 2010",
+      "year_max": "L’année doit être inférieure ou égale à l’année en cours",
+      "price_number": "Le prix doit être un nombre",
+      "price_min": "Le prix doit être supérieur à 0",
+      "rent_number": "Le prix de location doit être un nombre",
+      "rent_min": "Le prix de location doit être supérieur à 0",
+      "mileage_min": "Le kilométrage doit être un nombre positif",
+      "mileage_number": "Le kilométrage doit être un nombre",
+      "monthly_min": "Le prix mensuel doit être un nombre positif",
+      "monthly_number": "Le prix de la location mensuelle doit être un nombre",
+      "insurance_future": "La date d’expiration de l’assurance doit être dans le futur",
+      "tech_future": "La date d’expiration de la visite technique doit être dans le futur"
+    }
+  },
+  "fuel": {
+    "gasoline": "Essence",
+    "diesel": "Diesel",
+    "hybrid": "Hybride",
+    "electric": "Électrique"
+  },
+  "colors": {
+    "white": "Blanc",
+    "black": "Noir",
+    "silver": "Argent",
+    "gray": "Gris",
+    "blue": "Bleu",
+    "red": "Rouge",
+    "green": "Vert",
+    "yellow": "Jaune",
+    "orange": "Orange",
+    "brown": "Marron",
+    "purple": "Violet",
+    "gold": "Doré",
+    "beige": "Beige"
+  },
+  "loading": "Chargement des voitures…",
+  "deleting": "Suppression…",
+  "car_details": {
+    "loading": "Chargement des détails de la voiture...",
+    "error": "Erreur lors du chargement des détails de la voiture.",
+    "back": "Retour",
+    "vehicle_overview": "Aperçu du véhicule",
+    "year": "Année",
+    "insurance_expiry": "Expiration de l’assurance",
+    "purchase_price": "Prix d’achat",
+    "price_per_day": "Prix / Jour",
+    "mileage": "Kilométrage",
+    "monthly_payment": "Paiement mensuel",
+    "tech_expiry": "Expiration de la visite technique",
+    "currently_rented": "Actuellement louée",
+    "invalid_date": "Date invalide",
+    "next": "Prochaine",
+    "unknown": "Inconnu",
+    "badge_rented": "Louée",
+    "tabs": {
+      "targets": "Objectifs",
+      "rentals": "Locations",
+      "maintenance": "Journaux de maintenance"
+    },
+    "actions": {
+      "mark_active": "Marquer comme active",
+      "mark_maintenance": "Marquer en maintenance",
+      "mark_sold": "Marquer comme vendue",
+      "delete": "Supprimer la voiture"
+    },
+    "delete": {
+      "title": "Supprimer la voiture",
+      "desc": "Êtes‑vous sûr de vouloir supprimer {{make}} {{model}} ({{year}}) ? Cette action est irréversible."
+    },
+    "deleting": "Suppression...",
+    "update_mileage": {
+      "open": "Mettre à jour le kilométrage",
+      "title": "Mettre à jour le kilométrage"
+    },
+    "mileage_label": "Kilométrage (km)",
+    "saving": "Enregistrement…",
+    "mileage_min": "Le kilométrage ne peut pas être inférieur à {{min}} km",
+    "mileage_max": "Le kilométrage ne peut pas dépasser 1 000 000 km"
+  },
+
+  "targets": {
+    "cards": {
+      "revenue": {
+        "title": "Objectif de revenus",
+        "progress": "{{pct}} % de l’objectif atteint"
+      },
+      "rents": {
+        "title": "Objectif de locations",
+        "progress": "{{pct}} % de l’objectif atteint"
+      },
+      "days": {
+        "title": "Jours restants",
+        "value": "{{days}} jours",
+        "subtitle": "avant la date de fin de l’objectif"
+      }
+    },
+    "loading": "Chargement des objectifs…",
+    "no_active": {
+      "title": "Aucun objectif actif",
+      "subtitle": "Commencez par ajouter un nouvel objectif."
+    },
+    "actions": {
+      "add": "+ Ajouter un objectif",
+      "saving": "Enregistrement…"
+    },
+    "dialog": {
+      "title": "Ajouter un objectif mensuel"
+    },
+    "form": {
+      "labels": {
+        "revenue": "Objectif de revenus",
+        "rents": "Locations cibles",
+        "start": "Date de début",
+        "end": "Date de fin"
+      },
+      "placeholders": {
+        "revenue": "ex. 8000",
+        "rents": "ex. 40",
+        "start": "Sélectionner la date de début",
+        "end": "Sélectionner la date de fin"
+      },
+      "errors": {
+        "revenue_number": "L’objectif de revenus doit être un nombre",
+        "revenue_required": "L’objectif de revenus est requis",
+        "rents_number": "Le nombre de locations cibles doit être un nombre",
+        "rents_required": "Le nombre de locations cibles est requis",
+        "start_required": "La date de début est requise",
+        "end_required": "La date de fin est requise",
+        "end_after_start": "La date de fin doit être postérieure à la date de début",
+        "end_in_future": "La date de fin ne peut pas être dans le passé"
+      }
+    },
+    "toasts": {
+      "added": "Objectif ajouté avec succès",
+      "add_failed": "Échec de l’ajout de l’objectif"
+    },
+    "errors": {
+      "already_active": "Vous avez déjà un objectif actif. Veuillez attendre sa fin."
+    }
+  },
+  "rental": {
+    "payment_progress": {
+      "title": "Progression du paiement"
+    },
+    "loading": "Chargement des locations…",
+    "ongoing": "En cours",
+    "invalid_date": "Invalide",
+    "grid": {
+      "start_date": "Date de début",
+      "end_date": "Date de fin",
+      "revenue": "Revenus",
+      "status": "Statut"
+    },
+    "status": {
+      "active": "Active",
+      "closed": "Clôturée",
+      "cancelled": "Annulée"
+    },
+    "empty": {
+      "title": "Aucune location trouvée",
+      "subtitle": "Cette voiture n'a pas encore d'historique de location.",
+      "cta": "Créer une location"
+    },
+    "summary": {
+      "title": "Résumé des locations",
+      "current": "Location en cours",
+      "total_price": "Prix total",
+      "total_paid": "Total payé",
+      "total_revenue": "Revenus totaux",
+      "total_rentals": "Nombre de locations",
+      "avg_price": "Prix moyen"
+    },
+    "history_title": "Historique des locations"
+  },
+  "maintenance": {
+    "actions": {
+      "add": "+ Ajouter une maintenance"
+    },
+    "dialog": {
+      "title": "Ajouter un journal de maintenance"
+    },
+    "form": {
+      "errors": {
+        "type_required": "Le type est requis",
+        "description_required": "La description est requise",
+        "cost_number": "Le coût doit être un nombre",
+        "cost_required": "Le coût est requis",
+        "date_required": "La date et l’heure sont requises",
+        "date_invalid": "Date et heure invalides"
+      }
+    },
+    "edit_button_title": "Modifier la maintenance",
+    "edit_title": "Modifier la maintenance",
+    "fields": {
+      "type": "Type",
+      "description": "Description",
+      "cost": "Coût",
+      "datetime": "Date et heure"
+    },
+    "placeholders": {
+      "type": "Choisir le type",
+      "description": "Saisissez une description",
+      "cost": "ex. 500",
+      "mileage": "ex. 120000",
+      "datetime": "Sélectionner la date et l’heure"
+    },
+    "types": {
+      "oil_change": "Vidange",
+      "tire_rotation": "Permutation des pneus",
+      "inspection": "Inspection",
+      "other": "Autre"
+    },
+    "toasts": {
+      "updated": "Maintenance modifiée",
+      "update_failed": "Échec de la modification de la maintenance",
+      "added": "Journal de maintenance ajouté",
+      "add_failed": "Échec de l’ajout du journal de maintenance"
+    },
+    "errors": {
+      "type_required": "Le type est requis",
+      "description_required": "La description est requise",
+      "cost_number": "Le coût doit être un nombre",
+      "cost_min": "Le coût doit être un nombre positif",
+      "date_required": "La date et l’heure sont requises",
+      "date_invalid": "Date et heure invalides"
+    },
+    "loading": "Chargement des opérations de maintenance…",
+    "empty": {
+      "title": "Aucune maintenance",
+      "subtitle": "Commencez par ajouter une nouvelle maintenance.",
+      "cta": "Aucun historique de maintenance"
+    },
+    "summary": {
+      "title": "Résumé de la maintenance",
+      "last": "Dernière",
+      "total_cost": "Coût total"
+    },
+    "grid": {
+      "type": "Type",
+      "description": "Description",
+      "cost": "Coût",
+      "created_at": "Créé le",
+      "actions": "Actions"
+    },
+    "filter": {
+      "placeholder": "Filtrer par type",
+      "all": "Tous"
+    }
+  },
+  "badge": {
+    "active": "Actif",
+    "expired": "Expiré"
+  },
+  "card": {
+    "days_remaining": "Jours restants",
+    "revenue_progress": "Progression des revenus",
+    "rents_progress": "Progression des locations",
+    "revenue": "Revenus",
+    "rents": "Locations"
+  },
+  "history_title": "Historique des objectifs",
+  "grid": {
+    "actual_rents": "Locations réelles",
+    "actual_revenue": "Revenus réels",
+    "revenue_progress": "Progression des revenus",
+    "rents_progress": "Progression des locations",
+    "days_remaining": "Jours restants"
+  },
+  "chart": {
+    "title": "Évolution des revenus et locations",
+    "subtitle": "Affichage des revenus et des locations pour la période sélectionnée",
+    "range": {
+      "90d": "3 derniers mois",
+      "30d": "30 derniers jours",
+      "7d": "7 derniers jours"
+    },
+    "series": {
+      "both": "Les deux",
+      "revenue": "Revenus",
+      "rents": "Locations"
+    },
+    "a11y": {
+      "select_range": "Sélectionner une valeur",
+      "select_series": "Sélectionner une série"
+    }
+  },
+  "chartLabels": {
+    "revenue": "Revenus",
+    "rents": "Locations"
+  }
+}

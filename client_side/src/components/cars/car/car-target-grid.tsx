@@ -26,6 +26,7 @@ import {
   TextFilterModule,
 } from 'ag-grid-community';
 import { Loader } from '@/components/loader';
+import { useTranslation } from 'react-i18next';
 
 type CarDataGridProps<T> = AgGridReactProps<T>;
 
@@ -36,9 +37,6 @@ ModuleRegistry.registerModules([
   NumberFilterModule,
 ]);
 
-const currencyFormatter = (p: any) =>
-  p?.value || p?.value === 0 ? `${Number(p.value).toLocaleString()} DHS` : '';
-
 export default function CarTargetsGrid({
   carId,
   targets, // kept for compatibility
@@ -46,10 +44,11 @@ export default function CarTargetsGrid({
   carId: string;
   targets: TargetRow[];
 }) {
+  const { t } = useTranslation('cars');
+
   const [page, setPage] = useState(1);
   const pageSize = 5;
 
-  // IMPORTANT: Hooks must always be called unconditionally and in the same order
   const historyQuery = useQuery({
     queryKey: ['carTargets.v-merge', carId, page, pageSize],
     queryFn: () => getCarTargets(carId, page, pageSize),
@@ -68,10 +67,14 @@ export default function CarTargetsGrid({
 
   const totalPages = history?.totalPages || 1;
 
-  // Merge the active card row so grid matches the card values exactly
+  const currencyFormatter = (p: any) =>
+    p?.value || p?.value === 0
+      ? `${Number(p.value).toLocaleString()} ${t('currency', 'DHS')}`
+      : '';
+
+  // Merge active card with rows
   const mergedRows: TargetRow[] = useMemo(() => {
     const rows: TargetRow[] = [...(history?.data ?? [])];
-
     if (!activeCard) return rows;
 
     const cardRow: TargetRow = {
@@ -110,48 +113,53 @@ export default function CarTargetsGrid({
     } else {
       rows.unshift(cardRow);
     }
-
     return rows;
   }, [history?.data, activeCard]);
 
   const columnDefs = [
-    { headerName: 'Actual Rents', field: 'actualRents' },
     {
-      headerName: 'Actual Revenue',
+      headerName: t('grid.actual_rents', 'Actual Rents'),
+      field: 'actualRents',
+    },
+    {
+      headerName: t('grid.actual_revenue', 'Actual Revenue'),
       field: 'actualRevenue',
       valueFormatter: currencyFormatter,
     },
     {
-      headerName: 'Revenue Progress',
+      headerName: t('grid.revenue_progress', 'Revenue Progress'),
       field: 'revenueProgress',
       valueFormatter: (p: { value: number }) =>
         `${Number(p.value ?? 0).toFixed(1)}%`,
     },
     {
-      headerName: 'Rents Progress',
+      headerName: t('grid.rents_progress', 'Rents Progress'),
       field: 'rentProgress',
       valueFormatter: (p: { value: number }) =>
         `${Number(p.value ?? 0).toFixed(1)}%`,
     },
-    { headerName: 'Days Remaining', field: 'daysRemaining' },
+    {
+      headerName: t('grid.days_remaining', 'Days Remaining'),
+      field: 'daysRemaining',
+    },
   ];
 
   if (isLoading)
     return (
       <p>
-        <Loader />
-        Loading targets...
+        <Loader /> {t('loading', 'Loading targets...')}
       </p>
     );
 
-  // No active target behavior (restored)
   if (!activeCard) {
     return (
       <Card className="p-8 flex flex-col items-center w-fit place-self-center text-center rounded-xl shadow-md bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
         <div className="text-6xl mb-3">🎯</div>
-        <p className="font-semibold text-lg">No active target</p>
+        <p className="font-semibold text-lg">
+          {t('no_active.title', 'No active target')}
+        </p>
         <p className="text-sm text-muted-foreground">
-          Start by adding a new target.
+          {t('no_active.subtitle', 'Start by adding a new target.')}
         </p>
       </Card>
     );
@@ -159,20 +167,17 @@ export default function CarTargetsGrid({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-      {/* Active Target Card (same endpoint as merged row) */}
+      {/* Active Target Card */}
       <Card
         className={[
           'p-4 border border-border shadow-md rounded-lg',
           'relative overflow-hidden rounded-xl border shadow-sm',
-          // Light mode
           'border-gray-200 bg-white text-gray-900',
           'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
-          // Dark mode (Insurance style)
           'dark:border-border dark:text-gray-100 dark:shadow-lg',
           'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
         ].join(' ')}
       >
-        {/* Dark-mode glow orbs */}
         <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
         <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
         <div className="flex items-center justify-between mb-4">
@@ -184,7 +189,9 @@ export default function CarTargetsGrid({
             variant={activeCard.isExpired ? 'destructive' : 'success'}
             className="px-2 py-0.5 text-xs"
           >
-            {activeCard.isExpired ? 'Expired' : 'Active'}
+            {activeCard.isExpired
+              ? t('badge.expired', 'Expired')
+              : t('badge.active', 'Active')}
           </Badge>
         </div>
 
@@ -192,14 +199,18 @@ export default function CarTargetsGrid({
           <div className="flex items-center gap-2">
             <span className="text-base">📅</span>
             <div>
-              <p className="text-muted-foreground">Days Remaining</p>
+              <p className="text-muted-foreground">
+                {t('card.days_remaining', 'Days Remaining')}
+              </p>
               <p className="font-bold text-sm">{activeCard.daysRemaining}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-base">💰</span>
             <div>
-              <p className="text-muted-foreground">Revenue Progress</p>
+              <p className="text-muted-foreground">
+                {t('card.revenue_progress', 'Revenue Progress')}
+              </p>
               <p className="font-bold text-sm">
                 {activeCard.revenueProgress.toFixed(1)}%
               </p>
@@ -208,7 +219,9 @@ export default function CarTargetsGrid({
           <div className="flex items-center gap-2">
             <span className="text-base">📊</span>
             <div>
-              <p className="text-muted-foreground">Rents Progress</p>
+              <p className="text-muted-foreground">
+                {t('card.rents_progress', 'Rents Progress')}
+              </p>
               <p className="font-bold text-sm">
                 {activeCard.rentProgress.toFixed(1)}%
               </p>
@@ -218,7 +231,9 @@ export default function CarTargetsGrid({
 
         <div className="space-y-4">
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Revenue</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {t('card.revenue', 'Revenue')}
+            </p>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
                 className="bg-green-500 h-2 rounded-full"
@@ -229,11 +244,14 @@ export default function CarTargetsGrid({
             </div>
             <p className="text-xs mt-1">
               {Number(activeCard.actualRevenue).toLocaleString()} /{' '}
-              {Number(activeCard.revenueGoal).toLocaleString()} MAD
+              {Number(activeCard.revenueGoal).toLocaleString()}{' '}
+              {t('currency', 'DHS')}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Rents</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {t('card.rents', 'Rents')}
+            </p>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
                 className="bg-blue-500 h-2 rounded-full"
@@ -247,9 +265,11 @@ export default function CarTargetsGrid({
         </div>
       </Card>
 
-      {/* Right: Targets History (active row merged) */}
+      {/* Targets History */}
       <div className="lg:col-span-2 ">
-        <h3 className="text-md font-semibold mb-2">Targets History</h3>
+        <h3 className="text-md font-semibold mb-2">
+          {t('history_title', 'Targets History')}
+        </h3>
         <div className="flex flex-col h-fit">
           <div className="max-h-[200px] overflow-y-auto">
             <CarDataGrid<TargetRow>

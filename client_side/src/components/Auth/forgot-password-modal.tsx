@@ -1,5 +1,6 @@
-// components/auth/ForgotPasswordModal.tsx
-import { useState } from 'react';
+'use client';
+
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,18 +17,22 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/toast';
 import { Loader } from '@/components/loader';
+import { useTranslation } from 'react-i18next';
 
-const emailSchema = z.object({
-  email: z.string().email('Invalid email address'),
-});
+const emailSchemaBuilder = (t: (k: string) => string) =>
+  z.object({
+    email: z.string().email(t('common.invalid_email')),
+  });
 
-type EmailFormFields = z.infer<typeof emailSchema>;
+type EmailFormFields = { email: string };
 
 interface ForgotPasswordModalProps {
   onClose: () => void;
 }
 
 export function ForgotPasswordModal({ onClose }: ForgotPasswordModalProps) {
+  const { t, i18n } = useTranslation('auth');
+  const emailSchema = useMemo(() => emailSchemaBuilder(t), [i18n.language, t]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -36,61 +41,54 @@ export function ForgotPasswordModal({ onClose }: ForgotPasswordModalProps) {
     handleSubmit,
     formState: { errors },
     watch,
-  } = useForm<EmailFormFields>({
-    resolver: zodResolver(emailSchema),
-  });
+  } = useForm<EmailFormFields>({ resolver: zodResolver(emailSchema) });
 
   const email = watch('email');
 
   const onSubmit = async (data: EmailFormFields) => {
     setIsSubmitting(true);
     try {
-      // Use forgetPassword instead of requestPasswordReset
       await authClient.forgetPassword({
         email: data.email,
-        redirectTo: '/reset-password', // This should be your frontend route
+        redirectTo: '/reset-password',
       });
-
       setEmailSent(true);
       toast({
         type: 'success',
-        title: 'Reset Email Sent',
-        description: 'Check your email for password reset instructions',
+        title: t('forgot.toast_sent_title'),
+        description: t('forgot.toast_sent_desc'),
       });
     } catch (error: any) {
       toast({
         type: 'error',
-        title: 'Error',
-        description: error?.message || 'Failed to send reset email',
+        title: t('forgot.toast_error_title'),
+        description: error?.message || t('forgot.toast_error_desc'),
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Rest of the component remains the same...
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {emailSent ? 'Check Your Email' : 'Reset Password'}
+            {emailSent ? t('forgot.sent_title') : t('forgot.title')}
           </DialogTitle>
           <DialogDescription>
-            {emailSent
-              ? `We've sent password reset instructions to ${email}`
-              : "Enter your email address and we'll send you a reset link"}
+            {emailSent ? t('forgot.desc_sent', { email }) : t('forgot.desc')}
           </DialogDescription>
         </DialogHeader>
 
         {!emailSent ? (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">{t('forgot.email_label')}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t('forgot.email_placeholder')}
                 className={errors.email ? 'border-red-600' : ''}
                 {...register('email')}
               />
@@ -108,16 +106,16 @@ export function ForgotPasswordModal({ onClose }: ForgotPasswordModalProps) {
                 onClick={onClose}
                 className="flex-1"
               >
-                Cancel
+                {t('forgot.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting} className="flex-1">
                 {isSubmitting ? (
                   <>
                     <Loader />
-                    <span>Sending...</span>
+                    <span>{t('forgot.sending')}</span>
                   </>
                 ) : (
-                  'Send Reset Link'
+                  t('forgot.send')
                 )}
               </Button>
             </div>
@@ -141,8 +139,7 @@ export function ForgotPasswordModal({ onClose }: ForgotPasswordModalProps) {
                 </svg>
               </div>
               <p className="text-sm text-muted-foreground">
-                If an account with that email exists, you'll receive reset
-                instructions shortly.
+                {t('forgot.info_after')}
               </p>
             </div>
 
@@ -153,10 +150,10 @@ export function ForgotPasswordModal({ onClose }: ForgotPasswordModalProps) {
                 onClick={() => setEmailSent(false)}
                 className="flex-1"
               >
-                Try Different Email
+                {t('forgot.try_different')}
               </Button>
               <Button type="button" onClick={onClose} className="flex-1">
-                Close
+                {t('forgot.close')}
               </Button>
             </div>
           </div>

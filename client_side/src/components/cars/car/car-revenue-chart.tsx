@@ -26,8 +26,6 @@ export default function CarRevenueChart({
 
   return (
     <div className="bg-card rounded-lg p-4 h-full flex flex-col">
-      <h3 className="text-lg font-semibold mb-4">Revenue Over Time</h3>
-
       <div className="flex-1 min-h-[350px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>

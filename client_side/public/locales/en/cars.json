@@ -1,0 +1,490 @@
+{
+  "title": "Your Cars Dashboard",
+  "manage_hint": "Manage your car fleet below:",
+  "currency": "DHS",
+  "filters": {
+    "availability_placeholder": "Filter availability",
+    "all": "All"
+  },
+  "no_org": {
+    "title": "No Organization Found",
+    "desc": "You need to create or join an organization first.",
+    "cta": "Set Up Organization"
+  },
+
+  "columns": {
+    "plate": "Plate Number",
+    "make": "Make",
+    "model": "Model",
+    "year": "Year",
+    "color": "Color",
+    "purchase_price": "Purchase Price",
+    "price_per_day": "Price/Day",
+    "status": "Status",
+    "availability": "Availability",
+    "next_available": "Next Available",
+    "insurance_expiry": "Insurance Expiry",
+    "tech_inspection_expiry": "Technical Inspection Expiry",
+    "actions": "Actions"
+  },
+
+  "status": {
+    "active": "Active",
+    "maintenance": "Maintenance",
+    "leased": "Leased",
+    "sold": "Sold",
+    "deleted": "Deleted"
+  },
+
+  "available": "Available",
+  "not_available": "Not Available",
+  "available_now": "Available now",
+  "open_contract": "Open Contract",
+  "open_contract_hint": "This car is currently rented under an open contract with no defined end date",
+
+  "insurance": {
+    "valid": "Insurance is valid",
+    "expired": "Insurance has expired",
+    "soon": "Insurance will soon be expired (less than 30 days)"
+  },
+
+  "tech": {
+    "valid": "Technical visit is valid",
+    "expired": "Technical visit has expired",
+    "soon": "Technical visit will soon be expired (less than 30 days)"
+  },
+
+  "actions": {
+    "rent": "Rent",
+    "edit": "Edit",
+    "delete_with_count": "Delete ({{a}}/{{b}})"
+  },
+
+  "view_details": "View Details",
+  "selected_count": "{{count}} car{{s}} selected",
+  "more": ", and {{n}} more",
+
+  "delete": {
+    "dialog_title": "Delete Car(s)",
+    "partial_title": "Some cars cannot be deleted",
+    "partial_desc": "{{blocked}} selected car(s) cannot be deleted.",
+    "none_title": "Cannot delete",
+    "none_desc": "No selected cars can be deleted. Cars must be available.",
+    "dialog_partial": "{{count}} car(s) will be deleted: {{list}}{{more}}. {{blocked}} cannot be deleted.",
+    "dialog_full": "Are you sure you want to delete the following car(s): {{list}}{{more}}?",
+    "blocked_hint": "{{n}} selected car(s) cannot be deleted"
+  },
+
+  "toasts": {
+    "delete_success_title": "Car Deleted",
+    "delete_success_desc": "The car(s) have been successfully deleted.",
+    "delete_error": "Failed to delete car(s).",
+    "update_success_title": "Car Updated",
+    "update_success_desc": "The car details have been updated successfully.",
+    "update_error": "Failed to update car."
+  },
+  "form": {
+    "add_car_btn": "Add car",
+    "title": "Add a new Car",
+    "subtitle": "Fill out the form below to add a new car to the system.",
+    "edit_title": "Edit Car",
+    "edit_subtitle": "Update the details below to modify the car information.",
+    "labels": {
+      "plate": "Plate Number",
+      "make": "Make",
+      "model": "Model",
+      "year": "Year",
+      "color": "Color",
+      "fuel": "Fuel Type",
+      "price_per_day": "Price/Day (DHS)",
+      "purchase_price": "Purchase Price (DHS)",
+      "monthly_lease": "Monthly Lease (DHS)",
+      "mileage": "Mileage (km)",
+      "insurance_expiry": "Insurance Expiry",
+      "tech_expiry": "Technical Visit Expiry",
+      "mileage_optional": "Kilométrage (optionnel)"
+    },
+    "placeholders": {
+      "plate": "e.g. 123-A-456",
+      "make": "e.g. Toyota",
+      "model": "e.g. Corolla",
+      "year": "e.g. 2020",
+      "select_color": "Select color",
+      "select_fuel": "Select fuel type",
+      "price_per_day": "e.g. 150",
+      "purchase_price": "e.g. 280000",
+      "monthly_lease": "e.g. 4000",
+      "mileage": "e.g. 120000",
+      "insurance_expiry": "Select insurance expiry date",
+      "tech_expiry": "Select technical visit expiry date",
+      "select_status": "Select status"
+    },
+    "actions": { "save": "Save" },
+    "toasts": {
+      "success_title": "Success!",
+      "success_desc": "Your action was completed successfully.",
+      "undo": "Undo",
+      "generic_error": "An unexpected error occurred",
+      "duplicate_plate_title": "Duplicate Plate Number",
+      "duplicate_plate_desc": "This plate number is already registered. Please use a different one.",
+      "org_issue_msg": "There was an issue with your account. Please contact support.",
+      "account_error_title": "Account Error",
+      "account_error_desc": "Please contact support for assistance.",
+      "required_msg": "Please fill in all required fields correctly.",
+      "missing_info_title": "Missing Information",
+      "missing_info_desc": "Please check all required fields and try again.",
+      "retry": "Retry"
+    },
+    "errors": {
+      "required": "Required",
+      "plate_required": "Plate number is required",
+      "make_required": "Make is required",
+      "model_required": "Model is required",
+      "year_number": "Year must be a number",
+      "year_min": "Year must be greater than 2010",
+      "year_max": "Year must be less than or equal to current year",
+      "price_number": "Price must be a number",
+      "price_min": "Price must be greater than 0",
+      "rent_number": "Rent price must be a number",
+      "rent_min": "Rent price must be greater than 0",
+      "mileage_number": "Mileage must be a number",
+      "mileage_min": "Mileage must be a positive number",
+      "monthly_number": "Monthly lease price must be a number",
+      "monthly_min": "Monthly lease price must be a positive number",
+      "insurance_future": "Insurance expiry date must be in the future",
+      "tech_future": "Technical visit expiry date must be in the future"
+    }
+  },
+  "fuel": {
+    "gasoline": "Gasoline",
+    "diesel": "Diesel",
+    "hybrid": "Hybrid",
+    "electric": "Electric"
+  },
+  "colors": {
+    "white": "White",
+    "black": "Black",
+    "silver": "Silver",
+    "gray": "Gray",
+    "blue": "Blue",
+    "red": "Red",
+    "green": "Green",
+    "yellow": "Yellow",
+    "orange": "Orange",
+    "brown": "Brown",
+    "purple": "Purple",
+    "gold": "Gold",
+    "beige": "Beige"
+  },
+  "loading": "Loading cars...",
+  "deleting": "Deleting...",
+  "car_details": {
+    "loading": "Loading car details...",
+    "error": "Error loading car details.",
+    "back": "Back",
+    "vehicle_overview": "Vehicle Overview",
+    "year": "Year",
+    "insurance_expiry": "Insurance Expiry",
+    "purchase_price": "Purchase Price",
+    "price_per_day": "Price / Day",
+    "mileage": "Mileage",
+    "monthly_payment": "Monthly Payment",
+    "tech_expiry": "Technical Visit Expiry",
+    "currently_rented": "Currently Rented",
+    "invalid_date": "Invalid date",
+    "next": "Next",
+    "unknown": "Unknown",
+    "badge_rented": "Rented",
+    "tabs": {
+      "targets": "Targets",
+      "rentals": "Rentals",
+      "maintenance": "Maintenance Logs"
+    },
+    "actions": {
+      "mark_active": "Mark as Active",
+      "mark_maintenance": "Mark as Maintenance",
+      "mark_sold": "Mark as Sold",
+      "delete": "Delete Car"
+    },
+    "delete": {
+      "title": "Delete Car",
+      "desc": "Are you sure you want to delete {{make}} {{model}} ({{year}})? This action cannot be undone."
+    },
+    "deleting": "Deleting...",
+    "update_mileage": {
+      "open": "Update Mileage",
+      "title": "Update Mileage"
+    },
+    "mileage_label": "Mileage (km)",
+    "saving": "Saving...",
+    "mileage_min": "Mileage cannot be less than {{min}} km",
+    "mileage_max": "Mileage cannot exceed 1,000,000 km"
+  },
+  "targets": {
+    "cards": {
+      "revenue": {
+        "title": "Target Revenue",
+        "progress": "{{pct}}% of target reached"
+      },
+      "rents": {
+        "title": "Target Rents",
+        "progress": "{{pct}}% of target reached"
+      },
+      "days": {
+        "title": "Days Remaining",
+        "value": "{{days}} days",
+        "subtitle": "until target end date"
+      }
+    },
+    "no_active": {
+      "title": "No active target",
+      "subtitle": "Start by adding a new target."
+    },
+    "actions": {
+      "add": "+ Add Target",
+      "saving": "Saving..."
+    },
+    "dialog": {
+      "title": "Add Monthly Target"
+    },
+    "form": {
+      "labels": {
+        "revenue": "Revenue Goal",
+        "rents": "Target Rents",
+        "start": "Start Date",
+        "end": "End Date"
+      },
+      "placeholders": {
+        "revenue": "e.g. 8000",
+        "rents": "e.g. 40",
+        "start": "Select start date",
+        "end": "Select end date"
+      },
+      "errors": {
+        "revenue_number": "Revenue goal must be a number",
+        "revenue_required": "Revenue goal is required",
+        "rents_number": "Target rents must be a number",
+        "rents_required": "Target rents is required",
+        "start_required": "Start date is required",
+        "end_required": "End date is required",
+        "end_after_start": "End date must be after start date",
+        "end_in_future": "End date cannot be in the past"
+      }
+    },
+    "toasts": {
+      "added": "Target added successfully",
+      "add_failed": "Failed to add target"
+    },
+    "errors": {
+      "already_active": "You already have an active target. Please wait until it ends."
+    },
+    "loading": "Loading targets..."
+  },
+  "rental": {
+    "payment_progress": {
+      "title": "Payment Progress"
+    },
+    "loading": "Loading rentals...",
+    "ongoing": "Ongoing",
+    "invalid_date": "Invalid",
+    "grid": {
+      "start_date": "Start Date",
+      "end_date": "End Date",
+      "revenue": "Revenue",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "closed": "Closed",
+      "cancelled": "Cancelled"
+    },
+    "empty": {
+      "title": "No rentals found",
+      "subtitle": "This car doesn't have any rental history yet.",
+      "cta": "Create Rental"
+    },
+    "summary": {
+      "title": "Rental Summary",
+      "current": "Current Rent",
+      "total_price": "Total Price",
+      "total_paid": "Total Paid",
+      "total_revenue": "Total Revenue",
+      "total_rentals": "Total Rentals",
+      "avg_price": "Avg Rent Price"
+    },
+
+    "history_title": "Rentals History"
+  },
+  "maintenance": {
+    "edit_button_title": "Edit maintenance",
+    "edit_title": "Edit Maintenance",
+    "fields": {
+      "type": "Type",
+      "description": "Description",
+      "cost": "Cost",
+      "datetime": "Date & Time"
+    },
+    "placeholders": {
+      "type": "Select type",
+      "description": "Enter description",
+      "cost": "e.g. 500",
+      "mileage": "e.g. 120000",
+      "datetime": "Select date & time"
+    },
+    "types": {
+      "oil_change": "Oil Change",
+      "tire_rotation": "Tire Rotation",
+      "inspection": "Inspection",
+      "other": "Other"
+    },
+    "toasts": {
+      "updated": "Maintenance updated",
+      "update_failed": "Failed to update maintenance",
+      "added": "Maintenance log added",
+      "add_failed": "Failed to add maintenance log"
+    },
+    "errors": {
+      "type_required": "Type is required",
+      "description_required": "Description is required",
+      "cost_number": "Cost must be a number",
+      "cost_min": "Cost must be a positive number",
+      "date_required": "Date & time is required",
+      "date_invalid": "Invalid date & time"
+    },
+    "loading": "Loading maintenance logs...",
+    "empty": {
+      "title": "No maintenance logs",
+      "subtitle": "Start by adding a new maintenance.",
+      "cta": "No Maintenance history"
+    },
+    "summary": {
+      "title": "Maintenance Summary",
+      "last": "Last",
+      "total_cost": "Total Cost"
+    },
+    "grid": {
+      "type": "Type",
+      "description": "Description",
+      "cost": "Cost",
+      "created_at": "Created At",
+      "actions": "Actions"
+    },
+    "filter": {
+      "placeholder": "Filter by type",
+      "all": "All"
+    },
+    "actions": {
+      "add": "+ Add Maintenance"
+    },
+    "dialog": {
+      "title": "Add Maintenance Log"
+    },
+    "form": {
+      "errors": {
+        "type_required": "Type is required",
+        "description_required": "Description is required",
+        "cost_number": "Cost must be a number",
+        "cost_required": "Cost is required",
+        "date_required": "Date & time is required",
+        "date_invalid": "Invalid date & time"
+      }
+    }
+  },
+  "badge": {
+    "active": "Active",
+    "expired": "Expired"
+  },
+  "card": {
+    "days_remaining": "Days Remaining",
+    "revenue_progress": "Revenue Progress",
+    "rents_progress": "Rents Progress",
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "history_title": "Targets History",
+  "grid": {
+    "actual_rents": "Actual Rents",
+    "actual_revenue": "Actual Revenue",
+    "revenue_progress": "Revenue Progress",
+    "rents_progress": "Rents Progress",
+    "days_remaining": "Days Remaining"
+  },
+  "chart": {
+    "title": "Revenue & Rents Over Time",
+    "subtitle": "Showing revenue and rents for the selected period",
+    "range": {
+      "90d": "Last 3 months",
+      "30d": "Last 30 days",
+      "7d": "Last 7 days"
+    },
+    "series": {
+      "both": "Both",
+      "revenue": "Revenue",
+      "rents": "Rents"
+    },
+    "a11y": {
+      "select_range": "Select a value",
+      "select_series": "Select series"
+    }
+  },
+  "series": {
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "chartLabels": {
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "seriesLegend": {
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "seriesTooltip": {
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "chartLabelsAlt": {
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "seriesAlt": {
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "seriesLegendAlt": {
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "seriesTooltipAlt": {
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "seriesFallback": {
+    "revenue": "Revenue",
+    "rents": "Rents"
+  },
+  "series_META": {
+    "note": "Optional grouping for series if you prefer"
+  },
+  "seriesAliases": {},
+  "seriesMapping": {},
+  "seriesMisc": {},
+  "seriesAux": {},
+  "seriesAux2": {},
+  "seriesAux3": {},
+  "seriesAux4": {},
+  "seriesAux5": {},
+  "seriesAux6": {},
+  "seriesAux7": {},
+  "seriesAux8": {},
+  "seriesAux9": {},
+  "seriesAux10": {},
+  "seriesAux11": {},
+  "seriesAux12": {},
+  "seriesAux13": {},
+  "seriesAux14": {},
+  "seriesAux15": {},
+  "seriesAux16": {},
+  "seriesAux17": {},
+  "seriesAux18": {}
+}

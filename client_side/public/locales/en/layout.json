@@ -1,0 +1,38 @@
+{
+  "breadcrumbs": {
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "organizations": "Organizations",
+    "settings": "Settings",
+    "system": "System",
+    "cars": "Cars",
+    "rents": "Rents",
+    "clients": "Clients",
+    "reports": "Reports",
+    "organization": "Organization"
+  },
+  "badges": {
+    "super_admin": "Super Admin",
+    "admin_panel": "ADMIN PANEL"
+  },
+  "sidebar": {
+    "account_settings": "Account Settings",
+    "sign_out": "Sign Out",
+    "confirm_signout_title": "Sign Out",
+    "confirm_signout_desc": "Are you sure you want to sign out?",
+    "confirm": "Sign Out",
+    "cancel": "Cancel",
+    "user_fallback": "User",
+    "email_fallback": "user@example.com"
+  },
+  "notifications": {
+    "menu": "Notifications"
+  },
+  "pagination": {
+    "prev": "Previous",
+    "next": "Next",
+    "prev_aria": "Go to previous page",
+    "next_aria": "Go to next page",
+    "more_pages": "More pages"
+  }
+}

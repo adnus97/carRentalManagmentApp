@@ -291,7 +291,7 @@ export class NotificationsService {
       CAR: true,
       MAINTENANCE: true,
       FINANCIAL: true,
-      SYSTEM: false,
+      SYSTEM: true,
     };
 
     if (!prefs) {
