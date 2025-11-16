@@ -1,0 +1,205 @@
+{
+  "blacklist": {
+    "trigger": {
+      "global": "Liste noire globale",
+      "org": "Ma liste noire"
+    },
+    "header": {
+      "global_title": "Liste noire des clients (globale)",
+      "org_title": "Liste noire de l’organisation",
+      "global_sub": "Voir les clients mis sur liste noire dans toutes les organisations",
+      "org_sub": "Voir les clients mis sur liste noire par votre organisation",
+      "entries": "entrées"
+    },
+    "search": {
+      "placeholder": "Rechercher par nom, téléphone, e‑mail ou motif…"
+    },
+    "loading": "Chargement de la liste noire…",
+    "empty": {
+      "title": "Aucun client sur liste noire",
+      "search_no_results": "Aucun client ne correspond à vos critères de recherche. Essayez d’ajuster vos termes.",
+      "global": "Aucun client n’est actuellement sur liste noire dans l’ensemble des organisations.",
+      "org": "Votre organisation n’a aucun client sur liste noire pour le moment."
+    },
+    "labels": {
+      "active": "Actif",
+      "inactive": "Inactif",
+      "id": "ID",
+      "reason": "Motif de mise sur liste noire"
+    },
+    "pagination": {
+      "showing": "Affichage de",
+      "to": "à",
+      "of": "sur",
+      "entries": "entrées",
+      "prev": "Précédent",
+      "next": "Suivant"
+    },
+    "dialog": {
+      "trigger": "Mettre sur liste noire",
+      "title": "Mettre le client sur liste noire",
+      "description": "Veuillez indiquer un motif de mise sur liste noire pour ce client.",
+      "reason_label": "Motif",
+      "reason_placeholder": "ex. Activité frauduleuse",
+      "confirm": "Confirmer la mise sur liste noire",
+      "toasts": {
+        "success_title": "Client mis sur liste noire",
+        "success_desc": "Le client a été mis sur liste noire avec succès.",
+        "error_title": "Erreur",
+        "error_desc": "Échec de la mise sur liste noire du client."
+      }
+    },
+    "errors": {
+      "reason_min": "Le motif doit comporter au moins 3 caractères"
+    },
+    "actions": {
+      "title": "Gestion de la liste noire",
+      "subtitle": "Afficher et gérer les clients mis sur liste noire pour des raisons de sécurité et de conformité.",
+      "org_title": "Liste noire de mon organisation",
+      "org_sub": "Voir les clients mis sur liste noire par votre organisation",
+      "global_title": "Liste noire globale",
+      "global_sub": "Voir tous les clients mis sur liste noire dans l’ensemble des organisations"
+    }
+  },
+  "form": {
+    "title": "Ajouter un nouveau client",
+    "subtitle": "Remplissez le formulaire ci‑dessous pour ajouter un nouveau client au système.",
+    "labels": {
+      "first": "Prénom",
+      "last": "Nom",
+      "email": "E‑mail",
+      "phone": "Téléphone",
+      "address": "Adresse",
+      "doc_id": "Numéro de document",
+      "doc_type": "Type de document",
+      "driver_license": "Permis de conduire"
+    },
+    "placeholders": {
+      "first": "ex. Jean",
+      "last": "ex. Dupont",
+      "email": "ex. jean@exemple.com",
+      "phone": "ex. 0612345678",
+      "address": "ex. 123 rue Principale",
+      "doc_id": "ex. TA123456",
+      "doc_type": "Choisir le type",
+      "driver_license": "ex. ABC123456"
+    },
+    "doc_types": {
+      "passport": "Passeport",
+      "id_card": "Carte d’identité"
+    },
+    "sections": {
+      "docs": "Images des documents"
+    },
+    "uploads": {
+      "id_card": "CIN",
+      "id_card_desc": "Téléversez une photo claire de la carte d’identité",
+      "driver_license": "Permis",
+      "driver_license_desc": "Téléversez une photo claire du permis de conduire"
+    },
+    "actions": {
+      "add_client": "Ajouter un client",
+      "save": "Enregistrer"
+    },
+    "toasts": {
+      "success_title": "Succès !",
+      "success_desc": "Le client a été ajouté avec succès.",
+      "add_failed": "Échec de l’ajout du client.",
+      "error_title": "Erreur",
+      "updated_desc": "Client has been updated successfully.",
+      "update_failed": "Failed to update client."
+    },
+    "errors": {
+      "first_required": "Le prénom est requis",
+      "last_required": "Le nom est requis",
+      "email_invalid": "E‑mail invalide",
+      "phone_required": "Le téléphone est requis",
+      "address_required": "L’adresse est requise",
+      "doc_id_required": "Le numéro de document est requis",
+      "doc_type_required": "Le type de document est requis",
+      "driver_license_required": "Le permis de conduire est requis"
+    }
+  },
+  "uploader": {
+    "actions": {
+      "choose": "Choisir un fichier",
+      "view_tooltip": "Voir le fichier",
+      "clear_tooltip": "Effacer le fichier"
+    },
+    "status": {
+      "uploaded": "Téléversé",
+      "uploading": "Téléversement…",
+      "uploading_plain": "téléversement…"
+    },
+    "invalid": {
+      "title": "Fichier invalide",
+      "desc": "Le fichier sélectionné n’est pas autorisé."
+    },
+    "success": {
+      "title": "Succès !",
+      "desc": "{{label}} a été téléversé avec succès."
+    },
+    "error": {
+      "title": "Échec du téléversement",
+      "desc": "Échec du téléversement. Veuillez réessayer."
+    },
+    "no_file": "Aucun fichier choisi"
+  },
+  "edit": {
+    "title": "Edit Client",
+    "subtitle": "Update the client information below.",
+    "actions": {
+      "save": "Save Changes"
+    }
+  },
+  "client_details": {
+    "loading": "Chargement du client…",
+    "error": "Erreur lors du chargement du client.",
+    "back": "Retour",
+    "edit": "Modifier",
+    "unblacklist": "Retirer de la liste noire",
+    "blacklist": "Mettre sur liste noire",
+    "delete": "Supprimer",
+    "deleted": "Supprimé",
+    "deleted_desc": "Client supprimé avec succès",
+    "delete_title": "Supprimer le client",
+    "delete_desc": "Êtes‑vous sûr de vouloir supprimer {{name}} ?",
+    "cancel": "Annuler",
+    "deleting": "Suppression…",
+    "overview": "Aperçu du client",
+    "document": "Document",
+    "status": {
+      "label": "Statut",
+      "blacklisted": "Sur liste noire",
+      "active": "Actif"
+    },
+    "created": "Créé le",
+    "updated": "Mis à jour le",
+    "tabs": {
+      "rentals": "Locations",
+      "ratings": "Avis",
+      "blacklist": "Historique de la liste noire"
+    },
+    "rate_customer": "Évaluer le client",
+    "reviews": {
+      "one": "avis",
+      "many": "avis"
+    },
+    "show_more": "Voir plus",
+    "show_less": "Voir moins",
+    "no_ratings": "Aucun avis pour le moment.",
+    "no_blacklist": "Aucun historique de liste noire.",
+    "doc": {
+      "not_available_title": "Document indisponible",
+      "not_available_desc": "{{title}} n’a pas encore été téléversé.",
+      "opening_title": "Ouverture du document",
+      "opening_desc": "Ouverture de {{title}}…",
+      "error_title": "Erreur de chargement",
+      "error_desc": "Impossible de charger {{title}}. Veuillez réessayer.",
+      "downloading_title": "Téléchargement…",
+      "downloading_desc": "Téléchargement de {{title}}…",
+      "error_download_title": "Erreur de téléchargement",
+      "error_download_desc": "Impossible de télécharger {{title}}. Veuillez réessayer."
+    }
+  }
+}

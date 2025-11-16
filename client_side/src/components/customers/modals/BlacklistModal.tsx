@@ -33,6 +33,7 @@ import {
   getGlobalBlacklist,
   BlacklistEntry,
 } from '@/api/customers';
+import { useTranslation } from 'react-i18next';
 
 interface BlacklistModalProps {
   type: 'organization' | 'global';
@@ -40,6 +41,8 @@ interface BlacklistModalProps {
 }
 
 const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
+  const { t } = useTranslation('client');
+
   const [isOpen, setIsOpen] = useState(false);
   const [blacklistData, setBlacklistData] = useState<BlacklistEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,7 +114,9 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
           />
         )}
         <span className="font-medium">
-          {isGlobal ? 'Global Blacklist' : 'My Blacklist'}
+          {isGlobal
+            ? t('blacklist.trigger.global', 'Global Blacklist')
+            : t('blacklist.trigger.org', 'My Blacklist')}
         </span>
         {!loading && total > 0 && (
           <Badge
@@ -185,13 +190,25 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                 <div>
                   <h2 className="text-gray-900 dark:text-gray-100 font-bold">
                     {isGlobal
-                      ? 'Global Customer Blacklist'
-                      : 'Organization Blacklist'}
+                      ? t(
+                          'blacklist.header.global_title',
+                          'Global Customer Blacklist',
+                        )
+                      : t(
+                          'blacklist.header.org_title',
+                          'Organization Blacklist',
+                        )}
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 font-normal">
                     {isGlobal
-                      ? 'View blacklisted customers across all organizations'
-                      : 'View customers blacklisted by your organization'}
+                      ? t(
+                          'blacklist.header.global_sub',
+                          'View blacklisted customers across all organizations',
+                        )
+                      : t(
+                          'blacklist.header.org_sub',
+                          'View customers blacklisted by your organization',
+                        )}
                   </p>
                 </div>
               </div>
@@ -206,7 +223,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                   }
                 `}
               >
-                {total} entries
+                {total} {t('blacklist.header.entries', 'entries')}
               </Badge>
             </DialogTitle>
           </DialogHeader>
@@ -220,7 +237,10 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
               size={18}
             />
             <Input
-              placeholder="Search by name, phone, email, or reason..."
+              placeholder={t(
+                'blacklist.search.placeholder',
+                'Search by name, phone, email, or reason...',
+              )}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-12 pr-4 py-3 text-base border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-200"
@@ -240,7 +260,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                 `}
                 ></div>
                 <p className="text-gray-600 dark:text-gray-400 font-medium">
-                  Loading blacklist...
+                  {t('blacklist.loading', 'Loading blacklist...')}
                 </p>
               </div>
             </div>
@@ -263,14 +283,23 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                   />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  No blacklisted customers
+                  {t('blacklist.empty.title', 'No blacklisted customers')}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
                   {searchTerm
-                    ? 'No customers match your search criteria. Try adjusting your search terms.'
+                    ? t(
+                        'blacklist.empty.search_no_results',
+                        'No customers match your search criteria. Try adjusting your search terms.',
+                      )
                     : isGlobal
-                      ? 'No customers are currently blacklisted across all organizations.'
-                      : 'Your organization has no blacklisted customers at this time.'}
+                      ? t(
+                          'blacklist.empty.global',
+                          'No customers are currently blacklisted across all organizations.',
+                        )
+                      : t(
+                          'blacklist.empty.org',
+                          'Your organization has no blacklisted customers at this time.',
+                        )}
                 </p>
               </div>
             </div>
@@ -322,7 +351,12 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                                     }
                                   `}
                                 >
-                                  {entry.isActive ? 'Active' : 'Inactive'}
+                                  {entry.isActive
+                                    ? t('blacklist.labels.active', 'Active')
+                                    : t(
+                                        'blacklist.labels.inactive',
+                                        'Inactive',
+                                      )}
                                 </Badge>
                               </div>
                             </div>
@@ -362,7 +396,8 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                                 />
                               </div>
                               <span className="font-medium">
-                                ID: {entry.customerDocumentId}
+                                {t('blacklist.labels.id', 'ID')}:{' '}
+                                {entry.customerDocumentId}
                               </span>
                             </div>
                             {isGlobal && entry.orgName && (
@@ -391,7 +426,10 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                               </div>
                               <div className="flex-1">
                                 <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
-                                  Blacklist Reason
+                                  {t(
+                                    'blacklist.labels.reason',
+                                    'Blacklist Reason',
+                                  )}
                                 </p>
                                 <p className="text-sm text-amber-700 dark:text-amber-400 leading-relaxed">
                                   {entry.reason}
@@ -430,19 +468,19 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
           <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Showing{' '}
+                {t('blacklist.pagination.showing', 'Showing')}{' '}
                 <span className="font-medium text-gray-900 dark:text-gray-100">
                   {(currentPage - 1) * pageSize + 1}
                 </span>{' '}
-                to{' '}
+                {t('blacklist.pagination.to', 'to')}{' '}
                 <span className="font-medium text-gray-900 dark:text-gray-100">
                   {Math.min(currentPage * pageSize, total)}
                 </span>{' '}
-                of{' '}
+                {t('blacklist.pagination.of', 'of')}{' '}
                 <span className="font-medium text-gray-900 dark:text-gray-100">
                   {total}
                 </span>{' '}
-                entries
+                {t('blacklist.pagination.entries', 'entries')}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -452,7 +490,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                   disabled={currentPage <= 1 || loading}
                   className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 disabled:opacity-50"
                 >
-                  Previous
+                  {t('blacklist.pagination.prev', 'Previous')}
                 </Button>
                 <Button
                   variant="outline"
@@ -461,7 +499,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                   disabled={currentPage >= totalPages || loading}
                   className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 disabled:opacity-50"
                 >
-                  Next
+                  {t('blacklist.pagination.next', 'Next')}
                 </Button>
               </div>
             </div>

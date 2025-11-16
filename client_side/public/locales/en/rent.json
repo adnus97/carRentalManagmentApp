@@ -1,0 +1,31 @@
+{
+  "contract": {
+    "preview_title": "Contract Preview",
+    "status": {
+      "loading": "Loading…",
+      "ready": "Ready"
+    },
+    "actions": {
+      "print": "Print",
+      "pdf": "PDF",
+      "word": "Word"
+    },
+    "zoom": {
+      "in": "Zoom in",
+      "out": "Zoom out"
+    },
+    "download": {
+      "started_title": "Download Started",
+      "failed_title": "Download Failed",
+      "pdf_started": "PDF is being downloaded.",
+      "docx_started": "Word document is being downloaded.",
+      "pdf_failed_desc": "Failed to download PDF",
+      "docx_failed_desc": "Failed to download Word file"
+    },
+    "errors": {
+      "load_failed_desc": "Failed to load contract"
+    },
+
+    "iframe_title": "Contract"
+  }
+}

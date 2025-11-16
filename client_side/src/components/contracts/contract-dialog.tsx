@@ -9,6 +9,7 @@ import {
   downloadContractDOCX,
 } from '@/api/contracts';
 import { toast } from '@/components/ui/toast';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   open: boolean;
@@ -21,32 +22,37 @@ export function ContractDialog({
   open,
   onOpenChange,
   contractId,
-  title = 'Contract Preview',
+  title,
 }: Props) {
+  const { t } = useTranslation(['rent', 'common']);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
 
-  // Inject minimal preview CSS and auto-size iframe height
+  const effectiveTitle =
+    title ||
+    t('contract.preview_title', {
+      ns: 'rent',
+      defaultValue: 'Contract Preview',
+    });
+
   const enhancePreview = () => {
     const iframe = iframeRef.current;
     const doc = iframe?.contentDocument;
     if (!doc || !iframe) return;
 
-    // Preview-only: show each .page as a separate sheet with gap BELOW it
     const style = doc.createElement('style');
     style.textContent = `
       @media screen {
-        body { background: #e5e7eb; } /* gray canvas behind pages */
+        body { background: #e5e7eb; }
         .sheet { padding: 12px 0; }
         .page {
           box-shadow: 0 6px 20px rgba(0,0,0,.15);
           border-radius: 6px;
           background: #fff;
-          margin: 0 auto 14px auto; /* bottom-only gap, no padding to avoid covering content */
+          margin: 0 auto 14px auto;
         }
-        /* Keep signature lane area visually clear (actual space is in template) */
         .sign-lane { margin-top: 4mm; margin-bottom: 4mm; }
       }
     `;
@@ -60,7 +66,6 @@ export function ContractDialog({
       iframe.style.height = `${h}px`;
     };
 
-    // Initial sizing after layout
     if (doc.readyState === 'complete') {
       resize();
     } else {
@@ -70,13 +75,11 @@ export function ContractDialog({
       });
     }
 
-    // Resize when images load
     Array.from(doc.images || []).forEach((img) => {
       img.addEventListener('load', resize, { once: true } as any);
       img.addEventListener('error', resize, { once: true } as any);
     });
 
-    // Observe document size changes
     const RZCtor = (window as any).ResizeObserver as
       | (new (cb: ResizeObserverCallback) => ResizeObserver)
       | undefined;
@@ -86,7 +89,6 @@ export function ContractDialog({
       ro.observe(doc.documentElement);
       ro.observe(doc.body);
     } else {
-      // Fallback retries
       let n = 0;
       const id = setInterval(() => {
         resize();
@@ -118,9 +120,16 @@ export function ContractDialog({
           const msg =
             e?.response?.data?.message ||
             e?.message ||
-            'Failed to load contract';
+            t('contract.errors.load_failed_desc', {
+              ns: 'rent',
+              defaultValue: 'Failed to load contract',
+            });
           setErr(msg);
-          toast({ type: 'error', title: 'Error', description: msg });
+          toast({
+            type: 'error',
+            title: t('common.error', 'Error'),
+            description: msg,
+          });
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -141,13 +150,31 @@ export function ContractDialog({
       await downloadContractPDF(contractId);
       toast({
         type: 'success',
-        title: 'Download Started',
-        description: `PDF is being downloaded.`,
+        title: t('contract.download.started_title', {
+          ns: 'rent',
+          defaultValue: 'Download Started',
+        }),
+        description: t('contract.download.pdf_started', {
+          ns: 'rent',
+          defaultValue: 'PDF is being downloaded.',
+        }),
       });
     } catch (e: any) {
       const msg =
-        e?.response?.data?.message || e?.message || 'Failed to download PDF';
-      toast({ type: 'error', title: 'Download Failed', description: msg });
+        e?.response?.data?.message ||
+        e?.message ||
+        t('contract.download.pdf_failed_desc', {
+          ns: 'rent',
+          defaultValue: 'Failed to download PDF',
+        });
+      toast({
+        type: 'error',
+        title: t('contract.download.failed_title', {
+          ns: 'rent',
+          defaultValue: 'Download Failed',
+        }),
+        description: msg,
+      });
     }
   };
 
@@ -157,15 +184,31 @@ export function ContractDialog({
       await downloadContractDOCX(contractId);
       toast({
         type: 'success',
-        title: 'Download Started',
-        description: `Word document is being downloaded.`,
+        title: t('contract.download.started_title', {
+          ns: 'rent',
+          defaultValue: 'Download Started',
+        }),
+        description: t('contract.download.docx_started', {
+          ns: 'rent',
+          defaultValue: 'Word document is being downloaded.',
+        }),
       });
     } catch (e: any) {
       const msg =
         e?.response?.data?.message ||
         e?.message ||
-        'Failed to download Word file';
-      toast({ type: 'error', title: 'Download Failed', description: msg });
+        t('contract.download.docx_failed_desc', {
+          ns: 'rent',
+          defaultValue: 'Failed to download Word file',
+        });
+      toast({
+        type: 'error',
+        title: t('contract.download.failed_title', {
+          ns: 'rent',
+          defaultValue: 'Download Failed',
+        }),
+        description: msg,
+      });
     }
   };
 
@@ -175,9 +218,19 @@ export function ContractDialog({
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b bg-background">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold">{title}</h2>
+            <h2 className="text-lg font-semibold">{effectiveTitle}</h2>
             <span className="text-xs text-muted-foreground">
-              {loading ? 'Loading…' : (err ?? 'Ready')}
+              {loading
+                ? t('contract.status.loading', {
+                    ns: 'rent',
+                    defaultValue: 'Loading…',
+                  })
+                : err
+                  ? err
+                  : t('contract.status.ready', {
+                      ns: 'rent',
+                      defaultValue: 'Ready',
+                    })}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -187,6 +240,14 @@ export function ContractDialog({
                 size="sm"
                 onClick={() => setZoom((z) => Math.max(0.6, z - 0.1))}
                 className="h-8 w-8 p-0"
+                aria-label={t('contract.zoom.out', {
+                  ns: 'rent',
+                  defaultValue: 'Zoom out',
+                })}
+                title={t('contract.zoom.out', {
+                  ns: 'rent',
+                  defaultValue: 'Zoom out',
+                })}
               >
                 -
               </Button>
@@ -198,19 +259,30 @@ export function ContractDialog({
                 size="sm"
                 onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
                 className="h-8 w-8 p-0"
+                aria-label={t('contract.zoom.in', {
+                  ns: 'rent',
+                  defaultValue: 'Zoom in',
+                })}
+                title={t('contract.zoom.in', {
+                  ns: 'rent',
+                  defaultValue: 'Zoom in',
+                })}
               >
                 +
               </Button>
             </div>
 
             <Button variant="ghost" size="sm" onClick={print}>
-              Print
+              {t('contract.actions.print', {
+                ns: 'rent',
+                defaultValue: 'Print',
+              })}
             </Button>
             <Button variant="ghost" size="sm" onClick={handleDownloadPDF}>
-              PDF
+              {t('contract.actions.pdf', { ns: 'rent', defaultValue: 'PDF' })}
             </Button>
             <Button variant="ghost" size="sm" onClick={handleDownloadDOCX}>
-              Word
+              {t('contract.actions.word', { ns: 'rent', defaultValue: 'Word' })}
             </Button>
           </div>
         </div>
@@ -222,15 +294,18 @@ export function ContractDialog({
             style={{
               transform: `scale(${zoom})`,
               transformOrigin: 'top center',
-              width: 794, // ~210mm at 96dpi
+              width: 794,
             }}
           >
             <iframe
               ref={iframeRef}
-              title="Contract"
+              title={t('contract.iframe_title', {
+                ns: 'rent',
+                defaultValue: 'Contract',
+              })}
               style={{
                 width: 794,
-                height: 100, // initial; auto-sized after load
+                height: 100,
                 border: 'none',
                 display: 'block',
                 background: 'transparent',

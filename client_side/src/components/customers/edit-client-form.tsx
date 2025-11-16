@@ -1,5 +1,3 @@
-// Update components/customers/edit-client-form.tsx
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -12,7 +10,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Separator } from '@/components/ui/separator';
 import { useEffect, useState } from 'react';
-import { updateCustomer, CustomerWithFiles } from '@/api/customers'; // Use CustomerWithFiles
+import { updateCustomer, CustomerWithFiles } from '@/api/customers';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/toast';
 import {
@@ -22,18 +20,26 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { FileUploader } from '@/components/file-uploader';
 import { File as ApiFile } from '@/api/files';
+import { FileUploaderStyled } from './file-uploader-styled';
+import { useTranslation } from 'react-i18next';
 
+// Mirror the Add form schema: address + driversLicense, and documentType excludes driver_license
 const schema = z.object({
-  firstName: z.string().min(2, 'First name is required'),
-  lastName: z.string().min(2, 'Last name is required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().min(6, 'Phone is required'),
-  documentId: z.string().min(2, 'Document ID is required'),
-  documentType: z.enum(['passport', 'driver_license', 'id_card'], {
-    required_error: 'Document type is required',
+  firstName: z.string().min(2, 'client.form.errors.first_required'),
+  lastName: z.string().min(2, 'client.form.errors.last_required'),
+  email: z
+    .string()
+    .email('client.form.errors.email_invalid')
+    .optional()
+    .or(z.literal('')),
+  phone: z.string().min(6, 'client.form.errors.phone_required'),
+  address: z.string().min(2, 'client.form.errors.address_required'),
+  documentId: z.string().min(2, 'client.form.errors.doc_id_required'),
+  documentType: z.enum(['passport', 'id_card'], {
+    required_error: 'client.form.errors.doc_type_required',
   }),
+  driversLicense: z.string().optional(), // separate text field
   idCardId: z.string().optional(),
   driversLicenseId: z.string().optional(),
 });
@@ -47,8 +53,9 @@ export function EditClientDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  customer: CustomerWithFiles | null; // Use CustomerWithFiles
+  customer: CustomerWithFiles | null;
 }) {
+  const { t } = useTranslation('client');
   const [idCardFile, setIdCardFile] = useState<ApiFile | null>(null);
   const [driversLicenseFile, setDriversLicenseFile] = useState<ApiFile | null>(
     null,
@@ -60,7 +67,6 @@ export function EditClientDialog({
     mutationFn: (data: Partial<CustomerWithFiles>) =>
       updateCustomer(customer!.id, data),
     onSuccess: () => {
-      // Invalidate both the customers list and the specific customer details
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({
         queryKey: ['customerDetails', customer?.id],
@@ -68,18 +74,22 @@ export function EditClientDialog({
       onOpenChange(false);
       toast({
         type: 'success',
-        title: 'Success!',
-        description: 'Client has been updated successfully.',
+        title: t('form.toasts.success_title', 'Success!'),
+        description: t(
+          'form.toasts.updated_desc',
+          'Client has been updated successfully.',
+        ),
       });
     },
     onError: (error: any) => {
       const errorMessage = Array.isArray(error?.response?.data?.message)
         ? error.response.data.message.join(', ')
-        : error?.response?.data?.message || 'Failed to update client.';
+        : error?.response?.data?.message ||
+          t('form.toasts.update_failed', 'Failed to update client.');
 
       toast({
         type: 'error',
-        title: 'Error',
+        title: t('form.toasts.error_title', 'Error'),
         description: errorMessage,
       });
     },
@@ -99,8 +109,10 @@ export function EditClientDialog({
       lastName: '',
       email: '',
       phone: '',
+      address: '',
       documentId: '',
       documentType: undefined,
+      driversLicense: '',
       idCardId: undefined,
       driversLicenseId: undefined,
     },
@@ -114,13 +126,15 @@ export function EditClientDialog({
         lastName: customer.lastName,
         email: customer.email || '',
         phone: customer.phone,
+        address: (customer as any).address || '', // address is required in new schema
         documentId: customer.documentId || '',
-        documentType: customer.documentType,
+        documentType:
+          (customer.documentType as 'passport' | 'id_card') || undefined,
+        driversLicense: (customer as any).driversLicense || '',
         idCardId: customer.idCardId || undefined,
         driversLicenseId: customer.driversLicenseId || undefined,
       });
 
-      // Reset file states
       setIdCardFile(null);
       setDriversLicenseFile(null);
     }
@@ -129,9 +143,8 @@ export function EditClientDialog({
   const onSubmit = (data: FormFields) => {
     if (!customer) return;
 
-    const payload = {
+    const payload: Partial<CustomerWithFiles> = {
       ...data,
-      // Use the new uploaded file IDs if available, otherwise keep existing ones
       idCardId: idCardFile?.id || customer.idCardId || undefined,
       driversLicenseId:
         driversLicenseFile?.id || customer.driversLicenseId || undefined,
@@ -156,18 +169,30 @@ export function EditClientDialog({
       onOpenChange={(open) => {
         onOpenChange(open);
         if (!open && customer) {
-          reset(customer);
+          reset({
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            email: customer.email || '',
+            phone: customer.phone,
+            address: (customer as any).address || '',
+            documentId: customer.documentId || '',
+            documentType:
+              (customer.documentType as 'passport' | 'id_card') || undefined,
+            driversLicense: (customer as any).driversLicense || '',
+            idCardId: customer.idCardId || undefined,
+            driversLicenseId: customer.driversLicenseId || undefined,
+          });
           setIdCardFile(null);
           setDriversLicenseFile(null);
         }
       }}
     >
-      <DialogContent className="sm:max-w-[500px] pt-8 max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[520px] pt-8 max-h-[80vh] overflow-y-auto">
         <DialogTitle className="pb-1 text-lg font-semibold">
-          Edit Client
+          {t('edit.title', 'Edit Client')}
         </DialogTitle>
         <p className="text-sm text-muted-foreground mb-4">
-          Update the client information below.
+          {t('edit.subtitle', 'Update the client information below.')}
         </p>
         <Separator className="mb-4" />
 
@@ -175,20 +200,20 @@ export function EditClientDialog({
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>First Name *</Label>
+              <Label>{t('form.labels.first', 'First Name')} *</Label>
               <Input {...register('firstName')} />
               {errors.firstName && (
                 <span className="text-red-500 text-xs">
-                  {errors.firstName.message}
+                  {t(errors.firstName.message as string)}
                 </span>
               )}
             </div>
             <div>
-              <Label>Last Name *</Label>
+              <Label>{t('form.labels.last', 'Last Name')} *</Label>
               <Input {...register('lastName')} />
               {errors.lastName && (
                 <span className="text-red-500 text-xs">
-                  {errors.lastName.message}
+                  {t(errors.lastName.message as string)}
                 </span>
               )}
             </div>
@@ -196,39 +221,50 @@ export function EditClientDialog({
 
           {/* Email */}
           <div>
-            <Label>Email</Label>
+            <Label>{t('form.labels.email', 'Email')}</Label>
             <Input {...register('email')} />
             {errors.email && (
               <span className="text-red-500 text-xs">
-                {errors.email.message}
+                {t(errors.email.message as string)}
               </span>
             )}
           </div>
 
-          {/* Phone */}
-          <div>
-            <Label>Phone *</Label>
-            <Input {...register('phone')} />
-            {errors.phone && (
-              <span className="text-red-500 text-xs">
-                {errors.phone.message}
-              </span>
-            )}
+          {/* Phone + Address */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>{t('form.labels.phone', 'Phone')} *</Label>
+              <Input {...register('phone')} />
+              {errors.phone && (
+                <span className="text-red-500 text-xs">
+                  {t(errors.phone.message as string)}
+                </span>
+              )}
+            </div>
+            <div>
+              <Label>{t('form.labels.address', 'Address')} *</Label>
+              <Input {...register('address')} />
+              {errors.address && (
+                <span className="text-red-500 text-xs">
+                  {t(errors.address.message as string)}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Document ID + Type */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Document ID *</Label>
+              <Label>{t('form.labels.doc_id', 'Document ID')} *</Label>
               <Input {...register('documentId')} />
               {errors.documentId && (
                 <span className="text-red-500 text-xs">
-                  {errors.documentId.message}
+                  {t(errors.documentId.message as string)}
                 </span>
               )}
             </div>
             <div>
-              <Label>Document Type *</Label>
+              <Label>{t('form.labels.doc_type', 'Document Type')} *</Label>
               <Controller
                 control={control}
                 name="documentType"
@@ -238,60 +274,89 @@ export function EditClientDialog({
                     value={field.value}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue
+                        placeholder={t(
+                          'form.placeholders.doc_type',
+                          'Select type',
+                        )}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="passport">Passport</SelectItem>
-                      <SelectItem value="driver_license">
-                        Driver License
+                      <SelectItem value="passport">
+                        {t('form.doc_types.passport', 'Passport')}
                       </SelectItem>
-                      <SelectItem value="id_card">ID Card</SelectItem>
+                      <SelectItem value="id_card">
+                        {t('form.doc_types.id_card', 'ID Card')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 )}
               />
               {errors.documentType && (
                 <span className="text-red-500 text-xs">
-                  {errors.documentType.message}
+                  {t(errors.documentType.message as string)}
                 </span>
               )}
             </div>
           </div>
 
+          {/* Driver’s License (text) */}
+          <div>
+            <Label>{t('form.labels.driver_license', "Driver's License")}</Label>
+            <Input
+              {...register('driversLicense')}
+              placeholder={t(
+                'form.placeholders.driver_license',
+                'e.g. ABC123456',
+              )}
+            />
+          </div>
+
           {/* File Uploads */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Document Images
+              {t('form.sections.docs', 'Document Images')}
             </h3>
 
             <div className="grid grid-cols-1 gap-4">
-              <FileUploader
-                label="ID Card Image"
+              <FileUploaderStyled
+                label={t('form.uploads.id_card', 'ID Card Image')}
                 accept=".jpg,.jpeg,.png,.webp"
                 folder="customers/id-cards"
                 onUploadSuccess={handleIdCardUpload}
-                currentFile={customer?.idCardFile?.url}
-                description="Upload a clear photo of the ID card"
+                description={t(
+                  'form.uploads.id_card_desc',
+                  'Upload a clear photo of the ID card',
+                )}
+                currentFile={customer?.idCardFile?.url} // preview shows
+                disabled={isSubmitting || mutation.isPending}
               />
 
-              <FileUploader
-                label="Driver's License Image"
+              <FileUploaderStyled
+                label={t(
+                  'form.uploads.driver_license',
+                  "Driver's License Image",
+                )}
                 accept=".jpg,.jpeg,.png,.webp"
                 folder="customers/drivers-licenses"
                 onUploadSuccess={handleDriversLicenseUpload}
-                currentFile={customer?.driversLicenseFile?.url}
-                description="Upload a clear photo of the driver's license"
+                description={t(
+                  'form.uploads.driver_license_desc',
+                  "Upload a clear photo of the driver's license",
+                )}
+                currentFile={customer?.driversLicenseFile?.url} // preview shows
+                disabled={isSubmitting || mutation.isPending}
               />
             </div>
           </div>
 
-          {/* Save button */}
+          {/* Save */}
           <div className="text-right pt-2">
             <Button type="submit" disabled={isSubmitting || mutation.isPending}>
               {isSubmitting || mutation.isPending ? (
                 <Loader className="animate-spin mr-2" />
               ) : null}
-              Save Changes
+              {t('edit.actions.save', 'Save Changes')}
             </Button>
           </div>
         </form>

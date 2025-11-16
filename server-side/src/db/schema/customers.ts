@@ -23,10 +23,12 @@ export const customers = pgTable(
     lastName: text('last_name').notNull(),
     email: varchar('email', { length: 255 }),
     phone: varchar('phone', { length: 20 }).notNull(),
+    address: text('address').notNull(), // ensure present
     documentId: varchar('document_id', { length: 255 }).notNull(),
     documentType: text('document_type', {
-      enum: ['passport', 'driver_license', 'id_card'],
+      enum: ['passport', 'id_card'], // keep driver_license out of this enum now
     }),
+    driversLicense: text('drivers_license'), // NEW: license number/text
     rating: real('rating').default(0),
     ratingCount: integer('rating_count').default(0),
     createdAt: timestamp().defaultNow(),
@@ -34,25 +36,22 @@ export const customers = pgTable(
     isDeleted: boolean('is_deleted').default(false),
     isBlacklisted: boolean('is_blacklisted').default(false),
     blacklistReason: text('blacklist_reason'),
-    // New file ID columns
     idCardId: varchar('id_card_id', { length: 255 }).references(
       () => files.id,
-      { onDelete: 'set null' },
+      {
+        onDelete: 'set null',
+      },
     ),
-    driversLicenseId: varchar('drivers_license_id', { length: 255 }).references(
-      () => files.id,
-      { onDelete: 'set null' },
+    driversLicenseId: varchar('drivers_license_id', {
+      length: 255,
+    }).references(() => files.id, { onDelete: 'set null' }),
+  },
+  (table) => ({
+    orgDocumentUnique: uniqueIndex('org_document_unique').on(
+      table.orgId,
+      table.documentId,
     ),
-  },
-  (table) => {
-    return {
-      //  Composite unique index: orgId + documentId
-      orgDocumentUnique: uniqueIndex('org_document_unique').on(
-        table.orgId,
-        table.documentId,
-      ),
-    };
-  },
+  }),
 );
 
 //  Blacklist table (unchanged)

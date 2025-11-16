@@ -1,4 +1,3 @@
-// Update components/customers/add-client-dialog.tsx
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Loader } from 'lucide-react';
+import { Plus, Loader, Upload, CheckCircle2, XCircle } from 'lucide-react';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,18 +25,26 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { FileUploader } from '@/components/file-uploader';
+import { useTranslation } from 'react-i18next';
 import { File as ApiFile } from '@/api/files';
+import { api } from '@/api/api';
+import { FileUploaderStyled } from './file-uploader-styled';
 
 const schema = z.object({
-  firstName: z.string().min(2, 'First name is required'),
-  lastName: z.string().min(2, 'Last name is required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().min(6, 'Phone is required'),
-  documentId: z.string().min(2, 'Document ID is required'),
-  documentType: z.enum(['passport', 'driver_license', 'id_card'], {
-    required_error: 'Document type is required',
+  firstName: z.string().min(2, 'form.errors.first_required'),
+  lastName: z.string().min(2, 'form.errors.last_required'),
+  email: z
+    .string()
+    .email('form.errors.email_invalid')
+    .optional()
+    .or(z.literal('')),
+  phone: z.string().min(6, 'form.errors.phone_required'),
+  address: z.string().min(2, 'form.errors.address_required'),
+  documentId: z.string().min(2, 'form.errors.doc_id_required'),
+  documentType: z.enum(['passport', 'id_card'], {
+    required_error: 'form.errors.doc_type_required',
   }),
+  driversLicense: z.string().min(2, 'form.errors.driver_license_required'), // separate text number
   idCardId: z.string().optional(),
   driversLicenseId: z.string().optional(),
 });
@@ -45,6 +52,7 @@ const schema = z.object({
 type FormFields = z.infer<typeof schema>;
 
 export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
+  const { t } = useTranslation('client');
   const [isOpen, setIsOpen] = useState(false);
   const [idCardFile, setIdCardFile] = useState<ApiFile | null>(null);
   const [driversLicenseFile, setDriversLicenseFile] = useState<ApiFile | null>(
@@ -63,18 +71,22 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
       setDriversLicenseFile(null);
       toast({
         type: 'success',
-        title: 'Success!',
-        description: 'Client has been added successfully.',
+        title: t('form.toasts.success_title', 'Success!'),
+        description: t(
+          'form.toasts.success_desc',
+          'Client has been added successfully.',
+        ),
       });
     },
     onError: (error: any) => {
       const errorMessage = Array.isArray(error?.response?.data?.message)
         ? error.response.data.message.join(', ')
-        : error?.response?.data?.message || 'Failed to add client.';
+        : error?.response?.data?.message ||
+          t('form.toasts.add_failed', 'Failed to add client.');
 
       toast({
         type: 'error',
-        title: 'Error',
+        title: t('form.toasts.error_title', 'Error'),
         description: errorMessage,
       });
     },
@@ -94,8 +106,10 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
       lastName: '',
       email: '',
       phone: '',
+      address: '',
       documentId: '',
       documentType: undefined,
+      driversLicense: '',
       idCardId: undefined,
       driversLicenseId: undefined,
     },
@@ -137,38 +151,47 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
           trigger
         ) : (
           <Button variant="default">
-            <Plus size={20} /> Add Client
+            <Plus size={20} /> {t('form.actions.add_client', 'Add Client')}
           </Button>
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[500px] pt-8 max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[520px] pt-8 max-h-[80vh] overflow-y-auto">
         <DialogTitle className="pb-1 hidden sm:block">
-          Add a new Client
+          {t('form.title', 'Add a new Client')}
         </DialogTitle>
         <p className="text-sm text-muted-foreground hidden sm:block">
-          Fill out the form below to add a new client to the system.
+          {t(
+            'form.subtitle',
+            'Fill out the form below to add a new client to the system.',
+          )}
         </p>
         <Separator className="mb-2 hidden sm:block" />
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Basic Info */}
+          {/* Basic info */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>First Name *</Label>
-              <Input {...register('firstName')} placeholder="e.g. John" />
+              <Label>{t('form.labels.first', 'First Name')} *</Label>
+              <Input
+                {...register('firstName')}
+                placeholder={t('form.placeholders.first', 'e.g. John')}
+              />
               {errors.firstName && (
                 <span className="text-red-500 text-xs">
-                  {errors.firstName.message}
+                  {t(errors.firstName.message as string)}
                 </span>
               )}
             </div>
             <div>
-              <Label>Last Name *</Label>
-              <Input {...register('lastName')} placeholder="e.g. Doe" />
+              <Label>{t('form.labels.last', 'Last Name')} *</Label>
+              <Input
+                {...register('lastName')}
+                placeholder={t('form.placeholders.last', 'e.g. Doe')}
+              />
               {errors.lastName && (
                 <span className="text-red-500 text-xs">
-                  {errors.lastName.message}
+                  {t(errors.lastName.message as string)}
                 </span>
               )}
             </div>
@@ -176,39 +199,65 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
 
           {/* Email */}
           <div>
-            <Label>Email</Label>
-            <Input {...register('email')} placeholder="e.g. john@example.com" />
+            <Label>{t('form.labels.email', 'Email')}</Label>
+            <Input
+              {...register('email')}
+              placeholder={t(
+                'form.placeholders.email',
+                'e.g. john@example.com',
+              )}
+            />
             {errors.email && (
               <span className="text-red-500 text-xs">
-                {errors.email.message}
+                {t(errors.email.message as string)}
               </span>
             )}
           </div>
 
-          {/* Phone */}
-          <div>
-            <Label>Phone *</Label>
-            <Input {...register('phone')} placeholder="e.g. 0612345678" />
-            {errors.phone && (
-              <span className="text-red-500 text-xs">
-                {errors.phone.message}
-              </span>
-            )}
+          {/* Phone + Address */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>{t('form.labels.phone', 'Phone')} *</Label>
+              <Input
+                {...register('phone')}
+                placeholder={t('form.placeholders.phone', 'e.g. 0612345678')}
+              />
+              {errors.phone && (
+                <span className="text-red-500 text-xs">
+                  {t(errors.phone.message as string)}
+                </span>
+              )}
+            </div>
+            <div>
+              <Label>{t('form.labels.address', 'Address')} *</Label>
+              <Input
+                {...register('address')}
+                placeholder={t('form.placeholders.address', 'e.g. 123 Main St')}
+              />
+              {errors.address && (
+                <span className="text-red-500 text-xs">
+                  {t(errors.address.message as string)}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Document ID + Type */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Document ID *</Label>
-              <Input {...register('documentId')} placeholder="e.g. TA123456" />
+              <Label>{t('form.labels.doc_id', 'Document ID')} *</Label>
+              <Input
+                {...register('documentId')}
+                placeholder={t('form.placeholders.doc_id', 'e.g. TA123456')}
+              />
               {errors.documentId && (
                 <span className="text-red-500 text-xs">
-                  {errors.documentId.message}
+                  {t(errors.documentId.message as string)}
                 </span>
               )}
             </div>
             <div>
-              <Label>Document Type *</Label>
+              <Label>{t('form.labels.doc_type', 'Document Type')} *</Label>
               <Controller
                 control={control}
                 name="documentType"
@@ -218,56 +267,90 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
                     value={field.value}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue
+                        placeholder={t(
+                          'form.placeholders.doc_type',
+                          'Select type',
+                        )}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="passport">Passport</SelectItem>
-                      <SelectItem value="driver_license">
-                        Driver License
+                      <SelectItem value="passport">
+                        {t('form.doc_types.passport', 'Passport')}
                       </SelectItem>
-                      <SelectItem value="id_card">ID Card</SelectItem>
+                      <SelectItem value="id_card">
+                        {t('form.doc_types.id_card', 'ID Card')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 )}
               />
               {errors.documentType && (
                 <span className="text-red-500 text-xs">
-                  {errors.documentType.message}
+                  {t(errors.documentType.message as string)}
                 </span>
               )}
             </div>
           </div>
 
+          {/* Driver’s License (text) */}
+          <div>
+            <Label>{t('form.labels.driver_license', "Driver's License")}</Label>
+            <Input
+              {...register('driversLicense')}
+              placeholder={t(
+                'form.placeholders.driver_license',
+                'e.g. ABC123456',
+              )}
+            />
+            {errors.driversLicense && (
+              <span className="text-red-500 text-xs">
+                {t(errors.driversLicense.message as string)}
+              </span>
+            )}
+          </div>
+
           {/* File Uploads */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Document Images
+              {t('form.sections.docs', 'Document Images')}
             </h3>
 
             <div className="grid grid-cols-1 gap-4">
-              <FileUploader
-                label="ID Card Image"
+              <FileUploaderStyled
+                label={t('form.uploads.id_card', 'ID Card Image')}
                 accept=".jpg,.jpeg,.png,.webp"
                 folder="customers/id-cards"
                 onUploadSuccess={handleIdCardUpload}
-                description="Upload a clear photo of the ID card"
+                description={t(
+                  'form.uploads.id_card_desc',
+                  'Upload a clear photo of the ID card',
+                )}
+                disabled={isSubmitting}
               />
 
-              <FileUploader
-                label="Driver's License Image"
+              <FileUploaderStyled
+                label={t(
+                  'form.uploads.driver_license',
+                  "Driver's License Image",
+                )}
                 accept=".jpg,.jpeg,.png,.webp"
                 folder="customers/drivers-licenses"
                 onUploadSuccess={handleDriversLicenseUpload}
-                description="Upload a clear photo of the driver's license"
+                description={t(
+                  'form.uploads.driver_license_desc',
+                  "Upload a clear photo of the driver's license",
+                )}
+                disabled={isSubmitting}
               />
             </div>
           </div>
 
-          {/* Save button */}
+          {/* Save */}
           <div className="text-right pt-2">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? <Loader className="animate-spin mr-2" /> : null}
-              Save
+              {t('form.actions.save', 'Save')}
             </Button>
           </div>
         </form>

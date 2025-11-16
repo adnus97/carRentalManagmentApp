@@ -1,0 +1,30 @@
+{
+  "contract": {
+    "preview_title": "Aperçu du contrat",
+    "status": {
+      "loading": "Chargement…",
+      "ready": "Prêt"
+    },
+    "actions": {
+      "print": "Imprimer",
+      "pdf": "PDF",
+      "word": "Word"
+    },
+    "zoom": {
+      "in": "Zoom avant",
+      "out": "Zoom arrière"
+    },
+    "download": {
+      "started_title": "Téléchargement démarré",
+      "failed_title": "Échec du téléchargement",
+      "pdf_started": "Le PDF est en cours de téléchargement.",
+      "docx_started": "Le document Word est en cours de téléchargement.",
+      "pdf_failed_desc": "Échec du téléchargement du PDF",
+      "docx_failed_desc": "Échec du téléchargement du fichier Word"
+    },
+    "errors": {
+      "load_failed_desc": "Échec du chargement du contrat"
+    },
+    "iframe_title": "Contrat"
+  }
+}

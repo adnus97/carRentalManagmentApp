@@ -46,6 +46,7 @@ import { ClientRentalsGrid } from './client-rental-grid';
 import { ClientSpendingChart } from './client-spending-chart';
 import { format } from 'date-fns';
 import { Separator } from '../../components/ui/separator';
+import { useTranslation } from 'react-i18next';
 
 type DocCardProps = {
   title: string;
@@ -175,6 +176,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
   const { headerHeight } = useLayoutContext();
   const { setEntity } = useNavigationContext();
   const router = useRouter();
+  const { t } = useTranslation('client');
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -197,7 +199,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
   // ✅ Fetch ratings (all, then slice client-side)
   const { data: ratings } = useQuery({
     queryKey: ['customerRatings', customerId],
-    queryFn: () => getCustomerRatings(customerId, 1, 100), // fetch up to 100
+    queryFn: () => getCustomerRatings(customerId, 1, 100),
   });
 
   // ✅ Fetch blacklist history
@@ -215,9 +217,9 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
   // ✅ Spending history (use actual rent start date for X-axis)
   const spendingHistory =
     rents?.data?.map((r: any) => ({
-      startDate: r.startDate, // actual rent start date
+      startDate: r.startDate,
       endDate: r.returnedAt || r.expectedEndDate || r.startDate,
-      totalPaid: r.totalPaid || 0, // spending = what client paid
+      totalPaid: r.totalPaid || 0,
     })) || [];
 
   // ✅ Compute ratings summary from ratings query
@@ -228,8 +230,15 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
     if (!fileId) {
       toast({
         type: 'error',
-        title: 'Document not available',
-        description: `${title || 'Document'} has not been uploaded yet.`,
+        title: t(
+          'client_details.doc.not_available_title',
+          'Document not available',
+        ),
+        description: t(
+          'client_details.doc.not_available_desc',
+          '{{title}} has not been uploaded yet.',
+          { title: title || 'Document' },
+        ),
       });
       return;
     }
@@ -238,24 +247,39 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
       viewFile(fileId);
       toast({
         type: 'success',
-        title: 'Opening document',
-        description: `Opening ${title || 'document'}...`,
+        title: t('client_details.doc.opening_title', 'Opening document'),
+        description: t(
+          'client_details.doc.opening_desc',
+          'Opening {{title}}...',
+          { title: title || 'document' },
+        ),
       });
     } catch (error) {
-      console.error('Error viewing file:', error);
       toast({
         type: 'error',
-        title: 'Error loading file',
-        description: `Could not load ${title || 'document'}. Please try again.`,
+        title: t('client_details.doc.error_title', 'Error loading file'),
+        description: t(
+          'client_details.doc.error_desc',
+          'Could not load {{title}}. Please try again.',
+          { title: title || 'document' },
+        ),
       });
     }
   };
+
   const handleDownloadDocument = (fileId?: string, title?: string) => {
     if (!fileId) {
       toast({
         type: 'error',
-        title: 'Document not available',
-        description: `${title || 'Document'} has not been uploaded yet.`,
+        title: t(
+          'client_details.doc.not_available_title',
+          'Document not available',
+        ),
+        description: t(
+          'client_details.doc.not_available_desc',
+          '{{title}} has not been uploaded yet.',
+          { title: title || 'Document' },
+        ),
       });
       return;
     }
@@ -264,18 +288,29 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
       downloadFile(fileId, title);
       toast({
         type: 'success',
-        title: 'Downloading...',
-        description: `Downloading ${title || 'document'}...`,
+        title: t('client_details.doc.downloading_title', 'Downloading...'),
+        description: t(
+          'client_details.doc.downloading_desc',
+          'Downloading {{title}}...',
+          { title: title || 'document' },
+        ),
       });
     } catch (error) {
-      console.error('Error downloading file:', error);
       toast({
         type: 'error',
-        title: 'Error downloading file',
-        description: `Could not download ${title || 'document'}. Please try again.`,
+        title: t(
+          'client_details.doc.error_download_title',
+          'Error downloading file',
+        ),
+        description: t(
+          'client_details.doc.error_download_desc',
+          'Could not download {{title}}. Please try again.',
+          { title: title || 'document' },
+        ),
       });
     }
   };
+
   useEffect(() => {
     if (ratings?.data?.length) {
       const total = ratings.data.length;
@@ -299,16 +334,33 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
     return () => setEntity(null);
   }, [customer, customerId, setEntity]);
 
-  if (isLoading) return <p className="text-center">Loading client...</p>;
+  if (isLoading)
+    return (
+      <p className="text-center">
+        {t('client_details.loading', 'Loading client...')}
+      </p>
+    );
   if (isError || !customer)
-    return <p className="text-center text-red-500">Error loading client.</p>;
+    return (
+      <p className="text-center text-red-500">
+        {t('client_details.error', 'Error loading client.')}
+      </p>
+    );
 
   // ✅ Status badge
   const getStatusBadge = () => {
     if (customer.isBlacklisted) {
-      return <Badge variant="fail">Blacklisted</Badge>;
+      return (
+        <Badge variant="fail">
+          {t('client_details.status.blacklisted', 'Blacklisted')}
+        </Badge>
+      );
     }
-    return <Badge variant="success">Active</Badge>;
+    return (
+      <Badge variant="success">
+        {t('client_details.status.active', 'Active')}
+      </Badge>
+    );
   };
 
   return (
@@ -323,12 +375,12 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
           onClick={() => router.history.back()}
           className="flex items-center gap-2"
         >
-          <ArrowLeft size={16} /> Back
+          <ArrowLeft size={16} /> {t('client_details.back', 'Back')}
         </Button>
 
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
-            <Hammer size={16} /> Edit
+            <Hammer size={16} /> {t('client_details.edit', 'Edit')}
           </Button>
 
           {customer.isBlacklisted ? (
@@ -337,12 +389,16 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               onClick={() => {
                 toast({
                   type: 'info',
-                  title: 'Unblacklist',
-                  description: 'TODO: call unblacklist API',
+                  title: t('client_details.unblacklist', 'Unblacklist'),
+                  description: t(
+                    'client_details.todo',
+                    'TODO: call unblacklist API',
+                  ),
                 });
               }}
             >
-              <ProhibitInset size={16} /> Unblacklist
+              <ProhibitInset size={16} />{' '}
+              {t('client_details.unblacklist', 'Unblacklist')}
             </Button>
           ) : (
             <Button
@@ -350,12 +406,16 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               onClick={() => {
                 toast({
                   type: 'info',
-                  title: 'Blacklist',
-                  description: 'TODO: call blacklist API',
+                  title: t('client_details.blacklist', 'Blacklist'),
+                  description: t(
+                    'client_details.todo',
+                    'TODO: call blacklist API',
+                  ),
                 });
               }}
             >
-              <Prohibit size={16} /> Blacklist
+              <Prohibit size={16} />{' '}
+              {t('client_details.blacklist', 'Blacklist')}
             </Button>
           )}
 
@@ -364,7 +424,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             onClick={() => setShowDeleteDialog(true)}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
           >
-            <Trash size={16} /> Delete
+            <Trash size={16} /> {t('client_details.delete', 'Delete')}
           </Button>
         </div>
       </div>
@@ -376,10 +436,8 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
           className={[
             'p-6 border border-border shadow-md rounded-lg',
             'relative overflow-hidden rounded-xl border shadow-sm',
-            // Light mode
             'border-gray-200 bg-white text-gray-900',
             'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
-            // Dark mode (Insurance style)
             'dark:border-border dark:text-gray-100 dark:shadow-lg',
             'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
           ].join(' ')}
@@ -392,7 +450,9 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             <User className="w-6 h-6 text-muted-foreground" />
             <div>
               <h2 className="text-xl font-semibold">{customer?.firstName}</h2>
-              <p className="text-sm text-muted-foreground">Client Overview</p>
+              <p className="text-sm text-muted-foreground">
+                {t('client_details.overview', 'Client Overview')}
+              </p>
             </div>
           </div>
 
@@ -401,7 +461,9 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             <div className="flex items-start gap-2">
               <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-muted-foreground">Email</p>
+                <p className="text-muted-foreground">
+                  {t('form.labels.email', 'Email')}
+                </p>
                 <p className="font-medium break-all !text-[12px] ">
                   {customer?.email}
                 </p>
@@ -412,7 +474,9 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             <div className="flex items-start gap-2">
               <Phone className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-muted-foreground">Phone</p>
+                <p className="text-muted-foreground">
+                  {t('form.labels.phone', 'Phone')}
+                </p>
                 <p className="font-medium">{customer?.phone}</p>
               </div>
             </div>
@@ -421,7 +485,9 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             <div className="flex items-start gap-2">
               <IdCard className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-muted-foreground">Document</p>
+                <p className="text-muted-foreground">
+                  {t('client_details.document', 'Document')}
+                </p>
                 <p className="font-medium">
                   {customer?.documentId} ({customer?.documentType})
                 </p>
@@ -432,17 +498,19 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             <div className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-muted-foreground">Status</p>
+                <p className="text-muted-foreground">
+                  {t('client_details.status.label', 'Status')}
+                </p>
                 {customer?.isBlacklisted ? (
                   <span
                     className="inline-block px-2 py-1 text-xs font-semibold rounded"
                     style={{ backgroundColor: '#EC6142', color: 'white' }}
                   >
-                    Blacklisted
+                    {t('client_details.status.blacklisted', 'Blacklisted')}
                   </span>
                 ) : (
                   <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                    Active
+                    {t('client_details.status.active', 'Active')}
                   </span>
                 )}
               </div>
@@ -452,7 +520,9 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             <div className="flex items-start gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-muted-foreground">Created</p>
+                <p className="text-muted-foreground">
+                  {t('client_details.created', 'Created')}
+                </p>
                 <p className="font-medium">
                   {customer?.createdAt
                     ? format(new Date(customer.createdAt), 'dd/MM/yyyy')
@@ -465,7 +535,9 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             <div className="flex items-start gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-muted-foreground">Updated</p>
+                <p className="text-muted-foreground">
+                  {t('client_details.updated', 'Updated')}
+                </p>
                 <p className="font-medium">
                   {customer?.updatedAt
                     ? format(new Date(customer.updatedAt), 'dd/MM/yyyy')
@@ -477,32 +549,41 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
           <div className="w-full flex justify-center">
             <Separator className="my-2 w-1/2" />
           </div>
-          {/* ✅ Updated Document Images Section */}
+
           {(customer?.idCardFile || customer?.driversLicenseFile) && (
             <div className="col-span-full pt-2">
               <h4 className="text-sm font-semibold text-muted-foreground mb-3">
-                Document Images
+                {t('form.sections.docs', 'Document Images')}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {customer?.idCardFile && (
                   <DocCard
-                    title="ID Card"
+                    title={t('form.uploads.id_card', 'ID Card Image')}
                     fileId={customer.idCardFile.id}
                     onView={() => viewFile(customer.idCardFile!.id)}
                     onDownload={() =>
-                      downloadFile(customer.idCardFile!.id, 'ID Card')
+                      downloadFile(
+                        customer.idCardFile!.id,
+                        t('form.uploads.id_card', 'ID Card Image'),
+                      )
                     }
                   />
                 )}
                 {customer?.driversLicenseFile && (
                   <DocCard
-                    title="Driver's License"
+                    title={t(
+                      'form.uploads.driver_license',
+                      "Driver's License Image",
+                    )}
                     fileId={customer.driversLicenseFile.id}
                     onView={() => viewFile(customer.driversLicenseFile!.id)}
                     onDownload={() =>
                       downloadFile(
                         customer.driversLicenseFile!.id,
-                        "Driver's License",
+                        t(
+                          'form.uploads.driver_license',
+                          "Driver's License Image",
+                        ),
                       )
                     }
                   />
@@ -518,15 +599,20 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
         </div>
       </div>
 
-      {/* Rest of the component remains the same... */}
-      {/* ✅ Tabs Section */}
+      {/* Tabs Section */}
       <Card className="shadow-sm border border-border">
         <CardContent className="pt-4 sm:pt-6">
           <Tabs defaultValue="rentals" className="space-y-6">
             <TabsList className="flex flex-wrap gap-2">
-              <TabsTrigger value="rentals">Rentals</TabsTrigger>
-              <TabsTrigger value="ratings">Ratings</TabsTrigger>
-              <TabsTrigger value="blacklist">Blacklist History</TabsTrigger>
+              <TabsTrigger value="rentals">
+                {t('client_details.tabs.rentals', 'Rentals')}
+              </TabsTrigger>
+              <TabsTrigger value="ratings">
+                {t('client_details.tabs.ratings', 'Ratings')}
+              </TabsTrigger>
+              <TabsTrigger value="blacklist">
+                {t('client_details.tabs.blacklist', 'Blacklist History')}
+              </TabsTrigger>
             </TabsList>
 
             {/* Rentals */}
@@ -537,9 +623,11 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             {/* Ratings */}
             <TabsContent value="ratings" className="space-y-6">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">Ratings</h2>
+                <h2 className="text-lg font-semibold">
+                  {t('client_details.tabs.ratings', 'Ratings')}
+                </h2>
                 <Button onClick={() => setRateDialogOpen(true)}>
-                  ⭐ Rate Customer
+                  ⭐ {t('client_details.rate_customer', 'Rate Customer')}
                 </Button>
               </div>
 
@@ -553,11 +641,15 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                   {'☆'.repeat(5 - Math.round(averageRating))}
                 </span>
                 <span className="text-sm text-gray-500">
-                  ({totalReviews} {totalReviews === 1 ? 'review' : 'reviews'})
+                  ({totalReviews}{' '}
+                  {totalReviews === 1
+                    ? t('client_details.reviews.one', 'review')
+                    : t('client_details.reviews.many', 'reviews')}
+                  )
                 </span>
               </div>
 
-              {/* Ratings List with Show More / Show Less */}
+              {/* Ratings List */}
               {ratings?.data?.length ? (
                 <>
                   <ul className="space-y-3 transition-all duration-300">
@@ -593,20 +685,24 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                         className="text-sm text-primary cursor-pointer hover:underline"
                       >
                         {ratingsToShow >= ratings.data.length
-                          ? 'Show Less'
-                          : 'Show More'}
+                          ? t('client_details.show_less', 'Show Less')
+                          : t('client_details.show_more', 'Show More')}
                       </span>
                     </div>
                   )}
                 </>
               ) : (
-                <p className="text-gray-500">No ratings yet.</p>
+                <p className="text-gray-500">
+                  {t('client_details.no_ratings', 'No ratings yet.')}
+                </p>
               )}
             </TabsContent>
 
             {/* Blacklist History */}
             <TabsContent value="blacklist" className="space-y-6">
-              <h2 className="text-lg font-semibold">Blacklist History</h2>
+              <h2 className="text-lg font-semibold">
+                {t('client_details.tabs.blacklist', 'Blacklist History')}
+              </h2>
               {(() => {
                 const filtered =
                   blacklist?.data?.filter(
@@ -619,7 +715,8 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                       {filtered.slice(0, blacklistToShow).map((b: any) => (
                         <li key={b.id} className="border rounded p-3 bg-gray-2">
                           <p className="text-sm text-red-600">
-                            Reason: {b.reason}
+                            {t('blacklist.labels.reason', 'Blacklist Reason')}:{' '}
+                            {b.reason}
                           </p>
                           <p className="text-xs text-gray-500">
                             {new Date(b.createdAt).toLocaleDateString()}
@@ -640,14 +737,16 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                           className="text-sm text-primary cursor-pointer hover:underline"
                         >
                           {blacklistToShow >= filtered.length
-                            ? 'Show Less'
-                            : 'Show More'}
+                            ? t('client_details.show_less', 'Show Less')
+                            : t('client_details.show_more', 'Show More')}
                         </span>
                       </div>
                     )}
                   </>
                 ) : (
-                  <p className="text-gray-500">No blacklist history.</p>
+                  <p className="text-gray-500">
+                    {t('client_details.no_blacklist', 'No blacklist history.')}
+                  </p>
                 );
               })()}
             </TabsContent>
@@ -655,34 +754,41 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
         </CardContent>
       </Card>
 
-      {/* ✅ Delete Confirmation */}
+      {/* Delete Confirmation */}
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         onConfirm={async () => {
           toast({
             type: 'success',
-            title: 'Deleted',
-            description: 'Customer deleted successfully',
+            title: t('client_details.deleted', 'Deleted'),
+            description: t(
+              'client_details.deleted_desc',
+              'Customer deleted successfully',
+            ),
           });
           router.navigate({ to: '/clients' });
         }}
-        title="Delete Customer"
-        description={`Are you sure you want to delete ${customer.firstName} ${customer.lastName}?`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        loadingText="Deleting..."
+        title={t('client_details.delete_title', 'Delete Customer')}
+        description={t(
+          'client_details.delete_desc',
+          'Are you sure you want to delete {{name}}?',
+          { name: `${customer.firstName} ${customer.lastName}` },
+        )}
+        confirmText={t('client_details.delete', 'Delete')}
+        cancelText={t('client_details.cancel', 'Cancel')}
+        loadingText={t('client_details.deleting', 'Deleting...')}
         variant="destructive"
       />
 
-      {/* ✅ Edit Dialog */}
+      {/* Edit Dialog */}
       <EditClientDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         customer={customer}
       />
 
-      {/* ✅ Rate Dialog */}
+      {/* Rate Dialog */}
       <RateCustomerDialog
         open={rateDialogOpen}
         onOpenChange={setRateDialogOpen}

@@ -1,0 +1,204 @@
+{
+  "blacklist": {
+    "trigger": {
+      "global": "Global Blacklist",
+      "org": "My Blacklist"
+    },
+    "header": {
+      "global_title": "Global Customer Blacklist",
+      "org_title": "Organization Blacklist",
+      "global_sub": "View blacklisted customers across all organizations",
+      "org_sub": "View customers blacklisted by your organization",
+      "entries": "entries"
+    },
+    "search": {
+      "placeholder": "Search by name, phone, email, or reason..."
+    },
+    "loading": "Loading blacklist...",
+    "empty": {
+      "title": "No blacklisted customers",
+      "search_no_results": "No customers match your search criteria. Try adjusting your search terms.",
+      "global": "No customers are currently blacklisted across all organizations.",
+      "org": "Your organization has no blacklisted customers at this time."
+    },
+    "labels": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "id": "ID",
+      "reason": "Blacklist Reason"
+    },
+    "pagination": {
+      "showing": "Showing",
+      "to": "to",
+      "of": "of",
+      "entries": "entries",
+      "prev": "Previous",
+      "next": "Next"
+    },
+    "dialog": {
+      "trigger": "Blacklist",
+      "title": "Blacklist Customer",
+      "description": "Please provide a reason for blacklisting this customer.",
+      "reason_label": "Reason",
+      "reason_placeholder": "e.g. Fraudulent activity",
+      "confirm": "Confirm Blacklist",
+      "toasts": {
+        "success_title": "Customer Blacklisted",
+        "success_desc": "The customer has been successfully blacklisted.",
+        "error_title": "Error",
+        "error_desc": "Failed to blacklist customer."
+      }
+    },
+    "errors": {
+      "reason_min": "Reason must be at least 3 characters"
+    },
+    "actions": {
+      "title": "Blacklist Management",
+      "subtitle": "View and manage customer blacklists for security and compliance.",
+      "org_title": "My Organization Blacklist",
+      "org_sub": "View customers blacklisted by your organization",
+      "global_title": "Global Blacklist",
+      "global_sub": "View all blacklisted customers across all organizations"
+    }
+  },
+  "form": {
+    "title": "Add a new Client",
+    "subtitle": "Fill out the form below to add a new client to the system.",
+    "labels": {
+      "first": "First Name",
+      "last": "Last Name",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "doc_id": "Document ID",
+      "doc_type": "Document Type",
+      "driver_license": "Driver's License"
+    },
+    "placeholders": {
+      "first": "e.g. John",
+      "last": "e.g. Doe",
+      "email": "e.g. john@example.com",
+      "phone": "e.g. 0612345678",
+      "address": "e.g. 123 Main St",
+      "doc_id": "e.g. TA123456",
+      "doc_type": "Select type",
+      "driver_license": "e.g. ABC123456"
+    },
+    "doc_types": {
+      "passport": "Passport",
+      "id_card": "ID Card"
+    },
+    "sections": {
+      "docs": "Document Images"
+    },
+    "uploads": {
+      "id_card": "ID Card",
+      "id_card_desc": "Upload a clear photo of the ID card",
+      "driver_license": "Driver's License",
+      "driver_license_desc": "Upload a clear photo of the driver's license"
+    },
+    "actions": {
+      "add_client": "Add Client",
+      "save": "Save"
+    },
+    "toasts": {
+      "success_title": "Success!",
+      "success_desc": "Client has been added successfully.",
+      "add_failed": "Failed to add client.",
+      "error_title": "Error",
+      "updated_desc": "Le client a été mis à jour avec succès.",
+      "update_failed": "Échec de la mise à jour du client."
+    },
+    "errors": {
+      "first_required": "First name is required",
+      "last_required": "Last name is required",
+      "email_invalid": "Invalid email",
+      "phone_required": "Phone is required",
+      "address_required": "Address is required",
+      "doc_id_required": "Document ID is required",
+      "doc_type_required": "Document type is required",
+      "driver_license_required": "Driver's license is required"
+    }
+  },
+  "uploader": {
+    "actions": {
+      "choose": "Choose File",
+      "view_tooltip": "View file",
+      "clear_tooltip": "Clear file"
+    },
+    "status": {
+      "uploaded": "Uploaded",
+      "uploading": "Uploading…",
+      "uploading_plain": "uploading..."
+    },
+    "invalid": {
+      "title": "Invalid file",
+      "desc": "The selected file is not allowed."
+    },
+    "success": {
+      "title": "Success!",
+      "desc": "{{label}} uploaded successfully."
+    },
+    "error": {
+      "title": "Upload failed",
+      "desc": "Failed to upload file. Please try again."
+    },
+    "no_file": "No file chosen"
+  },
+  "title": "Modifier le client",
+  "subtitle": "Mettez à jour les informations du client ci‑dessous.",
+  "actions": {
+    "save": "Enregistrer les modifications"
+  },
+  "client_details": {
+    "loading": "Loading client...",
+    "error": "Error loading client.",
+    "back": "Back",
+    "edit": "Edit",
+    "unblacklist": "Unblacklist",
+    "blacklist": "Blacklist",
+    "todo": "TODO: call API",
+    "delete": "Delete",
+    "deleted": "Deleted",
+    "deleted_desc": "Customer deleted successfully",
+    "delete_title": "Delete Customer",
+    "delete_desc": "Are you sure you want to delete {{name}}?",
+    "cancel": "Cancel",
+    "deleting": "Deleting...",
+    "overview": "Client Overview",
+    "document": "Document",
+    "status": {
+      "label": "Status",
+      "blacklisted": "Blacklisted",
+      "active": "Active"
+    },
+    "created": "Created",
+    "updated": "Updated",
+    "tabs": {
+      "rentals": "Rentals",
+      "ratings": "Ratings",
+      "blacklist": "Blacklist History"
+    },
+    "rate_customer": "Rate Customer",
+    "reviews": {
+      "one": "review",
+      "many": "reviews"
+    },
+    "show_more": "Show More",
+    "show_less": "Show Less",
+    "no_ratings": "No ratings yet.",
+    "no_blacklist": "No blacklist history.",
+    "doc": {
+      "not_available_title": "Document not available",
+      "not_available_desc": "{{title}} has not been uploaded yet.",
+      "opening_title": "Opening document",
+      "opening_desc": "Opening {{title}}...",
+      "error_title": "Error loading file",
+      "error_desc": "Could not load {{title}}. Please try again.",
+      "downloading_title": "Downloading...",
+      "downloading_desc": "Downloading {{title}}...",
+      "error_download_title": "Error downloading file",
+      "error_download_desc": "Could not download {{title}}. Please try again."
+    }
+  }
+}

@@ -6,8 +6,10 @@ export interface Customer {
   lastName: string;
   email?: string;
   phone: string;
+  address: string;
   documentId?: string;
-  documentType?: 'passport' | 'driver_license' | 'id_card';
+  documentType?: 'passport' | 'id_card';
+  driversLicense?: string; // NEW
   rating: number;
   ratingCount: number;
   createdAt: string;
@@ -15,9 +17,8 @@ export interface Customer {
   isDeleted: boolean;
   isBlacklisted?: boolean;
   blacklistReason?: string | null;
-  // New file ID fields
   idCardId?: string;
-  driversLicenseId?: string;
+  driversLicenseId?: string; // file id
 }
 
 // Extended interface for populated file data (similar to Organization)
