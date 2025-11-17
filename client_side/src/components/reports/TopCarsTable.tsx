@@ -1,5 +1,12 @@
+import { useTranslation } from 'react-i18next';
+
 export function TopCarsTable({ cars }: { cars: any[] }) {
-  if (!cars.length) return <div className="p-2 text-sm">No top cars data</div>;
+  const { t } = useTranslation('reports');
+
+  if (!cars.length)
+    return (
+      <div className="p-2 text-sm">{t('topcars.none', 'No top cars data')}</div>
+    );
 
   return (
     <div>
@@ -13,7 +20,8 @@ export function TopCarsTable({ cars }: { cars: any[] }) {
             {c.make} {c.model}
           </span>
           <span>
-            {Number(c.revenue).toLocaleString()} MAD ({Number(c.rents)})
+            {Number(c.revenue).toLocaleString('en-US')} {t('currency', 'MAD')} (
+            {Number(c.rents)})
           </span>
         </div>
       ))}

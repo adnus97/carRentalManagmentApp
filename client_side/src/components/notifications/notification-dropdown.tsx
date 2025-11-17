@@ -1,4 +1,6 @@
 // src/components/notifications/NotificationsDropdown.tsx
+'use client';
+
 import {
   Bell,
   X,
@@ -42,8 +44,8 @@ import {
   NotificationPriority,
 } from '../../types/notifications';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
-// Updated priority colors with blue Medium
 const getPriorityBadgeColor = (priority: NotificationPriority) => {
   switch (priority) {
     case 'URGENT':
@@ -60,6 +62,7 @@ const getPriorityBadgeColor = (priority: NotificationPriority) => {
 };
 
 export function NotificationsDropdown() {
+  const { t } = useTranslation('notification');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<NotificationFilters>({ limit: 15 });
@@ -81,7 +84,6 @@ export function NotificationsDropdown() {
 
   const unreadCount = summary?.unread || 0;
 
-  // Auto-refresh when dropdown opens
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -92,43 +94,39 @@ export function NotificationsDropdown() {
         queryClient.invalidateQueries({ queryKey: ['notification-summary'] }),
       ]);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to refresh notifications:', error);
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  // Handle dropdown open/close
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
-      handleRefresh(); // Auto-refresh when opened
+      handleRefresh();
     }
   };
 
-  // Refresh when filters change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       refetchNotifications();
     }, 100);
-
     return () => clearTimeout(timeoutId);
   }, [filters, refetchNotifications]);
+
   useEffect(() => {
     if (!isOpen) return;
-
     const interval = setInterval(() => {
-      // Force re-render to update time displays
       setTimeUpdateTrigger((prev) => prev + 1);
-    }, 30000); // Every 30 seconds
-
+    }, 30000);
     return () => clearInterval(interval);
   }, [isOpen]);
+
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.read) {
       markAsRead(notification.id);
     }
-
     if (notification.actionUrl) {
       navigate({ to: notification.actionUrl });
     }
@@ -151,7 +149,7 @@ export function NotificationsDropdown() {
   }) => {
     return (
       <div
-        className={`group relative p-4 transition-all duration-200 cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-800/50 border-l-3 ${
+        className={`group relative p-3 sm:p-4 transition-all duration-200 cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-800/50 border-l-3 ${
           !notification.read
             ? 'bg-blue-50/30 dark:bg-blue-950/10 border-l-blue-500 shadow-sm'
             : 'border-l-transparent hover:border-l-gray-200 dark:hover:border-l-gray-700'
@@ -173,7 +171,7 @@ export function NotificationsDropdown() {
 
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <h4 className="font-medium text-gray-900 dark:text-gray-100 leading-5">
+              <h4 className="font-medium text-[13px] sm:text-sm text-gray-900 dark:text-gray-100 leading-5 line-clamp-1 sm:line-clamp-2">
                 {notification.title}
               </h4>
 
@@ -183,7 +181,10 @@ export function NotificationsDropdown() {
                     variant="secondary"
                     className={`text-xs font-medium ${getPriorityBadgeColor(notification.priority)}`}
                   >
-                    {notification.priority}
+                    {t(
+                      `priority.${notification.priority.toLowerCase()}`,
+                      notification.priority,
+                    )}
                   </Badge>
                 )}
                 {!notification.read && (
@@ -192,18 +193,20 @@ export function NotificationsDropdown() {
               </div>
             </div>
 
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-5 line-clamp-2">
+            <p className="text-[12px] sm:text-sm text-gray-600 dark:text-gray-300 leading-5 line-clamp-2">
               {notification.message}
             </p>
 
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-[11px] sm:text-xs">
               <span className="text-gray-500 dark:text-gray-400 font-medium">
                 {formatTimeAgo(notification.createdAt)}
               </span>
 
               {notification.actionUrl && (
                 <span className="text-blue-600 dark:text-blue-400 font-medium">
-                  {notification.actionLabel || 'View details'} →
+                  {notification.actionLabel ||
+                    t('action.view_details', 'View details')}{' '}
+                  →
                 </span>
               )}
             </div>
@@ -218,6 +221,8 @@ export function NotificationsDropdown() {
               e.stopPropagation();
               dismiss(notification.id);
             }}
+            title={t('action.dismiss', 'Dismiss')}
+            aria-label={t('action.dismiss', 'Dismiss')}
           >
             <X size={14} />
           </Button>
@@ -233,12 +238,17 @@ export function NotificationsDropdown() {
           variant="ghost"
           size="icon"
           className="relative hover:bg-gray-100 dark:hover:bg-gray-800"
+          aria-label={t('trigger.aria', 'Open notifications')}
+          title={t('trigger.title', 'Notifications')}
         >
           <Bell size={20} className="text-gray-600 dark:text-gray-300" />
           {unreadCount > 0 && (
             <Badge
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs font-bold border-2 border-white dark:border-gray-900 text-white"
+              className="absolute -top-1 -right-1 h-5 w-5 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-xs font-bold border-2 border-white dark:border-gray-900 text-white"
               style={{ backgroundColor: '#EC6142' }}
+              aria-label={t('badge.unread_count', '{{count}} unread', {
+                count: unreadCount,
+              })}
             >
               {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
@@ -247,19 +257,23 @@ export function NotificationsDropdown() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="w-[420px] max-h-[600px] p-0 shadow-lg border"
+        className="w-[92vw] sm:w-[420px] md:w-[460px] lg:w-[500px] max-h-[80vh] p-0 shadow-lg border"
         align="end"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-gray-50/50 dark:bg-gray-800/50">
+        <div className="flex items-center justify-between px-3 py-3 sm:px-4 sm:py-4 border-b bg-gray-50/50 dark:bg-gray-800/50">
           <div className="flex items-center gap-3">
             <Bell size={20} className="text-gray-600 dark:text-gray-300" />
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                Notifications
+                {t('header.title', 'Notifications')}
               </h3>
               {unreadCount > 0 && (
-                <p className="text-xs text-gray-500">{unreadCount} unread</p>
+                <p className="text-xs text-gray-500">
+                  {t('header.unread', '{{count}} unread', {
+                    count: unreadCount,
+                  })}
+                </p>
               )}
             </div>
           </div>
@@ -271,8 +285,9 @@ export function NotificationsDropdown() {
               size="sm"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="h-8 w-8 p-0"
-              title="Refresh notifications"
+              className="h-9 w-9 p-0 sm:h-8 sm:w-8"
+              title={t('action.refresh', 'Refresh notifications')}
+              aria-label={t('action.refresh', 'Refresh notifications')}
             >
               <ArrowClockwise
                 size={16}
@@ -284,7 +299,9 @@ export function NotificationsDropdown() {
               variant="ghost"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              className={`h-8 w-8 p-0 transition-colors ${showFilters ? 'bg-gray-200 dark:bg-gray-700' : ''}`}
+              className={`h-9 w-9 sm:h-8 sm:w-8 p-0 transition-colors ${showFilters ? 'bg-gray-200 dark:bg-gray-700' : ''}`}
+              title={t('filters.toggle', 'Filter options')}
+              aria-label={t('filters.toggle', 'Filter options')}
             >
               <FunnelSimple size={16} />
             </Button>
@@ -295,10 +312,11 @@ export function NotificationsDropdown() {
                 size="sm"
                 onClick={() => markAllAsRead()}
                 disabled={isMarkingAllAsRead}
-                className="text-xs px-3 h-8 font-medium"
+                className="text-[11px] sm:text-xs px-2 h-9 sm:h-8 font-medium"
+                title={t('action.mark_all_read', 'Mark all read')}
               >
                 <Check size={14} className="mr-1" />
-                Mark all read
+                {t('action.mark_all_read', 'Mark all read')}
               </Button>
             )}
           </div>
@@ -306,19 +324,19 @@ export function NotificationsDropdown() {
 
         {/* Filters */}
         {showFilters && (
-          <div className="p-4 border-b bg-white dark:bg-gray-900/50 space-y-3">
+          <div className="px-3 py-3 sm:p-4 border-b bg-white dark:bg-gray-900/50 space-y-3">
             <div className="flex items-center gap-2 mb-3">
               <Gear size={16} className="text-gray-500" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Filter options
+                {t('filters.title', 'Filter options')}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Category Filter */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                  Category
+                  {t('filters.category', 'Category')}
                 </label>
                 <Select
                   value={filters.category || 'all'}
@@ -332,17 +350,36 @@ export function NotificationsDropdown() {
                     }))
                   }
                 >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue />
+                  <SelectTrigger className="h-9 text-sm min-w-[160px] sm:min-w-[180px]">
+                    <SelectValue
+                      placeholder={t(
+                        'filters.category_placeholder',
+                        'All categories',
+                      )}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All categories</SelectItem>
-                    <SelectItem value="RENTAL">🚗 Rentals</SelectItem>
-                    <SelectItem value="PAYMENT">💳 Payments</SelectItem>
-                    <SelectItem value="CUSTOMER">👤 Customers</SelectItem>
-                    <SelectItem value="CAR">🚙 Cars</SelectItem>
-                    <SelectItem value="MAINTENANCE">🔧 Maintenance</SelectItem>
-                    <SelectItem value="FINANCIAL">📊 Financial</SelectItem>
+                    <SelectItem value="all">
+                      {t('filters.category_all', 'All categories')}
+                    </SelectItem>
+                    <SelectItem value="RENTAL">
+                      🚗 {t('categories.rentals', 'Rentals')}
+                    </SelectItem>
+                    <SelectItem value="PAYMENT">
+                      💳 {t('categories.payments', 'Payments')}
+                    </SelectItem>
+                    <SelectItem value="CUSTOMER">
+                      👤 {t('categories.customers', 'Customers')}
+                    </SelectItem>
+                    <SelectItem value="CAR">
+                      🚙 {t('categories.cars', 'Cars')}
+                    </SelectItem>
+                    <SelectItem value="MAINTENANCE">
+                      🔧 {t('categories.maintenance', 'Maintenance')}
+                    </SelectItem>
+                    <SelectItem value="FINANCIAL">
+                      📊 {t('categories.financial', 'Financial')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -350,7 +387,7 @@ export function NotificationsDropdown() {
               {/* Priority Filter */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                  Priority
+                  {t('filters.priority', 'Priority')}
                 </label>
                 <Select
                   value={filters.priority || 'all'}
@@ -364,33 +401,40 @@ export function NotificationsDropdown() {
                     }))
                   }
                 >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue />
+                  <SelectTrigger className="h-9 text-sm min-w-[160px] sm:min-w-[180px]">
+                    <SelectValue
+                      placeholder={t(
+                        'filters.priority_placeholder',
+                        'All priorities',
+                      )}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All priorities</SelectItem>
+                    <SelectItem value="all">
+                      {t('filters.priority_all', 'All priorities')}
+                    </SelectItem>
                     <SelectItem value="URGENT">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                        Urgent
+                        {t('priority.urgent', 'Urgent')}
                       </div>
                     </SelectItem>
                     <SelectItem value="HIGH">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                        High
+                        {t('priority.high', 'High')}
                       </div>
                     </SelectItem>
                     <SelectItem value="MEDIUM">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        Medium
+                        {t('priority.medium', 'Medium')}
                       </div>
                     </SelectItem>
                     <SelectItem value="LOW">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                        Low
+                        {t('priority.low', 'Low')}
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -404,9 +448,9 @@ export function NotificationsDropdown() {
                 variant={filters.unread ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFilters((f) => ({ ...f, unread: !f.unread }))}
-                className="h-8 text-xs font-medium"
+                className="h-8 text-xs font-medium w-full sm:w-auto"
               >
-                Unread only
+                {t('filters.unread_only', 'Unread only')}
               </Button>
 
               {(filters.category || filters.priority || filters.unread) && (
@@ -414,9 +458,9 @@ export function NotificationsDropdown() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setFilters({ limit: 15 })}
-                  className="h-8 text-xs text-gray-500"
+                  className="h-8 text-xs text-gray-500 w-full sm:w-auto"
                 >
-                  Clear filters
+                  {t('filters.clear', 'Clear filters')}
                 </Button>
               )}
             </div>
@@ -424,27 +468,27 @@ export function NotificationsDropdown() {
         )}
 
         {/* Notifications List */}
-        <ScrollArea className="max-h-[450px] overflow-y-auto overflow-x-hidden">
+        <ScrollArea className="max-h-[55vh] sm:max-h-[60vh] lg:max-h-[65vh] overflow-y-auto overflow-x-hidden">
           {isLoading || isRefreshing ? (
-            <div className="p-12 text-center">
+            <div className="p-8 sm:p-10 md:p-12 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
               <p className="text-sm text-gray-500">
                 {isRefreshing
-                  ? 'Refreshing notifications...'
-                  : 'Loading notifications...'}
+                  ? t('loading.refreshing', 'Refreshing notifications...')
+                  : t('loading.loading', 'Loading notifications...')}
               </p>
             </div>
           ) : notifications.length === 0 ? (
-            <div className="p-12 text-center space-y-4">
+            <div className="p-8 sm:p-10 md:p-12 text-center space-y-4">
               <div className="w-16 h-16 mx-auto bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
                 <Bell size={32} className="text-gray-400" />
               </div>
               <div>
                 <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  No notifications found
+                  {t('empty.title', 'No notifications found')}
                 </h4>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  You're all caught up! 🎉
+                  {t('empty.subtitle', "You're all caught up! 🎉")}
                 </p>
               </div>
             </div>
@@ -462,10 +506,16 @@ export function NotificationsDropdown() {
 
         {/* Footer */}
         {notifications.length > 0 && (
-          <div className="p-3 border-t bg-gray-50/50 dark:bg-gray-800/50 text-center">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Showing {notifications.length} of {summary?.total || 0}{' '}
-              notifications
+          <div className="px-3 py-2 sm:p-3 border-t bg-gray-50/50 dark:bg-gray-800/50 text-center">
+            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+              {t(
+                'footer.showing',
+                'Showing {{count}} of {{total}} notifications',
+                {
+                  count: notifications.length,
+                  total: summary?.total || 0,
+                },
+              )}
             </p>
           </div>
         )}

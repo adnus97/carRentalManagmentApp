@@ -2,18 +2,11 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import {
-  X,
-  Upload,
-  Camera,
-  AlertCircle,
-  Eye,
-  Trash2,
-  Image,
-} from 'lucide-react';
+import { X, Upload, Camera, AlertCircle, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { useTranslation } from 'react-i18next';
 
 interface CarImageUploadProps {
   onImagesChange: (images: File[]) => void;
@@ -35,29 +28,26 @@ export function CarImageUpload({
   disabled = false,
   className = '',
 }: CarImageUploadProps) {
+  const { t } = useTranslation('rent');
+
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   const onDrop = useCallback(
     (acceptedFiles: File[], rejectedFiles: any[]) => {
-      console.log('Files dropped:', acceptedFiles.length);
       setError('');
-      acceptedFiles.forEach((file, idx) => {
-        console.log(`   File ${idx + 1}:`, {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          constructor: file.constructor.name,
-          isFile: file instanceof File,
-        });
-      });
 
       if (rejectedFiles.length > 0) {
         const errors = rejectedFiles.map((file: any) =>
           file.errors.map((e: any) => e.message).join(', '),
         );
-        setError(`Some files were rejected: ${errors.join('; ')}`);
+        setError(
+          t('upload.rejected', 'Some files were rejected: {{errors}}', {
+            errors: errors.join('; '),
+          }),
+        );
       }
 
       const totalImages =
@@ -65,9 +55,14 @@ export function CarImageUpload({
 
       if (totalImages > maxImages) {
         setError(
-          `Maximum ${maxImages} images allowed. Currently have ${
-            selectedImages.length + existingImages.length
-          } images.`,
+          t(
+            'upload.max_reached',
+            'Maximum {{max}} images allowed. Currently have {{have}} images.',
+            {
+              max: maxImages,
+              have: selectedImages.length + existingImages.length,
+            },
+          ),
         );
         return;
       }
@@ -75,15 +70,23 @@ export function CarImageUpload({
       const validFiles = acceptedFiles.filter((file) => {
         if (file.size > 10 * 1024 * 1024) {
           setError(
-            (prev) => prev + ` File ${file.name} is too large (max 10MB).`,
+            (prev) =>
+              (prev ? prev + ' ' : '') +
+              t('upload.too_large', 'File {{name}} is too large (max 10MB).', {
+                name: file.name,
+              }),
           );
           return false;
         }
         if (!file.type.match(/^image\/(jpeg|jpg|png|webp|gif)$/)) {
           setError(
             (prev) =>
-              prev +
-              ` File ${file.name} is not a valid image format (JPG/PNG/WEBP/GIF).`,
+              (prev ? prev + ' ' : '') +
+              t(
+                'upload.invalid_format',
+                'File {{name}} is not a valid image format (JPG/PNG/WEBP/GIF).',
+                { name: file.name },
+              ),
           );
           return false;
         }
@@ -93,24 +96,15 @@ export function CarImageUpload({
       if (validFiles.length > 0) {
         const newImages = [...selectedImages, ...validFiles];
         const newPreviews = [...previews];
-        console.log(
-          '🔍 CarImageUpload - Setting new images:',
-          newImages.length,
-        );
-        console.log(
-          '   New images are File objects:',
-          newImages.every((f) => f instanceof File),
-        );
 
         validFiles.forEach((file) => {
           const url = URL.createObjectURL(file);
           newPreviews.push(url);
         });
 
-        console.log('Setting new images:', newImages.length);
         setSelectedImages(newImages);
         setPreviews(newPreviews);
-        onImagesChange(newImages); // Make sure this is called
+        onImagesChange(newImages);
       }
     },
     [
@@ -119,8 +113,10 @@ export function CarImageUpload({
       onImagesChange,
       maxImages,
       existingImages.length,
+      t,
     ],
   );
+
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: {
@@ -164,20 +160,23 @@ export function CarImageUpload({
 
   return (
     <div className={`space-y-3 ${className}`}>
-      {/* Header - Responsive */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Camera className="h-4 w-4 text-accent-8" />
           <label className="text-sm font-medium">
-            Car Photos ({totalImages}/{maxImages})
+            {t('upload.header', 'Car Photos ({{count}}/{{max}})', {
+              count: totalImages,
+              max: maxImages,
+            })}
           </label>
           <Badge
             variant={totalImages === maxImages ? 'secondary' : 'outline'}
             className="h-5 text-xs px-2"
           >
             {totalImages === maxImages
-              ? 'Full'
-              : `${maxImages - totalImages} left`}
+              ? t('upload.full', 'Full')
+              : t('upload.left', '{{n}} left', { n: maxImages - totalImages })}
           </Badge>
         </div>
 
@@ -191,7 +190,7 @@ export function CarImageUpload({
             disabled={disabled}
           >
             <Trash2 className="h-4 w-4 mr-1" />
-            Clear All
+            {t('upload.clear_all', 'Clear All')}
           </Button>
         )}
       </div>
@@ -205,10 +204,12 @@ export function CarImageUpload({
         </Alert>
       )}
 
-      {/* Existing images - Responsive Grid */}
+      {/* Existing images */}
       {existingImages.length > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mb-2">Current Images:</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            {t('upload.current_images', 'Current Images:')}
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {existingImages.map((img) => (
               <div key={img.id} className="relative group">
@@ -226,6 +227,8 @@ export function CarImageUpload({
                   size="icon"
                   className="absolute top-1 right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => setPreviewImage(img.url)}
+                  aria-label={t('upload.view', 'View')}
+                  title={t('upload.view', 'View')}
                 >
                   <Eye className="h-3 w-3" />
                 </Button>
@@ -235,10 +238,12 @@ export function CarImageUpload({
         </div>
       )}
 
-      {/* New images - Responsive Grid */}
+      {/* New images */}
       {selectedImages.length > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mb-2">New Images:</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            {t('upload.new_images', 'New Images:')}
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {selectedImages.map((file, index) => (
               <div key={index} className="relative group">
@@ -256,6 +261,8 @@ export function CarImageUpload({
                   size="icon"
                   className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => removeImage(index)}
+                  aria-label={t('upload.remove', 'Remove')}
+                  title={t('upload.remove', 'Remove')}
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -265,7 +272,7 @@ export function CarImageUpload({
         </div>
       )}
 
-      {/* Dropzone - Responsive */}
+      {/* Dropzone */}
       <div
         {...getRootProps()}
         className={`border-2 border-dashed rounded-lg px-4 py-6 sm:py-8 text-center transition-all cursor-pointer ${
@@ -291,20 +298,25 @@ export function CarImageUpload({
           {isDragActive ? (
             <div className="space-y-1">
               <p className="text-base sm:text-lg text-blue-600 dark:text-blue-400 font-medium">
-                Drop images here...
+                {t('upload.drop_here', 'Drop images here...')}
               </p>
             </div>
           ) : (
             <div className="space-y-2">
               <p className="text-sm sm:text-base font-medium text-gray-700 dark:text-gray-300">
-                Drag & drop car images here
+                {t('upload.drag_here', 'Drag & drop car images here')}
               </p>
               <p className="text-xs text-muted-foreground max-w-xs">
-                Support: JPG, PNG, WEBP, GIF up to 10MB each
+                {t(
+                  'upload.support',
+                  'Support: JPG, PNG, WEBP, GIF up to 10MB each',
+                )}
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
                 <Badge variant="outline" className="text-xs">
-                  {maxImages - totalImages} slots remaining
+                  {t('upload.slots_remaining', '{{n}} slots remaining', {
+                    n: maxImages - totalImages,
+                  })}
                 </Badge>
                 <Button
                   type="button"
@@ -314,7 +326,7 @@ export function CarImageUpload({
                   disabled={disabled || !canAddMore}
                   className="h-8 px-4 text-xs"
                 >
-                  Browse Files
+                  {t('upload.browse', 'Browse Files')}
                 </Button>
               </div>
             </div>
@@ -322,7 +334,7 @@ export function CarImageUpload({
         </div>
       </div>
 
-      {/* Preview Modal - Responsive */}
+      {/* Preview Modal */}
       {previewImage && (
         <div
           className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
@@ -333,12 +345,16 @@ export function CarImageUpload({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-semibold">Image Preview</h3>
+              <h3 className="text-lg font-semibold">
+                {t('upload.preview_title', 'Image Preview')}
+              </h3>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setPreviewImage(null)}
                 className="h-8 w-8"
+                aria-label={t('upload.close', 'Close')}
+                title={t('upload.close', 'Close')}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -346,7 +362,7 @@ export function CarImageUpload({
             <div className="p-4">
               <img
                 src={previewImage}
-                alt="Preview"
+                alt={t('upload.preview_alt', 'Preview')}
                 className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
               />
             </div>

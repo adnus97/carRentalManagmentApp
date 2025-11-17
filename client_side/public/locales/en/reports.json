@@ -1,0 +1,136 @@
+{
+  "labels": {
+    "insurance": "insurance",
+    "technical_visit": "technical visit"
+  },
+  "segments": {
+    "expired": "Expired",
+    "le3": "≤3 days",
+    "le7": "≤7 days",
+    "le30": "≤30 days"
+  },
+  "summary": {
+    "expiring_within_30": "expiring within 30 days",
+    "Expiring within 30 days": "Expiring within 30 days"
+  },
+  "breakdown": {
+    "title": "Breakdown"
+  },
+  "empty": {
+    "all_good": "All good — no {{label}} expiring soon."
+  },
+  "cars": {
+    "at_risk": "Cars at risk",
+    "none_in_category": "No cars in this category",
+    "unknown": "Unknown"
+  },
+  "filters": {
+    "bucket": "Category",
+    "sort": "Sort by",
+    "soonest": "Soonest",
+    "latest": "Latest",
+    "make": "Make"
+  },
+  "format": {
+    "expired_ago": "Expired {{d}}d ago",
+    "in_days": "In {{d}}d"
+  },
+  "kpi": {
+    "revenue_billed": "Revenue (Billed)",
+    "revenue_collected": "Revenue (Collected)",
+    "open_ar": "Open A/R",
+    "total_rents": "Total Rents",
+    "fleet_size": "Fleet Size",
+    "utilization": "Utilization",
+    "adr": "ADR",
+    "revpar": "RevPAR",
+    "maintenance_costs": "Maintenance Costs",
+    "lease_costs": "Lease Costs",
+    "net_profit": "Net Profit",
+    "period_days": "Period Days",
+    "rented_days": "Rented Days"
+  },
+  "kpi_desc": {
+    "revenue_billed": "Total revenue invoiced for the selected period (regardless of payment).",
+    "revenue_collected": "Cash actually collected during the selected period.",
+    "open_ar": "Unpaid invoices (Accounts Receivable).",
+    "total_rents": "Number of rental contracts in the selected period.",
+    "fleet_size": "Total number of vehicles in the fleet.",
+    "utilization": "Rented car-days ÷ Available car-days across the period.",
+    "adr": "Average revenue per rented day.",
+    "revpar": "Revenue per available car-day across the whole fleet.",
+    "maintenance_costs": "Total maintenance spend in the period.",
+    "lease_costs": "Total lease costs prorated for the selected period.",
+    "net_profit": "Collected revenue minus maintenance and lease costs.",
+    "period_days": "Number of calendar days in the selected range.",
+    "rented_days": "Sum of rental days within the period across all cars."
+  },
+  "overdue": {
+    "none": "No overdue rentals",
+    "title": "Overdue Rentals",
+    "contract": "Contract",
+    "na": "N/A"
+  },
+  "chart": {
+    "revenue": "Revenue",
+    "rents": "Rents",
+    "axis_revenue": "Revenue (DHS)",
+    "axis_rents": "Rents"
+  },
+  "targets": {
+    "none": "No targets data",
+    "scroll_left": "Scroll left",
+    "scroll_right": "Scroll right",
+    "period_progress": "Target period progress",
+    "elapsed_of_period": "Elapsed {{pct}}% of period",
+    "elapsed": "elapsed",
+    "remaining": "remaining",
+    "total_days": "total days",
+    "active": "Active",
+    "expired": "Expired",
+    "days": "Days",
+    "breakdown": "Breakdown",
+    "soon": "Soon (≤30d)"
+  },
+  "topcars": {
+    "none": "No top cars data"
+  },
+  "currency": "DHS",
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Fleet performance, revenue, risk, and trends",
+    "refresh": "Refresh",
+    "export_csv": "Export CSV",
+    "mode_placeholder": "Select mode",
+    "mode_preset": "Preset Filters",
+    "mode_custom": "Custom Range",
+    "select_period": "Select period",
+    "preset_today": "Today",
+    "preset_yesterday": "Yesterday",
+    "preset_last7": "Last 7 days",
+    "preset_last30": "Last 30 days",
+    "preset_last90": "Last 90 days",
+    "preset_this_year": "This Year",
+    "preset_prev_month": "Previous Month",
+    "preset_prev_trimester": "Previous Trimester",
+    "preset_prev_semester": "Previous Semester",
+    "preset_prev_year": "Previous Year",
+    "from": "From:",
+    "to": "To:",
+    "start_date": "Start date",
+    "end_date": "End date",
+    "all_cars": "All Cars",
+    "days": "days",
+    "loading": "Loading reports...",
+    "fix_date_range": "Please fix the date range to view reports",
+    "revenue_rents_over_time": "Revenue & Rents Over Time",
+    "targets_vs_actuals": "Targets vs Actuals",
+    "include_expired": "Include expired",
+    "insurance_risk": "Insurance Risk",
+    "technical_inspection_risk": "Technical Inspection Risk",
+    "insurance_and_technical": "(Insurance & Technical inspection)",
+    "err_end_after_start": "End date must be after start date",
+    "err_max_range": "Date range cannot exceed 365 days",
+    "top_cars_by_revenue": "Top Cars by Revenue"
+  }
+}

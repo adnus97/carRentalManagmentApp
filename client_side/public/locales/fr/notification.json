@@ -1,0 +1,61 @@
+{
+  "trigger": {
+    "aria": "Ouvrir les notifications",
+    "title": "Notifications"
+  },
+  "badge": {
+    "unread_count": "{{count}} non lues"
+  },
+  "header": {
+    "title": "Notifications",
+    "unread": "{{count}} non lues"
+  },
+  "action": {
+    "refresh": "Rafraîchir les notifications",
+    "mark_all_read": "Marquer tout comme lu",
+    "dismiss": "Ignorer",
+    "view_details": "Voir les détails"
+  },
+  "filters": {
+    "title": "Options de filtrage",
+    "toggle": "Options de filtrage",
+    "category": "Catégorie",
+    "category_placeholder": "Toutes les catégories",
+    "category_all": "Toutes les catégories",
+    "priority": "Priorité",
+    "priority_placeholder": "Toutes les priorités",
+    "priority_all": "Toutes les priorités",
+    "unread_only": "Non lues uniquement",
+    "clear": "Effacer les filtres"
+  },
+  "categories": {
+    "rentals": "Locations",
+    "payments": "Paiements",
+    "customers": "Clients",
+    "cars": "Voitures",
+    "maintenance": "Maintenance",
+    "financial": "Financier"
+  },
+  "priority": {
+    "urgent": "Urgent",
+    "high": "Élevée",
+    "medium": "Moyenne",
+    "low": "Faible"
+  },
+  "loading": {
+    "loading": "Chargement des notifications…",
+    "refreshing": "Rafraîchissement des notifications…"
+  },
+  "empty": {
+    "title": "Aucune notification trouvée",
+    "subtitle": "Vous êtes à jour ! 🎉"
+  },
+  "footer": {
+    "showing": "Affichage de {{count}} sur {{total}} notifications"
+  },
+  "summary": {
+    "by_category": "Par catégorie",
+    "by_priority": "Par priorité",
+    "total": "Total : {{count}} notifications"
+  }
+}

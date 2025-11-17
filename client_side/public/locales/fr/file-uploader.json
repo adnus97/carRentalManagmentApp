@@ -1,0 +1,26 @@
+{
+  "uploader": {
+    "actions": {
+      "view_tooltip": "Voir le fichier",
+      "clear_tooltip": "Effacer le fichier"
+    },
+    "status": {
+      "uploaded": "Téléversé",
+      "uploading": "Téléversement…",
+      "uploading_plain": "téléversement…"
+    },
+    "invalid": {
+      "title": "Fichier invalide",
+      "desc": "Le fichier sélectionné n’est pas autorisé."
+    },
+    "success": {
+      "title": "Succès !",
+      "desc": "{{label}} a été téléversé avec succès."
+    },
+    "error": {
+      "title": "Échec du téléversement",
+      "desc": "Échec du téléversement. Veuillez réessayer."
+    },
+    "no_file": "Fichier actuel"
+  }
+}

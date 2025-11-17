@@ -24,37 +24,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-// ✅ Chart config
-const chartConfig = {
-  spending: {
-    label: 'Spending (MAD)',
-    color: 'var(--accent-6)',
-  },
-  rentals: {
-    label: 'Rentals',
-    color: 'var(--gray-8)',
-  },
-} satisfies ChartConfig;
+import { useTranslation } from 'react-i18next';
 
 type RentalHistoryItem = {
   startDate: string; // ISO date
   totalPaid: number;
 };
-
+type LocalChartConfig = {
+  spending: { label: string; color: string };
+  rentals: { label: string; color: string };
+};
 export function ClientSpendingChart({
-  rentalHistory = [], // ✅ Default empty array
+  rentalHistory = [],
 }: {
-  rentalHistory?: RentalHistoryItem[]; // ✅ Make optional
+  rentalHistory?: RentalHistoryItem[];
 }) {
+  const { t } = useTranslation('client');
+
+  // i18n-aware chart config (legend labels + colors)
+  const chartConfig: LocalChartConfig = React.useMemo(
+    () => ({
+      spending: {
+        label: t('client_spending.series_spending', 'Spending'),
+        color: 'var(--accent-6)',
+      },
+      rentals: {
+        label: t('client_spending.series_rentals', 'Rentals'),
+        color: 'var(--gray-8)',
+      },
+    }),
+    [t],
+  );
+
   const [timeRange, setTimeRange] = React.useState<'7d' | '30d' | '90d'>('90d');
   const [visibleSeries, setVisibleSeries] = React.useState<
     'both' | 'spending' | 'rentals'
   >('both');
 
-  // ✅ Step 1: Build daily chart data with better error handling
+  // Build daily chart data
   const chartData = React.useMemo(() => {
-    // ✅ Early return if no data
     if (
       !rentalHistory ||
       !Array.isArray(rentalHistory) ||
@@ -67,7 +75,6 @@ export function ClientSpendingChart({
 
     try {
       rentalHistory.forEach((rental) => {
-        // ✅ Validate rental data
         if (!rental || !rental.startDate) return;
 
         const date = new Date(rental.startDate).toISOString().split('T')[0];
@@ -89,18 +96,14 @@ export function ClientSpendingChart({
         );
 
       return result;
-    } catch (error) {
-      console.error('Error processing rental history:', error);
+    } catch {
       return [];
     }
   }, [rentalHistory]);
 
-  // ✅ Step 2: Filter + aggregate + fill missing with better error handling
+  // Filter + aggregate + fill missing
   const filteredData = React.useMemo(() => {
-    // ✅ Early return if no chartData
-    if (!chartData || chartData.length === 0) {
-      return [];
-    }
+    if (!chartData || chartData.length === 0) return [];
 
     try {
       const referenceDate = new Date();
@@ -111,12 +114,10 @@ export function ClientSpendingChart({
       const startDate = new Date(referenceDate);
       startDate.setDate(startDate.getDate() - daysToSubtract);
 
-      // Filter by range
       const filtered = chartData.filter(
         (item) => new Date(item.date) >= startDate,
       );
 
-      // ✅ If 90d → aggregate by month
       if (timeRange === '90d') {
         const monthly: Record<string, { spending: number; rentals: number }> =
           {};
@@ -126,14 +127,11 @@ export function ClientSpendingChart({
             2,
             '0',
           )}`;
-          if (!monthly[key]) {
-            monthly[key] = { spending: 0, rentals: 0 };
-          }
+          if (!monthly[key]) monthly[key] = { spending: 0, rentals: 0 };
           monthly[key].spending += item.spending;
           monthly[key].rentals += item.rentals;
         });
 
-        // ✅ Fill missing months
         const months: string[] = [];
         const startMonth = new Date(
           startDate.getFullYear(),
@@ -159,13 +157,12 @@ export function ClientSpendingChart({
         }
 
         return months.map((month) => ({
-          date: month + '-01', // ✅ valid date
+          date: month + '-01',
           spending: monthly[month]?.spending || 0,
           rentals: monthly[month]?.rentals || 0,
         }));
       }
 
-      // ✅ For 7d / 30d → fill missing days
       const allDates: string[] = [];
       for (
         let d = new Date(startDate);
@@ -183,27 +180,31 @@ export function ClientSpendingChart({
           rentals: found?.rentals || 0,
         };
       });
-    } catch (error) {
-      console.error('Error filtering chart data:', error);
+    } catch {
       return [];
     }
   }, [chartData, timeRange]);
 
-  // ✅ Show loading state if no data
+  // Empty state
   if (!filteredData || filteredData.length === 0) {
     return (
       <Card className="pt-0 h-full">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b py-5">
           <div className="grid flex-1 gap-1">
-            <CardTitle>Client Spending Over Time</CardTitle>
+            <CardTitle>
+              {t('client_spending.title', 'Client Spending Over Time')}
+            </CardTitle>
             <CardDescription>
-              No spending data available for this client
+              {t(
+                'client_spending.empty_subtitle',
+                'No spending data available for this client',
+              )}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
           <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-            No data to display
+            {t('client_spending.empty', 'No data to display')}
           </div>
         </CardContent>
       </Card>
@@ -214,9 +215,14 @@ export function ClientSpendingChart({
     <Card className="pt-0 h-full">
       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b py-5">
         <div className="grid flex-1 gap-1">
-          <CardTitle>Client Spending Over Time</CardTitle>
+          <CardTitle>
+            {t('client_spending.title', 'Client Spending Over Time')}
+          </CardTitle>
           <CardDescription>
-            Showing spending and rentals for the selected period
+            {t(
+              'client_spending.subtitle',
+              'Showing spending and rentals for the selected period',
+            )}
           </CardDescription>
         </div>
         <div className="flex gap-2">
@@ -226,12 +232,23 @@ export function ClientSpendingChart({
             onValueChange={(v) => setTimeRange(v as any)}
           >
             <SelectTrigger className="hidden w-[140px] rounded-lg sm:flex">
-              <SelectValue placeholder="Last 3 months" />
+              <SelectValue
+                placeholder={t(
+                  'client_spending.range_placeholder',
+                  'Last 3 months',
+                )}
+              />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem value="90d">Last 3 months</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="90d">
+                {t('client_spending.range_90d', 'Last 3 months')}
+              </SelectItem>
+              <SelectItem value="30d">
+                {t('client_spending.range_30d', 'Last 30 days')}
+              </SelectItem>
+              <SelectItem value="7d">
+                {t('client_spending.range_7d', 'Last 7 days')}
+              </SelectItem>
             </SelectContent>
           </Select>
 
@@ -241,16 +258,25 @@ export function ClientSpendingChart({
             onValueChange={(v) => setVisibleSeries(v as any)}
           >
             <SelectTrigger className="hidden w-[120px] rounded-lg sm:flex">
-              <SelectValue placeholder="Both" />
+              <SelectValue
+                placeholder={t('client_spending.series_both', 'Both')}
+              />
             </SelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem value="both">Both</SelectItem>
-              <SelectItem value="spending">Spending</SelectItem>
-              <SelectItem value="rentals">Rentals</SelectItem>
+              <SelectItem value="both">
+                {t('client_spending.series_both', 'Both')}
+              </SelectItem>
+              <SelectItem value="spending">
+                {t('client_spending.series_spending', 'Spending')}
+              </SelectItem>
+              <SelectItem value="rentals">
+                {t('client_spending.series_rentals', 'Rentals')}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </CardHeader>
+
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6 ">
         <ChartContainer
           config={chartConfig}
@@ -274,7 +300,8 @@ export function ClientSpendingChart({
               {/* Gradient for Rentals */}
               <linearGradient id="fillRentals" x1="0" y1="0" x2="0" y2="1">
                 <stop
-                  offset="5%"
+                  offset="5%
+                  "
                   stopColor={chartConfig.rentals.color}
                   stopOpacity={0.8}
                 />
@@ -298,25 +325,26 @@ export function ClientSpendingChart({
               tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
               tickFormatter={(value) => {
                 const d = new Date(value);
+                const locale = t('client_spending.locale', 'en-US');
                 return timeRange === '90d'
-                  ? d.toLocaleDateString('en-US', {
+                  ? d.toLocaleDateString(locale, {
                       month: 'short',
                       year: '2-digit',
                     })
-                  : d.toLocaleDateString('en-US', {
+                  : d.toLocaleDateString(locale, {
                       month: 'short',
                       day: 'numeric',
                     });
               }}
             />
 
-            {/* ✅ Primary Y-axis (no yAxisId) - CartesianGrid will use this */}
+            {/* Primary Y-axis (spending) */}
             <YAxis
               orientation="left"
               stroke={chartConfig.spending.color}
               tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
             />
-            {/* ✅ Secondary Y-axis (keep yAxisId) */}
+            {/* Secondary Y-axis (rentals) */}
             <YAxis
               yAxisId="right"
               orientation="right"
@@ -332,36 +360,37 @@ export function ClientSpendingChart({
                   className="space-y-1 text-[13px]"
                   labelFormatter={(value) => {
                     const d = new Date(value);
+                    const locale = t('client_spending.locale', 'en-US');
                     return timeRange === '90d'
-                      ? d.toLocaleDateString('en-US', {
+                      ? d.toLocaleDateString(locale, {
                           month: 'long',
                           year: 'numeric',
                         })
-                      : d.toLocaleDateString('en-US', {
+                      : d.toLocaleDateString(locale, {
                           month: 'short',
                           day: 'numeric',
                         });
                   }}
-                  formatter={(value, name, props) => {
-                    const key = props.dataKey as keyof typeof chartConfig;
-                    const config = chartConfig[key];
+                  formatter={(value, _name, props) => {
+                    const key = props.dataKey as 'spending' | 'rentals';
+                    const cfg = chartConfig[key];
+                    const locale = t('client_spending.locale', 'en-US');
+                    const currency = t('client_spending.currency', 'MAD');
                     const formattedValue =
                       key === 'spending'
-                        ? `${new Intl.NumberFormat('en-US').format(
+                        ? `${new Intl.NumberFormat(locale).format(
                             value as number,
-                          )} MAD`
-                        : new Intl.NumberFormat('en-US').format(
-                            value as number,
-                          );
+                          )} ${currency}`
+                        : new Intl.NumberFormat(locale).format(value as number);
 
                     return [
                       <div className="flex w-44 justify-between items-center gap-2">
                         <span
                           className="inline-block h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: config.color }}
+                          style={{ backgroundColor: cfg.color }}
                         />
                         <span className="flex-1 font-medium capitalize">
-                          {config.label}
+                          {cfg.label}
                         </span>
                         <span>{formattedValue}</span>
                       </div>,
@@ -372,7 +401,7 @@ export function ClientSpendingChart({
               }
             />
 
-            {/* ✅ Series - bind spending to primary axis (no yAxisId) */}
+            {/* Series */}
             {(visibleSeries === 'both' || visibleSeries === 'spending') && (
               <Area
                 dataKey="spending"
@@ -381,9 +410,9 @@ export function ClientSpendingChart({
                 stroke={chartConfig.spending.color}
                 strokeWidth={2}
                 activeDot={{ r: 4 }}
+                name={chartConfig.spending.label} // translated legend label
               />
             )}
-            {/* ✅ Series - bind rentals to secondary axis */}
             {(visibleSeries === 'both' || visibleSeries === 'rentals') && (
               <Area
                 yAxisId="right"
@@ -393,10 +422,12 @@ export function ClientSpendingChart({
                 stroke={chartConfig.rentals.color}
                 strokeWidth={2}
                 activeDot={{ r: 4 }}
+                name={chartConfig.rentals.label} // translated legend label
               />
             )}
 
-            <ChartLegend content={<ChartLegendContent payload={undefined} />} />
+            {/* Legend uses each Area's `name` (already translated) */}
+            <ChartLegend content={<ChartLegendContent />} />
           </AreaChart>
         </ChartContainer>
       </CardContent>

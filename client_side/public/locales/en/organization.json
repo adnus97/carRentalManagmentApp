@@ -1,0 +1,81 @@
+{
+  "org": {
+    "org": "Organization",
+    "document": "Document",
+    "created": "Created",
+    "unknown": "Unknown",
+    "edit_btn": "Edit Organization",
+    "empty_title": "No Organization Found",
+    "empty_desc": "You haven't created an organization yet.",
+    "details": {
+      "title": "Organization Details",
+      "website": "Website",
+      "phone": "Phone",
+      "address": "Adress"
+    },
+    "docs": {
+      "title": "Legal Documents",
+      "subtitle": "All organization documents consolidated here.",
+      "document": "Document",
+      "view": "View",
+      "download": "Download",
+      "missing": "Missing",
+      "rc": "RC (Commercial Register)",
+      "status": "Status",
+      "decision": "Decision",
+      "ceo_id": "Manager ID Card",
+      "fleet": "Fleet List",
+      "model_g": "Model G",
+      "tax_id": "Identifiant Fiscale",
+      "bilan": "Bilan"
+    },
+    "create": {
+      "title": "Create Organization",
+      "subtitle": "Fill in basic details and optionally upload documents now.",
+      "creating": "Creating...",
+      "create": "Create",
+      "success_title": "Organization created",
+      "success_desc": "Your organization has been created successfully.",
+      "error_title": "Creation failed",
+      "error_desc": "Please review fields and try again."
+    },
+    "form": {
+      "name": "Organization Name",
+      "name_ph": "Your company name",
+      "website_ph": "https://company.com",
+      "phone_ph": "+1 555 0100",
+      "address_ph": "123 Market St, City, Country",
+      "docs_hint": "You can upload these now or later from the organization page.",
+      "rc_desc": "Official commercial register document (PDF).",
+      "status_desc": "Company status document (PDF).",
+      "decision_desc": "Company decision document (PDF).",
+      "ceo_id_desc": "Clear photo/scan of the manager's ID card.",
+      "fleet_desc": "Complete fleet inventory (PDF).",
+      "model_g_desc": "Model G document (PDF).",
+      "tax_id_desc": "Tax identification document (PDF).",
+      "bilan_desc": "Financial balance sheet (PDF).",
+      "errors": {
+        "name_short": "Organization name is too short"
+      }
+    },
+    "logo": {
+      "title": "Organization Logo",
+      "subtitle": "PNG, JPG, WEBP. Square images look best.",
+      "alt": "Logo",
+      "upload_success": "Organization logo uploaded successfully.",
+      "upload_error": "Failed to upload image. Please try again.",
+      "choose": "Choose Image"
+    },
+    "update": {
+      "title": "Edit Organization",
+      "subtitle": "Update details and legal documents",
+      "saving": "Saving...",
+      "save_changes": "Save Changes",
+      "saved": "Saved",
+      "success_desc": "Organization updated successfully.",
+      "error_title": "Update failed",
+      "error_desc": "Please review fields and try again.",
+      "docs_subtitle": "All required documents consolidated here."
+    }
+  }
+}

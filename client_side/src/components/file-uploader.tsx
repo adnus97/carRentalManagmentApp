@@ -1,13 +1,15 @@
-// components/file-uploader.tsx
-import { useState } from 'react';
+'use client';
+
+import { useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { FileText, X, Eye, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, X, Eye, Loader2, AlertCircle, Upload } from 'lucide-react';
 import { toast } from './ui/toast';
 import { useR2Upload, useFileValidation } from '../hooks/useR2Upload';
 import { Progress } from './ui/progress';
-import { File as ApiFile, getFileServeUrl, viewFile } from '@/api/files';
+import { File as ApiFile, viewFile } from '@/api/files';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   label: string;
@@ -31,9 +33,15 @@ export function FileUploader({
   required,
   description,
 }: Props) {
+  const { t } = useTranslation('client');
+
   const [uploadedFile, setUploadedFile] = useState<ApiFile | null>(null);
   const { uploadFile, uploading, progress, error, reset } = useR2Upload();
   const { validateFile } = useFileValidation();
+
+  // New: keep a ref to the hidden input and a local name for display
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedName, setSelectedName] = useState<string>('');
 
   // Determine allowed types based on accept prop
   const getAllowedTypes = () => {
@@ -51,6 +59,7 @@ export function FileUploader({
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    setSelectedName(file?.name || '');
     if (!file) return;
 
     // Validate file before upload
@@ -62,11 +71,14 @@ export function FileUploader({
 
     if (!validation.isValid) {
       toast({
-        title: 'Invalid file',
+        title: t('uploader.invalid.title', 'Invalid file'),
         type: 'error',
-        description: validation.errors.join(', '),
+        description:
+          validation.errors.join(', ') ||
+          t('uploader.invalid.desc', 'The selected file is not allowed.'),
       });
-      e.target.value = '';
+      if (inputRef.current) inputRef.current.value = '';
+      setSelectedName('');
       return;
     }
 
@@ -86,20 +98,27 @@ export function FileUploader({
         setUploadedFile(result);
         onUploadSuccess(result);
         toast({
-          title: 'Success!',
+          title: t('uploader.success.title', 'Success!'),
           type: 'success',
-          description: `${label} uploaded successfully.`,
+          description: t(
+            'uploader.success.desc',
+            '{{label}} uploaded successfully.',
+            { label },
+          ),
         });
       }
     } catch (err: any) {
       toast({
-        title: 'Upload failed',
+        title: t('uploader.error.title', 'Upload failed'),
         type: 'error',
-        description: err.message || 'Failed to upload file. Please try again.',
+        description:
+          err.message ||
+          t('uploader.error.desc', 'Failed to upload file. Please try again.'),
       });
     } finally {
       onUploadProgress?.(false);
-      e.target.value = '';
+      if (inputRef.current) inputRef.current.value = '';
+      // Do not clear selectedName; keep visible until preview replaces it
     }
   };
 
@@ -113,11 +132,13 @@ export function FileUploader({
 
   const clear = () => {
     setUploadedFile(null);
+    setSelectedName('');
     reset();
   };
 
   const hasFile = uploadedFile || currentFile;
-  const fileName = uploadedFile?.name || 'Current file';
+  const fileName =
+    uploadedFile?.name || t('uploader.current_file', 'Current file');
 
   return (
     <div className="space-y-2">
@@ -128,18 +149,43 @@ export function FileUploader({
         <p className="text-xs text-muted-foreground">{description}</p>
       )}
 
+      {/* Custom, translatable chooser */}
       <div className="flex items-center gap-2">
-        <Input
-          type="file"
-          accept={accept}
-          onChange={handleFileUpload}
-          disabled={uploading}
-          className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
-        />
+        {/* Hidden native input (keeps accessibility and system picker) */}
+        <div className="border border-solid border-accent-6 p-1 rounded-md w-full">
+          <input
+            ref={inputRef}
+            type="file"
+            accept={accept}
+            onChange={handleFileUpload}
+            disabled={uploading}
+            className="sr-only"
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            aria-label={t('uploader.actions.choose', 'Choose File')}
+            title={t('uploader.actions.choose', 'Choose File')}
+          >
+            <Upload className="h-4 w-4" />
+            {t('uploader.actions.choose', 'Choose File')}
+          </Button>
+
+          <span className="text-sm text-muted-foreground truncate ml-4">
+            {selectedName || t('uploader.no_file', 'No file chosen')}
+          </span>
+        </div>
         {uploading && (
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-xs text-blue-500">Uploading...</span>
+            <span className="text-xs text-blue-500">
+              {t('uploader.status.uploading', 'Uploading…')}
+            </span>
           </div>
         )}
       </div>
@@ -159,7 +205,8 @@ export function FileUploader({
         <div className="space-y-1">
           <Progress value={progress} className="w-full" />
           <p className="text-xs text-muted-foreground text-center">
-            {Math.round(progress)}% uploading...
+            {Math.round(progress)}%{' '}
+            {t('uploader.status.uploading_plain', 'uploading...')}
           </p>
         </div>
       )}
@@ -177,7 +224,7 @@ export function FileUploader({
               size="sm"
               onClick={handleView}
               className="h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
-              title="View file"
+              title={t('uploader.actions.view_tooltip', 'View file')}
             >
               <Eye className="h-3 w-3" />
             </Button>
@@ -187,7 +234,7 @@ export function FileUploader({
                 size="sm"
                 onClick={clear}
                 className="h-8 w-8 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
-                title="Clear file"
+                title={t('uploader.actions.clear_tooltip', 'Clear file')}
               >
                 <X className="h-3 w-3" />
               </Button>

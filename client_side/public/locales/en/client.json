@@ -63,7 +63,9 @@
   },
   "form": {
     "title": "Add a new Client",
+    "edit_title": "Edit Client",
     "subtitle": "Fill out the form below to add a new client to the system.",
+    "edit_subtitle": "Update the client information below.",
     "labels": {
       "first": "First Name",
       "last": "Last Name",
@@ -120,6 +122,7 @@
       "driver_license_required": "Driver's license is required"
     }
   },
+
   "uploader": {
     "actions": {
       "choose": "Choose File",
@@ -143,7 +146,8 @@
       "title": "Upload failed",
       "desc": "Failed to upload file. Please try again."
     },
-    "no_file": "No file chosen"
+    "no_file": "No file chosen",
+    "current_file": "Current File"
   },
   "title": "Modifier le client",
   "subtitle": "Mettez à jour les informations du client ci‑dessous.",
@@ -199,6 +203,94 @@
       "downloading_desc": "Downloading {{title}}...",
       "error_download_title": "Error downloading file",
       "error_download_desc": "Could not download {{title}}. Please try again."
+    },
+    "rate_success_title": "Rated",
+    "rate_success_desc": "Customer rated successfully",
+    "rate_error_desc": "Failed to rate customer",
+    "rate_comment_ph": "Optional comment",
+    "rate_star": "Rate {{star}} star",
+    "submitting": "Submitting...",
+    "submit": "Submit"
+  },
+  "client_rentals": {
+    "car": "Car",
+    "start_date": "Start Date",
+    "end_date": "End Date",
+    "returned_at": "Returned At",
+    "total_price": "Total Price",
+    "paid": "Paid",
+    "deposit": "Deposit",
+    "guarantee": "Guarantee",
+    "late_fee": "Late Fee",
+    "fully_paid": "Fully Paid",
+    "yes": "Yes",
+    "no": "No",
+    "status": "Status",
+    "status_reserved": "reserved",
+    "status_active": "active",
+    "status_completed": "completed",
+    "status_cancelled": "cancelled",
+    "loading": "Loading client details...",
+    "load_failed": "Failed to load rentals.",
+    "stat_total_rentals": "Total Rentals",
+    "stat_total_spent": "Total Spent",
+    "stat_avg_spend": "Avg Spend / Rental",
+    "prev_page": "Previous page",
+    "next_page": "Next page",
+    "goto_page": "Go to page {{p}}",
+    "stat_total_left": "Total Left"
+  },
+  "client_spending": {
+    "title": "Client Spending Over Time",
+    "subtitle": "Showing spending and rentals for the selected period",
+    "empty_subtitle": "No spending data available for this client",
+    "empty": "No data to display",
+    "range_placeholder": "Last 3 months",
+    "range_90d": "Last 3 months",
+    "range_30d": "Last 30 days",
+    "range_7d": "Last 7 days",
+    "series_both": "Both",
+    "series_spending": "Spending",
+    "series_rentals": "Rentals",
+    "currency": "MAD",
+    "locale": "en-US"
+  },
+  "clients": {
+    "success": "Success!",
+    "error": "Error",
+    "deleted": "Customer deleted.",
+    "delete_failed": "Failed to delete customer",
+    "unblacklisted": "Customer unblacklisted.",
+    "load_edit_failed": "Failed to load customer details for editing",
+    "header": { "title": "Clients Dashboard" },
+    "manage_hint": "Manage your clients below:",
+    "total": "Total",
+    "blacklisted": "Blacklisted",
+    "columns": {
+      "full_name": "Full Name",
+      "rating": "Rating",
+      "actions": "Actions"
+    },
+    "actions": {
+      "edit": "Edit",
+      "view": "View",
+      "unblacklist": "Unblacklist",
+      "delete": "Delete",
+      "delete_count": "Delete ({count})",
+      "cancel": "Cancel",
+      "deleting": "Deleting..."
+    },
+    "selection": {
+      "customer": "customer",
+      "selected": "selected"
+    },
+    "loading": "Loading customers...",
+    "confirm": {
+      "delete_title_one": "Delete Customer",
+      "delete_title_many": "Delete {{count}} Customers",
+      "delete_desc_one": "Are you sure you want to delete \"{{name}}\"?",
+      "delete_desc_few": "Are you sure you want to delete these {{count}} customers: {{list}}?",
+      "delete_desc_many": "Are you sure you want to delete {{count}} customers? {{list}}..."
     }
   }
 }

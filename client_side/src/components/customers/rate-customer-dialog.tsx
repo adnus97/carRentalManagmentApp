@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { rateCustomer, Customer } from '@/api/customers';
 import { toast } from '@/components/ui/toast';
+import { useTranslation } from 'react-i18next';
 
 export function RateCustomerDialog({
   open,
@@ -17,6 +18,8 @@ export function RateCustomerDialog({
   onOpenChange: (open: boolean) => void;
   customer: Customer | null;
 }) {
+  const { t } = useTranslation('client');
+
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -31,11 +34,14 @@ export function RateCustomerDialog({
       });
       queryClient.invalidateQueries({
         queryKey: ['customerRatingsSummary', customer!.id],
-      }); // ✅ ensure count updates
+      });
       toast({
         type: 'success',
-        title: 'Rated',
-        description: 'Customer rated successfully',
+        title: t('client_details.rate_success_title', 'Rated'),
+        description: t(
+          'client_details.rate_success_desc',
+          'Customer rated successfully',
+        ),
       });
       onOpenChange(false);
       setRating(0);
@@ -45,8 +51,11 @@ export function RateCustomerDialog({
     onError: () => {
       toast({
         type: 'error',
-        title: 'Error',
-        description: 'Failed to rate customer',
+        title: t('client_details.error', 'Error'),
+        description: t(
+          'client_details.rate_error_desc',
+          'Failed to rate customer',
+        ),
       });
     },
   });
@@ -55,7 +64,8 @@ export function RateCustomerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogTitle>
-          Rate {customer?.firstName} {customer?.lastName}
+          {t('client_details.rate_customer', 'Rate Customer')}{' '}
+          {customer ? `${customer.firstName} ${customer.lastName}` : ''}
         </DialogTitle>
 
         {/* Stars with hover effect */}
@@ -71,6 +81,9 @@ export function RateCustomerDialog({
               onMouseEnter={() => setHoverRating(star)}
               onMouseLeave={() => setHoverRating(0)}
               onClick={() => setRating(star)}
+              aria-label={t('client_details.rate_star', 'Rate {{star}} star', {
+                star,
+              })}
             >
               ★
             </span>
@@ -79,7 +92,7 @@ export function RateCustomerDialog({
 
         {/* Comment */}
         <Textarea
-          placeholder="Optional comment"
+          placeholder={t('client_details.rate_comment_ph', 'Optional comment')}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           className="w-full"
@@ -88,13 +101,15 @@ export function RateCustomerDialog({
         {/* Actions */}
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('clients.actions.cancel', 'Cancel')}
           </Button>
           <Button
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending || rating === 0}
           >
-            {mutation.isPending ? 'Submitting...' : 'Submit'}
+            {mutation.isPending
+              ? t('client_details.submitting', 'Submitting...')
+              : t('client_details.submit', 'Submit')}
           </Button>
         </div>
       </DialogContent>

@@ -1,0 +1,26 @@
+{
+  "uploader": {
+    "actions": {
+      "view_tooltip": "View file",
+      "clear_tooltip": "Clear file"
+    },
+    "status": {
+      "uploaded": "Uploaded",
+      "uploading": "Uploading…",
+      "uploading_plain": "uploading..."
+    },
+    "invalid": {
+      "title": "Invalid file",
+      "desc": "The selected file is not allowed."
+    },
+    "success": {
+      "title": "Success!",
+      "desc": "{{label}} uploaded successfully."
+    },
+    "error": {
+      "title": "Upload failed",
+      "desc": "Failed to upload file. Please try again."
+    },
+    "no_file": "Current file"
+  }
+}

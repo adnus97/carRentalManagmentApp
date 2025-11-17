@@ -38,6 +38,7 @@ import { Value } from '@radix-ui/react-select';
 import { Switch } from '../ui/switch';
 import { Calendar } from '@phosphor-icons/react';
 import { endOfDay } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 // Toggle component
 function ModeToggle({
@@ -47,23 +48,30 @@ function ModeToggle({
   mode: 'preset' | 'custom';
   onChange: (m: 'preset' | 'custom') => void;
 }) {
+  const { t } = useTranslation('reports');
   return (
     <Select
       value={mode}
       onValueChange={(v) => onChange(v as 'preset' | 'custom')}
     >
       <SelectTrigger className="w-[160px]">
-        <Value placeholder="Select mode" />
+        <Value placeholder={t('reports.mode_placeholder', 'Select mode')} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="preset">Preset Filters</SelectItem>
-        <SelectItem value="custom">Custom Range</SelectItem>
+        <SelectItem value="preset">
+          {t('reports.mode_preset', 'Preset Filters')}
+        </SelectItem>
+        <SelectItem value="custom">
+          {t('reports.mode_custom', 'Custom Range')}
+        </SelectItem>
       </SelectContent>
     </Select>
   );
 }
 
 export default function ReportsPage() {
+  const { t } = useTranslation('reports');
+
   const [mode, setMode] = useState<'preset' | 'custom'>('preset');
   const [preset, setPreset] = useState<Preset>('last30d');
   const [from, setFrom] = useState<Date | undefined>();
@@ -91,14 +99,19 @@ export default function ReportsPage() {
 
   const dateError = useMemo(() => {
     if (mode === 'custom' && from && to) {
-      if (to <= from) return 'End date must be after start date';
+      if (to <= from)
+        return t(
+          'reports.err_end_after_start',
+          'End date must be after start date',
+        );
       const daysDiff = Math.ceil(
         (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24),
       );
-      if (daysDiff > 365) return 'Date range cannot exceed 365 days';
+      if (daysDiff > 365)
+        return t('reports.err_max_range', 'Date range cannot exceed 365 days');
     }
     return null;
-  }, [mode, from, to]);
+  }, [mode, from, to, t]);
 
   // Reports data
   const { data, isLoading, refetch } = useQuery({
@@ -120,8 +133,8 @@ export default function ReportsPage() {
   });
 
   const riskTitle = showTechnicalVisit
-    ? 'Technical Inspection Risk'
-    : 'Insurance Risk';
+    ? t('reports.technical_inspection_risk', 'Technical Inspection Risk')
+    : t('reports.insurance_risk', 'Insurance Risk');
 
   // Helper to compute target status (Active through end of endDate)
   const isTargetActive = (endDate: string | Date) =>
@@ -144,20 +157,25 @@ export default function ReportsPage() {
             <BarChart3 className="h-6 w-6 text-accent-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold leading-tight">Reports</h1>
+            <h1 className="text-2xl font-bold leading-tight">
+              {t('reports.title', 'Reports')}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Fleet performance, revenue, risk, and trends
+              {t(
+                'reports.subtitle',
+                'Fleet performance, revenue, risk, and trends',
+              )}
             </p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCcw className="mr-2 h-4 w-4" />
-            Refresh
+            {t('reports.refresh', 'Refresh')}
           </Button>
           <Button>
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            {t('reports.export_csv', 'Export CSV')}
           </Button>
         </div>
       </div>
@@ -171,19 +189,41 @@ export default function ReportsPage() {
         {mode === 'preset' && (
           <Select value={preset} onValueChange={(v) => setPreset(v as Preset)}>
             <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select period" />
+              <SelectValue
+                placeholder={t('reports.select_period', 'Select period')}
+              />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="yesterday">Yesterday</SelectItem>
-              <SelectItem value="last7d">Last 7 days</SelectItem>
-              <SelectItem value="last30d">Last 30 days</SelectItem>
-              <SelectItem value="last90d">Last 90 days</SelectItem>
-              <SelectItem value="thisYear">This Year</SelectItem>
-              <SelectItem value="prevMonth">Previous Month</SelectItem>
-              <SelectItem value="prevTrimester">Previous Trimester</SelectItem>
-              <SelectItem value="prevSemester">Previous Semester</SelectItem>
-              <SelectItem value="prevYear">Previous Year</SelectItem>
+              <SelectItem value="today">
+                {t('reports.preset_today', 'Today')}
+              </SelectItem>
+              <SelectItem value="yesterday">
+                {t('reports.preset_yesterday', 'Yesterday')}
+              </SelectItem>
+              <SelectItem value="last7d">
+                {t('reports.preset_last7', 'Last 7 days')}
+              </SelectItem>
+              <SelectItem value="last30d">
+                {t('reports.preset_last30', 'Last 30 days')}
+              </SelectItem>
+              <SelectItem value="last90d">
+                {t('reports.preset_last90', 'Last 90 days')}
+              </SelectItem>
+              <SelectItem value="thisYear">
+                {t('reports.preset_this_year', 'This Year')}
+              </SelectItem>
+              <SelectItem value="prevMonth">
+                {t('reports.preset_prev_month', 'Previous Month')}
+              </SelectItem>
+              <SelectItem value="prevTrimester">
+                {t('reports.preset_prev_trimester', 'Previous Trimester')}
+              </SelectItem>
+              <SelectItem value="prevSemester">
+                {t('reports.preset_prev_semester', 'Previous Semester')}
+              </SelectItem>
+              <SelectItem value="prevYear">
+                {t('reports.preset_prev_year', 'Previous Year')}
+              </SelectItem>
             </SelectContent>
           </Select>
         )}
@@ -192,19 +232,23 @@ export default function ReportsPage() {
         {mode === 'custom' && (
           <>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">From:</span>
+              <span className="text-sm text-muted-foreground">
+                {t('reports.from', 'From:')}
+              </span>
               <DatePickerDemo
                 value={from}
                 onChange={setFrom}
-                placeholder="Start date"
+                placeholder={t('reports.start_date', 'Start date')}
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">To:</span>
+              <span className="text-sm text-muted-foreground">
+                {t('reports.to', 'To:')}
+              </span>
               <DatePickerDemo
                 value={to}
                 onChange={setTo}
-                placeholder="End date"
+                placeholder={t('reports.end_date', 'End date')}
               />
             </div>
           </>
@@ -232,7 +276,7 @@ export default function ReportsPage() {
                           carsQ.data?.data.find((c: any) => c.id === carId)
                             ?.year
                         }`
-                      : 'All Cars'}
+                      : t('reports.all_cars', 'All Cars')}
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -247,13 +291,15 @@ export default function ReportsPage() {
                       } ${
                         carsQ.data?.data.find((c: any) => c.id === carId)?.year
                       }`
-                    : 'All Cars'}
+                    : t('reports.all_cars', 'All Cars')}
                 </TooltipContent>
               </Tooltip>
             </div>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Cars</SelectItem>
+            <SelectItem value="all">
+              {t('reports.all_cars', 'All Cars')}
+            </SelectItem>
             {(carsQ.data?.data || []).map((c: any) => (
               <SelectItem key={c.id} value={c.id}>
                 <div className="flex items-center gap-2">
@@ -294,7 +340,7 @@ export default function ReportsPage() {
               {Math.ceil(
                 (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24),
               )}{' '}
-              days)
+              {t('reports.days', 'days')})
             </span>
           </div>
         )}
@@ -304,7 +350,7 @@ export default function ReportsPage() {
       {isLoading && (
         <div className="flex items-center justify-center py-8">
           <RefreshCcw className="h-6 w-6 animate-spin mr-2" />
-          <span>Loading reports...</span>
+          <span>{t('reports.loading', 'Loading reports...')}</span>
         </div>
       )}
 
@@ -312,7 +358,12 @@ export default function ReportsPage() {
       {dateError && (
         <div className="flex items-center justify-center py-8 text-muted-foreground">
           <AlertCircle className="h-6 w-6 mr-2" />
-          <span>Please fix the date range to view reports</span>
+          <span>
+            {t(
+              'reports.fix_date_range',
+              'Please fix the date range to view reports',
+            )}
+          </span>
         </div>
       )}
 
@@ -323,7 +374,12 @@ export default function ReportsPage() {
 
           <Card className="shadow-lg rounded-xl">
             <CardHeader className="pb-3 border-b">
-              <CardTitle>Revenue & Rents Over Time</CardTitle>
+              <CardTitle>
+                {t(
+                  'reports.revenue_rents_over_time',
+                  'Revenue & Rents Over Time',
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
               <RevenueChart
@@ -339,7 +395,9 @@ export default function ReportsPage() {
             <Card className="shadow-lg rounded-xl">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="flex items-center justify-between">
-                  <span>Targets vs Actuals</span>
+                  <span>
+                    {t('reports.targets_vs_actuals', 'Targets vs Actuals')}
+                  </span>
                   {/* NEW: Include Expired Targets Toggle */}
                   <div className="flex items-center gap-2">
                     <Switch
@@ -351,7 +409,7 @@ export default function ReportsPage() {
                       htmlFor="targets-include-expired"
                       className="text-sm font-normal text-muted-foreground cursor-pointer select-none"
                     >
-                      Include expired
+                      {t('reports.include_expired', 'Include expired')}
                     </label>
                   </div>
                 </CardTitle>
@@ -376,7 +434,10 @@ export default function ReportsPage() {
                         htmlFor="technical-visit-toggle"
                         className="text-sm font-normal text-muted-foreground cursor-pointer select-none"
                       >
-                        (Insurance & Technical inspection)
+                        {t(
+                          'reports.insurance_and_technical',
+                          '(Insurance & Technical inspection)',
+                        )}
                       </label>
                     </div>
                   </CardTitle>
@@ -396,7 +457,9 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="shadow-lg rounded-xl">
               <CardHeader className="pb-3 border-b">
-                <CardTitle>Top Cars by Revenue</CardTitle>
+                <CardTitle>
+                  {t('reports.top_cars_by_revenue', 'Top Cars by Revenue')}
+                </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
                 <TopCarsTable cars={data?.topCars || []} />
@@ -405,7 +468,7 @@ export default function ReportsPage() {
 
             <Card className="shadow-lg rounded-xl">
               <CardHeader className="pb-3 border-b">
-                <CardTitle>Overdue Rentals</CardTitle>
+                <CardTitle>{t('overdue.title', 'Overdue Rentals')}</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
                 <OverdueTable overdue={data?.overdue || []} />

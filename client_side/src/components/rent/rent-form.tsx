@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,90 +41,101 @@ import {
   Check,
   WarningCircle,
 } from '@phosphor-icons/react';
-
 import { CarImageUpload } from './car-image-upload';
 import { Badge } from '@/components/ui/badge';
-
 import { Checkbox } from '@/components/ui/checkbox';
+import { useTranslation } from 'react-i18next';
 
-const rentSchema = z
-  .object({
-    carId: z.string().min(1, 'Car is required'),
-    customerId: z.string().min(1, 'Customer is required'),
-    startDate: z.date({ required_error: 'Start date is required' }),
-    expectedEndDate: z.preprocess(
-      (val) =>
-        val instanceof Date ? val : val ? new Date(val as string) : null,
-      z.date().nullable().optional(),
-    ),
-    returnedAt: z.coerce.date().nullable().optional(),
-    isOpenContract: z.boolean().default(false),
-    totalPrice: z
-      .number({ invalid_type_error: 'Total price must be a number' })
-      .min(0, 'Total price cannot be negative')
-      .optional()
-      .nullable(),
-    deposit: z
-      .number({ invalid_type_error: 'Deposit must be a number' })
-      .min(0, 'Deposit cannot be negative')
-      .default(0),
-    guarantee: z
-      .number({ invalid_type_error: 'Guarantee must be a number' })
-      .min(0, 'Guarantee cannot be negative')
-      .default(0),
-    totalPaid: z
-      .number({ invalid_type_error: 'Total paid must be a number' })
-      .min(0, 'Total paid cannot be negative')
-      .default(0),
-    isFullyPaid: z.boolean().default(false),
-  })
-  .superRefine((data, ctx) => {
-    if (!data.isOpenContract) {
-      if (!data.expectedEndDate) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Expected end date is required for fixed contracts',
-          path: ['expectedEndDate'],
-        });
-      } else {
-        if (data.expectedEndDate <= data.startDate) {
+// Zod schema factory with i18n keys (like Cars form)
+const makeRentSchema = () =>
+  z
+    .object({
+      carId: z.string().min(1, 'form.errors.car_required'),
+      customerId: z.string().min(1, 'form.errors.customer_required'),
+      startDate: z.date({
+        required_error: 'form.errors.start_required',
+        invalid_type_error: 'form.errors.start_invalid',
+      }),
+      expectedEndDate: z.preprocess(
+        (val) =>
+          val instanceof Date ? val : val ? new Date(val as string) : null,
+        z
+          .date({
+            invalid_type_error: 'form.errors.end_invalid',
+          })
+          .nullable()
+          .optional(),
+      ),
+      returnedAt: z.coerce
+        .date({
+          invalid_type_error: 'form.errors.return_invalid',
+        })
+        .nullable()
+        .optional(),
+      isOpenContract: z.boolean().default(false),
+      totalPrice: z
+        .number({ invalid_type_error: 'form.errors.total_price_number' })
+        .min(0, 'form.errors.total_price_non_negative')
+        .optional()
+        .nullable(),
+      deposit: z
+        .number({ invalid_type_error: 'form.errors.deposit_number' })
+        .min(0, 'form.errors.deposit_non_negative')
+        .default(0),
+      guarantee: z
+        .number({ invalid_type_error: 'form.errors.guarantee_number' })
+        .min(0, 'form.errors.guarantee_non_negative')
+        .default(0),
+      totalPaid: z
+        .number({ invalid_type_error: 'form.errors.total_paid_number' })
+        .min(0, 'form.errors.total_paid_non_negative')
+        .default(0),
+      isFullyPaid: z.boolean().default(false),
+    })
+    .superRefine((data, ctx) => {
+      if (!data.isOpenContract) {
+        if (!data.expectedEndDate) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'End date must be after start date',
+            message: 'form.errors.end_required_closed',
+            path: ['expectedEndDate'],
+          });
+        } else if (data.expectedEndDate <= data.startDate) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'form.errors.end_after_start',
             path: ['expectedEndDate'],
           });
         }
       }
-    }
 
-    if (data.startDate) {
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      if (data.startDate) {
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        if (data.startDate < oneYearAgo) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'form.errors.start_too_old',
+            path: ['startDate'],
+          });
+        }
+      }
 
-      if (data.startDate < oneYearAgo) {
+      if (
+        !data.isOpenContract &&
+        data.totalPrice != null &&
+        data.totalPaid != null &&
+        data.totalPaid > data.totalPrice
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Start date cannot be more than one year in the past',
-          path: ['startDate'],
+          message: 'form.errors.paid_exceeds_price',
+          path: ['totalPaid'],
         });
       }
-    }
+    });
 
-    if (
-      !data.isOpenContract &&
-      data.totalPrice != null &&
-      data.totalPaid != null &&
-      data.totalPaid > data.totalPrice
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Total paid cannot exceed total price for fixed contracts',
-        path: ['totalPaid'],
-      });
-    }
-  });
-
-type RentFormFields = z.infer<typeof rentSchema>;
+type RentFormFields = z.infer<ReturnType<typeof makeRentSchema>>;
 
 type RentFormDialogProps = {
   open: boolean;
@@ -141,8 +152,11 @@ export function RentFormDialog({
   defaultCarModel,
   pricePerDay,
 }: RentFormDialogProps) {
+  const { t } = useTranslation('rent');
   const queryClient = useQueryClient();
   const [carImages, setCarImages] = useState<File[]>([]);
+
+  const schema = useMemo(() => makeRentSchema(), []);
 
   const { data: customers, isLoading: customersLoading } = useQuery({
     queryKey: ['customers'],
@@ -181,21 +195,25 @@ export function RentFormDialog({
 
       toast({
         type: 'success',
-        title: 'Success!',
-        description: `Rent contract ${
-          response.data?.rentContractId || 'created'
-        } successfully.`,
+        title: t('form.success_title', 'Success!'),
+        description: t(
+          'form.success_desc',
+          'Rent contract {{id}} successfully.',
+          {
+            id: response.data?.rentContractId || t('form.created', 'created'),
+          },
+        ),
       });
     },
     onError: (error: any) => {
       const errorMessage =
         error?.response?.data?.message ||
         error?.message ||
-        'Failed to create rent contract.';
+        t('form.create_failed', 'Failed to create rent contract.');
 
       toast({
         type: 'error',
-        title: 'Error',
+        title: t('common.error', { ns: 'common', defaultValue: 'Error' }),
         description: errorMessage,
       });
     },
@@ -212,7 +230,7 @@ export function RentFormDialog({
     trigger,
     clearErrors,
   } = useForm<RentFormFields>({
-    resolver: zodResolver(rentSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       carId: defaultCarId,
       customerId: '',
@@ -255,8 +273,8 @@ export function RentFormDialog({
       !isOpenContract &&
       startDate &&
       expectedEndDate &&
-      !isNaN(startDate.getTime()) &&
-      !isNaN(expectedEndDate.getTime()) &&
+      !isNaN(startDate?.getTime?.() || NaN) &&
+      !isNaN(expectedEndDate?.getTime?.() || NaN) &&
       expectedEndDate > startDate
     ) {
       const msPerDay = 1000 * 60 * 60 * 24;
@@ -296,14 +314,33 @@ export function RentFormDialog({
     if (selectedCustomer?.isBlacklisted) {
       toast({
         type: 'error',
-        title: 'Validation Error',
-        description: 'This customer is blacklisted and cannot rent a car.',
+        title: t('form.validation_error', 'Validation Error'),
+        description: t(
+          'form.blacklisted',
+          'This customer is blacklisted and cannot rent a car.',
+        ),
       });
       return;
     }
 
     mutation.mutate(data);
   };
+
+  const colorOptions = [
+    'White',
+    'Black',
+    'Silver',
+    'Gray',
+    'Blue',
+    'Red',
+    'Green',
+    'Yellow',
+    'Orange',
+    'Brown',
+    'Purple',
+    'Gold',
+    'Beige',
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -318,7 +355,6 @@ export function RentFormDialog({
           rounded-2xl shadow-xl
         "
       >
-        {/* Header – no extra X button here to avoid duplication */}
         <div
           className="
             flex items-center justify-between
@@ -333,18 +369,17 @@ export function RentFormDialog({
             </div>
             <div className="leading-tight">
               <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">
-                Create Rental Contract
+                {t('form.title', 'Create Rental Contract')}
               </DialogTitle>
               {defaultCarModel && (
                 <DialogDescription className="text-xs text-gray-500 dark:text-slate-400">
-                  {defaultCarModel} • Available
+                  {defaultCarModel} • {t('form.available', 'Available')}
                 </DialogDescription>
               )}
             </div>
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-auto bg-gray-1 p-3 sm:p-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
             {/* Left – Main */}
@@ -360,26 +395,29 @@ export function RentFormDialog({
                 <div className="mb-3 flex items-center gap-2">
                   <User className="h-4 w-4 text-blue-500" />
                   <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                    Vehicle & Customer
+                    {t('form.section_vehicle_customer', 'Vehicle & Customer')}
                   </h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs text-gray-600 dark:text-slate-300">
-                      Vehicle
+                      {t('form.vehicle', 'Vehicle')}
                     </Label>
                     <div className="mt-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-sm text-gray-900 dark:text-white">
                       <div className="flex items-center gap-2">
                         <Car className="h-4 w-4 text-gray-400" />
-                        <span>{defaultCarModel || 'Selected Vehicle'}</span>
+                        <span>
+                          {defaultCarModel ||
+                            t('form.selected_vehicle', 'Selected Vehicle')}
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   <div>
                     <Label className="text-xs text-gray-600 dark:text-slate-300">
-                      Customer *
+                      {t('form.customer_required', 'Customer *')}
                     </Label>
                     <Controller
                       control={control}
@@ -399,7 +437,12 @@ export function RentFormDialog({
                                 ${errors.customerId ? 'border-red-500' : ''}
                               `}
                             >
-                              <SelectValue placeholder="Select customer" />
+                              <SelectValue
+                                placeholder={t(
+                                  'form.select_customer',
+                                  'Select customer',
+                                )}
+                              />
                             </SelectTrigger>
                             <SelectContent className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg">
                               {customers?.data
@@ -440,7 +483,7 @@ export function RentFormDialog({
                     />
                     {errors.customerId && (
                       <p className="text-[11px] text-red-500 mt-1">
-                        {errors.customerId.message}
+                        {t(errors.customerId.message as any)}
                       </p>
                     )}
                   </div>
@@ -457,14 +500,14 @@ export function RentFormDialog({
                 <div className="mb-3 flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-green-500" />
                   <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                    Schedule
+                    {t('form.section_schedule', 'Schedule')}
                   </h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs text-gray-600 dark:text-slate-300">
-                      Start Date *
+                      {t('form.start_date_required', 'Start Date *')}
                     </Label>
                     <div className="mt-1">
                       <Controller
@@ -474,21 +517,25 @@ export function RentFormDialog({
                           <FormDatePicker
                             value={field.value}
                             onChange={field.onChange}
-                            placeholder="Select start date"
+                            placeholder={t(
+                              'form.select_start_date',
+                              'Select start date',
+                            )}
                           />
                         )}
                       />
                     </div>
                     {errors.startDate && (
                       <p className="text-[11px] text-red-500 mt-1">
-                        {errors.startDate.message}
+                        {t(errors.startDate.message as any)}
                       </p>
                     )}
                   </div>
 
                   <div>
                     <Label className="text-xs text-gray-600 dark:text-slate-300">
-                      Expected End Date {!isOpenContract && '*'}
+                      {t('form.expected_end_date', 'Expected End Date')}{' '}
+                      {!isOpenContract && '*'}
                     </Label>
                     <div className="mt-1">
                       <Controller
@@ -508,7 +555,7 @@ export function RentFormDialog({
                     </div>
                     {errors.expectedEndDate && (
                       <p className="text-[11px] text-red-500 mt-1">
-                        {errors.expectedEndDate.message}
+                        {t(errors.expectedEndDate.message as any)}
                       </p>
                     )}
                   </div>
@@ -531,7 +578,10 @@ export function RentFormDialog({
                     htmlFor="isOpenContract"
                     className="text-xs text-gray-700 dark:text-slate-300 cursor-pointer"
                   >
-                    Open Contract (no fixed end date)
+                    {t(
+                      'form.open_contract_hint',
+                      'Open Contract (no fixed end date)',
+                    )}
                   </Label>
                 </div>
               </section>
@@ -546,10 +596,10 @@ export function RentFormDialog({
                 <div className="mb-3 flex items-center gap-2">
                   <Camera className="h-4 w-4 text-purple-500" />
                   <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                    Car Images
+                    {t('form.car_images', 'Car Images')}
                   </h3>
                   <Badge variant="outline" className="text-[10px]">
-                    Optional
+                    {t('form.optional', 'Optional')}
                   </Badge>
                 </div>
                 <CarImageUpload
@@ -570,11 +620,11 @@ export function RentFormDialog({
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                  Financial Details
+                  {t('form.financial_details', 'Financial Details')}
                 </h3>
                 {totalPrice != null && totalPrice > 0 && (
                   <Badge className="text-[11px] font-semibold">
-                    {totalPrice.toLocaleString()} DHS
+                    {totalPrice.toLocaleString('en-US')} {t('currency', 'DHS')}
                   </Badge>
                 )}
               </div>
@@ -582,12 +632,12 @@ export function RentFormDialog({
               <div className="space-y-3">
                 <div>
                   <Label className="text-xs text-gray-600 dark:text-slate-300">
-                    Total Price (DHS)
+                    {t('form.total_price', 'Total Price (DHS)')}
                   </Label>
                   <Input
                     type="number"
                     {...register('totalPrice', { valueAsNumber: true })}
-                    placeholder="Auto"
+                    placeholder={t('form.auto', 'Auto')}
                     className={`
                       mt-1 h-9 rounded-lg text-sm
                       border border-gray-200 dark:border-slate-700
@@ -598,7 +648,7 @@ export function RentFormDialog({
                   />
                   {errors.totalPrice && (
                     <p className="text-[11px] text-red-500 mt-1">
-                      {errors.totalPrice.message}
+                      {t(errors.totalPrice.message as any)}
                     </p>
                   )}
                 </div>
@@ -606,7 +656,7 @@ export function RentFormDialog({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs text-gray-600 dark:text-slate-300">
-                      Deposit *
+                      {t('form.deposit_required', 'Deposit *')}
                     </Label>
                     <Input
                       type="number"
@@ -614,11 +664,16 @@ export function RentFormDialog({
                       placeholder="0"
                       className="mt-1 h-9 rounded-lg text-sm border-gray-200 dark:border-slate-700"
                     />
+                    {errors.deposit && (
+                      <p className="text-[11px] text-red-500 mt-1">
+                        {t(errors.deposit.message as any)}
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <Label className="text-xs text-gray-600 dark:text-slate-300">
-                      Guarantee
+                      {t('form.guarantee', 'Guarantee')}
                     </Label>
                     <Input
                       type="number"
@@ -626,12 +681,17 @@ export function RentFormDialog({
                       placeholder="0"
                       className="mt-1 h-9 rounded-lg text-sm border-gray-200 dark:border-slate-700"
                     />
+                    {errors.guarantee && (
+                      <p className="text-[11px] text-red-500 mt-1">
+                        {t(errors.guarantee.message as any)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <Label className="text-xs text-gray-600 dark:text-slate-300">
-                    Total Paid (DHS)
+                    {t('form.total_paid', 'Total Paid (DHS)')}
                   </Label>
                   <Input
                     type="number"
@@ -647,7 +707,7 @@ export function RentFormDialog({
                   />
                   {errors.totalPaid && (
                     <p className="text-[11px] text-red-500 mt-1">
-                      {errors.totalPaid.message}
+                      {t(errors.totalPaid.message as any)}
                     </p>
                   )}
                 </div>
@@ -673,7 +733,7 @@ export function RentFormDialog({
                     htmlFor="isFullyPaid"
                     className="text-xs text-gray-700 dark:text-slate-300"
                   >
-                    Mark as fully paid
+                    {t('form.mark_fully_paid', 'Mark as fully paid')}
                   </Label>
                 </div>
               </div>
@@ -684,17 +744,18 @@ export function RentFormDialog({
                   disabled={isSubmitting}
                   onClick={handleSubmit(onSubmit)}
                   variant="default"
+                  className="w-full pr-5"
                 >
                   {isSubmitting ? (
                     <>
                       <Loader className="animate-spin mr-2 h-4 w-4" />
-                      Creating
+                      {t('form.creating', 'Creating')}
                       <Loader />
                     </>
                   ) : (
                     <>
                       <Check className="mr-2 h-4 w-4" />
-                      Create Rental Contract
+                      {t('form.create_cta', 'Create Rental Contract')}
                     </>
                   )}
                 </Button>
@@ -706,7 +767,7 @@ export function RentFormDialog({
                   disabled={isSubmitting}
                   className="w-full"
                 >
-                  Cancel
+                  {t('form.cancel', 'Cancel')}
                 </Button>
 
                 <div className="pt-1">
@@ -716,7 +777,10 @@ export function RentFormDialog({
                       className="text-amber-800 dark:text-amber-300"
                     />
                     <p className="text-[10px] text-amber-800 dark:text-amber-300">
-                      Blacklisted customers are hidden from selection.
+                      {t(
+                        'form.blacklist_hint',
+                        'Blacklisted customers are hidden from selection.',
+                      )}
                     </p>
                   </div>
                 </div>

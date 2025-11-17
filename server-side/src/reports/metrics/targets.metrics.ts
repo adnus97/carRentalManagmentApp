@@ -38,85 +38,53 @@ export class TargetsMetrics {
         `Calculating actuals for target ${t.id} (${t.startDate} to ${t.endDate})`,
       );
 
-      // ✅ Calculate proportional revenue for overlapping rentals
+      // Normalize timestamps to calendar days
+      const rentStartDay = sql`date_trunc('day', ${rents.startDate}::timestamp)`;
+      const rentEndDay = sql`date_trunc('day', COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})::timestamp)`;
+      const targetStartDay = sql`date_trunc('day', ${t.startDate}::timestamp)`;
+      const targetEndDay = sql`date_trunc('day', ${t.endDate}::timestamp)`;
+
+      // Overlapped days inside target (inclusive +1)
+      const overlapDays = sql<number>`
+  GREATEST(
+    0,
+    DATE_PART('day', LEAST(${targetEndDay}, ${rentEndDay}) - GREATEST(${targetStartDay}, ${rentStartDay})) + 1
+  )
+`;
+
+      // Accrued revenue = cars.pricePerDay × overlapDays
       const actuals = await db
         .select({
           revenue: sql<number>`
-            COALESCE(
-              SUM(
-                CASE 
-                  WHEN ${rents.totalPaid} > 0 THEN
-                    ${rents.totalPaid} * (
-                      -- Calculate overlap days
-                      GREATEST(0, 
-                        LEAST(
-                          EXTRACT(epoch FROM ${t.endDate}::timestamp) / 86400,
-                          EXTRACT(epoch FROM COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})::timestamp) / 86400
-                        ) - 
-                        GREATEST(
-                          EXTRACT(epoch FROM ${t.startDate}::timestamp) / 86400,
-                          EXTRACT(epoch FROM ${rents.startDate}::timestamp) / 86400
-                        ) + 1
-                      ) / 
-                      -- Calculate total rental days (minimum 1 to avoid division by zero)
-                      GREATEST(1,
-                        EXTRACT(epoch FROM COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})::timestamp) / 86400 - 
-                        EXTRACT(epoch FROM ${rents.startDate}::timestamp) / 86400 + 1
-                      )
-                    )
-                  ELSE 0
-                END
-              ), 
-              0
-            )
-          `,
+      COALESCE(
+        SUM( (${cars.pricePerDay}::numeric) * ${overlapDays}::numeric ),
+        0
+      )
+    `,
           rentsCount: sql<number>`COUNT(*)`,
-          // ✅ Debug info - you can remove this later
-          debugInfo: sql<string>`
-            STRING_AGG(
-              'Rent: ' || ${rents.id} || 
-              ' | Total: ' || ${rents.totalPaid} ||
-              ' | Start: ' || ${rents.startDate} ||
-              ' | End: ' || COALESCE(${rents.returnedAt}::text, ${rents.expectedEndDate}::text) ||
-              ' | Overlap Days: ' || GREATEST(0, 
-                LEAST(
-                  EXTRACT(epoch FROM ${t.endDate}::timestamp) / 86400,
-                  EXTRACT(epoch FROM COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})::timestamp) / 86400
-                ) - 
-                GREATEST(
-                  EXTRACT(epoch FROM ${t.startDate}::timestamp) / 86400,
-                  EXTRACT(epoch FROM ${rents.startDate}::timestamp) / 86400
-                ) + 1
-              ) ||
-              ' | Total Days: ' || GREATEST(1,
-                EXTRACT(epoch FROM COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})::timestamp) / 86400 - 
-                EXTRACT(epoch FROM ${rents.startDate}::timestamp) / 86400 + 1
-              ),
-              ' || '
-            )
-          `,
         })
         .from(rents)
+        .leftJoin(cars, eq(rents.carId, cars.id)) // needed to read pricePerDay
         .where(
           and(
             eq(rents.orgId, orgId),
             eq(rents.carId, t.carId),
             sql`${rents.isDeleted} = false`,
-            // ✅ Overlap logic: rent overlaps with target period
+            // overlap with target period
             sql`${rents.startDate} <= ${t.endDate}`,
             sql`(
-              ${rents.returnedAt} >= ${t.startDate} 
-              OR ${rents.expectedEndDate} >= ${t.startDate} 
-              OR ${rents.status} IN ('active', 'reserved') 
-              OR ${rents.isOpenContract} = true
-            )`,
+        ${rents.returnedAt} >= ${t.startDate}
+        OR ${rents.expectedEndDate} >= ${t.startDate}
+        OR ${rents.status} IN ('active', 'reserved')
+        OR ${rents.isOpenContract} = true
+      )`,
           ),
         );
 
       results.push({
         ...t,
-        targetRevenue: t.revenueGoal,
-        actualRevenue: Math.round(actuals[0]?.revenue ?? 0), // Round to avoid decimals
+        targetRevenue: t.revenueGoal, // your goal
+        actualRevenue: Math.round(actuals[0]?.revenue ?? 0), // exact earned
         actualRents: actuals[0]?.rentsCount ?? 0,
       });
     }

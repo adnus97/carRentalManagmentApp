@@ -1,0 +1,61 @@
+{
+  "trigger": {
+    "aria": "Open notifications",
+    "title": "Notifications"
+  },
+  "badge": {
+    "unread_count": "{{count}} unread"
+  },
+  "header": {
+    "title": "Notifications",
+    "unread": "{{count}} unread"
+  },
+  "action": {
+    "refresh": "Refresh notifications",
+    "mark_all_read": "Mark all read",
+    "dismiss": "Dismiss",
+    "view_details": "View details"
+  },
+  "filters": {
+    "title": "Filter options",
+    "toggle": "Filter options",
+    "category": "Category",
+    "category_placeholder": "All categories",
+    "category_all": "All categories",
+    "priority": "Priority",
+    "priority_placeholder": "All priorities",
+    "priority_all": "All priorities",
+    "unread_only": "Unread only",
+    "clear": "Clear filters"
+  },
+  "categories": {
+    "rentals": "Rentals",
+    "payments": "Payments",
+    "customers": "Customers",
+    "cars": "Cars",
+    "maintenance": "Maintenance",
+    "financial": "Financial"
+  },
+  "priority": {
+    "urgent": "Urgent",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "loading": {
+    "loading": "Loading notifications...",
+    "refreshing": "Refreshing notifications..."
+  },
+  "empty": {
+    "title": "No notifications found",
+    "subtitle": "You're all caught up! 🎉"
+  },
+  "footer": {
+    "showing": "Showing {{count}} of {{total}} notifications"
+  },
+  "summary": {
+    "by_category": "By Category",
+    "by_priority": "By Priority",
+    "total": "Total: {{count}} notifications"
+  }
+}

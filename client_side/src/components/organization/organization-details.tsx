@@ -8,12 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';
 import { UpdateOrganizationForm } from './update-organization-form';
 import { getOrganizationByUser, Organization } from '@/api/organization';
-import {
-  getFileServeUrl,
-  getFileDownloadUrl,
-  viewFile,
-  downloadFile,
-} from '@/api/files';
+import { getFileServeUrl, viewFile, downloadFile } from '@/api/files';
 import {
   FileText,
   Download,
@@ -25,6 +20,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useUser } from '@/contexts/user-context';
+import { useTranslation } from 'react-i18next';
 
 type DocType = 'pdf' | 'image';
 
@@ -34,7 +30,6 @@ interface OrganizationDocument {
   type: DocType;
 }
 
-// Fixed fallback component for broken images
 const ImageFallback = ({ name }: { name: string }) => (
   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
     {name?.charAt(0).toUpperCase() || '?'}
@@ -42,6 +37,7 @@ const ImageFallback = ({ name }: { name: string }) => (
 );
 
 export function OrganizationDetails() {
+  const { t } = useTranslation('organization');
   const [editMode, setEditMode] = useState(false);
   const { user } = useUser();
 
@@ -52,10 +48,10 @@ export function OrganizationDetails() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-16">
-        <Card className="p-10 text-center">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-10 sm:py-14">
+        <Card className="p-6 sm:p-8 text-center">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mx-auto"></div>
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto"></div>
             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto"></div>
           </div>
         </Card>
@@ -65,14 +61,14 @@ export function OrganizationDetails() {
 
   if (isError || !data || data.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-16">
-        <Card className="p-10 text-center">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-10 sm:py-14">
+        <Card className="p-6 sm:p-8 text-center">
           <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-            No Organization Found
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            {t('org.empty_title', 'No Organization Found')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            You haven't created an organization yet.
+            {t('org.empty_desc', "You haven't created an organization yet.")}
           </p>
         </Card>
       </div>
@@ -81,45 +77,44 @@ export function OrganizationDetails() {
 
   const organization = data[0];
 
-  // All documents with their file IDs
   const documents: OrganizationDocument[] = [
     {
-      label: 'RC (Registre de Commerce)',
+      label: t('org.docs.rc', 'RC (Registre de Commerce)'),
       fileId: organization?.rcFileId,
       type: 'pdf',
     },
     {
-      label: 'Status',
+      label: t('org.docs.status', 'Status'),
       fileId: organization?.statusFileId,
       type: 'pdf',
     },
     {
-      label: 'Decision',
+      label: t('org.docs.decision', 'Decision'),
       fileId: organization?.decisionFileId,
       type: 'pdf',
     },
     {
-      label: 'CEO ID Card',
+      label: t('org.docs.ceo_id', 'CEO ID Card'),
       fileId: organization?.ceoIdCardFileId,
       type: 'image',
     },
     {
-      label: 'Fleet List',
+      label: t('org.docs.fleet', 'Fleet List'),
       fileId: organization?.fleetListFileId,
       type: 'pdf',
     },
     {
-      label: 'Model G',
+      label: t('org.docs.model_g', 'Model G'),
       fileId: organization?.modelGFileId,
       type: 'pdf',
     },
     {
-      label: 'Identifiant Fiscale',
+      label: t('org.docs.tax_id', 'Identifiant Fiscale'),
       fileId: organization?.identifiantFiscaleFileId,
       type: 'pdf',
     },
     {
-      label: 'Bilan',
+      label: t('org.docs.bilan', 'Bilan'),
       fileId: organization?.bilanFileId,
       type: 'pdf',
     },
@@ -128,26 +123,45 @@ export function OrganizationDetails() {
   const handleView = (fileId?: string, label?: string) => {
     if (!fileId) {
       toast({
-        title: 'Document not available',
+        title: t(
+          'client_details.doc.not_available_title',
+          'Document not available',
+        ),
         type: 'error',
-        description: `${label || 'Document'} has not been uploaded yet.`,
+        description: t(
+          'client_details.doc.not_available_desc',
+          '{{title}} has not been uploaded yet.',
+          {
+            title: label || t('org.document', 'Document'),
+          },
+        ),
       });
       return;
     }
-
     try {
       viewFile(fileId);
       toast({
-        title: 'Opening document',
+        title: t('client_details.doc.opening_title', 'Opening document'),
         type: 'success',
-        description: `Opening ${label || 'document'}...`,
+        description: t(
+          'client_details.doc.opening_desc',
+          'Opening {{title}}...',
+          {
+            title: label || t('org.document', 'document'),
+          },
+        ),
       });
     } catch (error) {
-      console.error('Error viewing file:', error);
       toast({
-        title: 'Error loading file',
+        title: t('client_details.doc.error_title', 'Error loading file'),
         type: 'error',
-        description: `Could not load ${label || 'document'}. Please try again.`,
+        description: t(
+          'client_details.doc.error_desc',
+          'Could not load {{title}}. Please try again.',
+          {
+            title: label || t('org.document', 'document'),
+          },
+        ),
       });
     }
   };
@@ -155,33 +169,55 @@ export function OrganizationDetails() {
   const handleDownload = (fileId?: string, label?: string) => {
     if (!fileId) {
       toast({
-        title: 'Document not available',
+        title: t(
+          'client_details.doc.not_available_title',
+          'Document not available',
+        ),
         type: 'error',
-        description: `${label || 'Document'} has not been uploaded yet.`,
+        description: t(
+          'client_details.doc.not_available_desc',
+          '{{title}} has not been uploaded yet.',
+          {
+            title: label || t('org.document', 'Document'),
+          },
+        ),
       });
       return;
     }
-
     try {
       downloadFile(fileId, label);
       toast({
-        title: 'Downloading...',
+        title: t('client_details.doc.downloading_title', 'Downloading...'),
         type: 'success',
-        description: `Downloading ${label || 'document'}...`,
+        description: t(
+          'client_details.doc.downloading_desc',
+          'Downloading {{title}}...',
+          {
+            title: label || t('org.document', 'document'),
+          },
+        ),
       });
     } catch (error) {
-      console.error('Error downloading file:', error);
       toast({
-        title: 'Error downloading file',
+        title: t(
+          'client_details.doc.error_download_title',
+          'Error downloading file',
+        ),
         type: 'error',
-        description: `Could not download ${label || 'document'}. Please try again.`,
+        description: t(
+          'client_details.doc.error_download_desc',
+          'Could not download {{title}}. Please try again.',
+          {
+            title: label || t('org.document', 'document'),
+          },
+        ),
       });
     }
   };
 
   if (editMode) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8">
         <UpdateOrganizationForm
           organization={organization}
           onCancel={() => setEditMode(false)}
@@ -192,20 +228,20 @@ export function OrganizationDetails() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-10 space-y-8">
+    <div className="container mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-10 space-y-6 sm:space-y-8">
       {/* Header Card */}
       <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm dark:border-border dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900 dark:text-gray-100 dark:shadow-lg">
         <div className="pointer-events-none absolute -right-16 -top-16 hidden h-48 w-48 rounded-full bg-red-500/10 blur-3xl dark:block" />
         <div className="pointer-events-none absolute -left-20 -bottom-20 hidden h-56 w-56 rounded-full bg-amber-400/10 blur-3xl dark:block" />
 
-        <div className="relative p-6 md:p-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl border bg-white overflow-hidden flex items-center justify-center dark:bg-gray-950">
+        <div className="relative p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl border bg-white overflow-hidden flex items-center justify-center dark:bg-gray-950">
                 {organization?.imageFileId ? (
                   <img
                     src={getFileServeUrl(organization.imageFileId)}
-                    alt={`${organization?.name || 'Organization'} logo`}
+                    alt={`${organization?.name || t('org.org', 'Organization')} logo`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -227,27 +263,32 @@ export function OrganizationDetails() {
                 )}
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-semibold leading-tight">
-                  {organization?.name || 'Organization'}
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold leading-tight break-words">
+                  {organization?.name || t('org.org', 'Organization')}
                 </h1>
-                <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="mt-1 flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <CalendarClock className="w-4 h-4" />
                     <span>
-                      Created{' '}
+                      {t('org.created', 'Created')}{' '}
                       {organization?.createdAt
                         ? new Date(organization.createdAt).toLocaleDateString()
-                        : 'Unknown'}
+                        : t('org.unknown', 'Unknown')}
                     </span>
                   </div>
-                  {organization?.email && <span>{organization.email}</span>}
+                  {organization?.email && (
+                    <span className="truncate">{organization.email}</span>
+                  )}
                 </div>
               </div>
             </div>
 
-            <Button onClick={() => setEditMode(true)} className="gap-2">
+            <Button
+              onClick={() => setEditMode(true)}
+              className="gap-2 w-full sm:w-auto"
+            >
               <Edit className="w-4 h-4" />
-              Edit Organization
+              {t('org.edit_btn', 'Edit Organization')}
             </Button>
           </div>
         </div>
@@ -258,18 +299,18 @@ export function OrganizationDetails() {
         organization?.phone ||
         organization?.address) && (
         <Card className="border-gray-200 dark:border-border">
-          <CardContent className="p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <CardContent className="p-4 sm:p-6">
+            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
               <Building2 className="w-5 h-5" />
-              Organization Details
+              {t('org.details.title', 'Organization Details')}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {organization?.website && (
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Website
+                  <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                    {t('org.details.website', 'Website')}
                   </label>
-                  <p className="mt-1">
+                  <p className="mt-1 break-words">
                     <a
                       href={organization.website}
                       target="_blank"
@@ -283,18 +324,18 @@ export function OrganizationDetails() {
               )}
               {organization?.phone && (
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Phone
+                  <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                    {t('org.details.phone', 'Phone')}
                   </label>
                   <p className="mt-1">{organization.phone}</p>
                 </div>
               )}
               {organization?.address && (
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Address
+                  <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                    {t('org.details.address', 'Address')}
                   </label>
-                  <p className="mt-1">{organization.address}</p>
+                  <p className="mt-1 break-words">{organization.address}</p>
                 </div>
               )}
             </div>
@@ -304,37 +345,44 @@ export function OrganizationDetails() {
 
       {/* Legal Documents */}
       <Card className="border-gray-200 dark:border-border">
-        <div className="px-6 pt-6">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <span className="text-xl">⚖️</span> Legal Documents
+        <div className="px-4 sm:px-6 pt-4 sm:pt-6">
+          <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+            <span className="text-xl">⚖️</span>{' '}
+            {t('org.docs.title', 'Legal Documents')}
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            All organization documents consolidated here.
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            {t(
+              'org.docs.subtitle',
+              'All organization documents consolidated here.',
+            )}
           </p>
         </div>
 
-        <CardContent className="pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="pt-3 sm:pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {documents.map((doc, index) => (
               <div
                 key={index}
-                className="border rounded-lg p-4 hover:shadow-sm transition bg-gray-50/60 dark:bg-gray-900/40 dark:border-gray-800"
+                className="border rounded-lg p-3 sm:p-4 hover:shadow-sm transition bg-gray-50/60 dark:bg-gray-900/40 dark:border-gray-800"
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <h3 className="font-medium text-sm">{doc.label}</h3>
                   <Badge variant={doc.fileId ? 'default' : 'secondary'}>
-                    {doc.fileId ? 'Uploaded' : 'Missing'}
+                    {doc.fileId
+                      ? t('uploader.status.uploaded', 'Uploaded')
+                      : t('org.docs.missing', 'Missing')}
                   </Badge>
                 </div>
 
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-3 sm:mb-4">
                   {doc.type === 'pdf' ? (
-                    <FileText className="w-8 h-8 text-red-500" />
+                    <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-red-500" />
                   ) : (
-                    <ImageIcon className="w-8 h-8 text-blue-500" />
+                    <ImageIcon className="w-7 h-7 sm:w-8 sm:h-8 text-blue-500" />
                   )}
                   <span className="text-xs text-muted-foreground">
-                    {doc.type.toUpperCase()} Document
+                    {doc.type.toUpperCase()}{' '}
+                    {t('org.docs.document', 'Document')}
                   </span>
                 </div>
 
@@ -347,13 +395,15 @@ export function OrganizationDetails() {
                     disabled={!doc.fileId}
                   >
                     <Eye className="w-3 h-3 mr-1" />
-                    View
+                    {t('org.docs.view', 'View')}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleDownload(doc.fileId, doc.label)}
                     disabled={!doc.fileId}
+                    aria-label={t('org.docs.download', 'Download')}
+                    title={t('org.docs.download', 'Download')}
                   >
                     <Download className="w-3 h-3" />
                   </Button>

@@ -44,9 +44,10 @@ import {
 import { useRouter } from '@tanstack/react-router';
 import { BlacklistDialog } from './blacklist-dialog';
 import { EditClientDialog } from './edit-client-form';
-import BlacklistModal from './modals/BlacklistModal'; // Import our new component
+import BlacklistModal from './modals/BlacklistModal';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { useTranslation } from 'react-i18next';
 
 ModuleRegistry.registerModules([
   RowSelectionModule,
@@ -57,6 +58,8 @@ ModuleRegistry.registerModules([
 ]);
 
 export const ClientsGrid = () => {
+  const { t } = useTranslation('client');
+
   const [selectedRows, setSelectedRows] = useState<Customer[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [page, setPage] = useState(1);
@@ -87,15 +90,15 @@ export const ClientsGrid = () => {
       queryClient.invalidateQueries({ queryKey: ['customers'], exact: false });
       toast({
         type: 'success',
-        title: 'Success!',
-        description: 'Customer deleted.',
+        title: t('clients.success', 'Success!'),
+        description: t('clients.deleted', 'Customer deleted.'),
       });
     },
     onError: () =>
       toast({
         type: 'error',
-        title: 'Error',
-        description: 'Failed to delete customer',
+        title: t('clients.error', 'Error'),
+        description: t('clients.delete_failed', 'Failed to delete customer'),
       }),
   });
 
@@ -105,8 +108,8 @@ export const ClientsGrid = () => {
       queryClient.invalidateQueries({ queryKey: ['customers'], exact: false });
       toast({
         type: 'success',
-        title: 'Success!',
-        description: 'Customer unblacklisted.',
+        title: t('clients.success', 'Success!'),
+        description: t('clients.unblacklisted', 'Customer unblacklisted.'),
       });
     },
   });
@@ -133,8 +136,11 @@ export const ClientsGrid = () => {
       console.error('Failed to load customer with files:', error);
       toast({
         type: 'error',
-        title: 'Error',
-        description: 'Failed to load customer details for editing',
+        title: t('clients.error', 'Error'),
+        description: t(
+          'clients.load_edit_failed',
+          'Failed to load customer details for editing',
+        ),
       });
     } finally {
       setIsLoadingCustomer(false);
@@ -150,18 +156,28 @@ export const ClientsGrid = () => {
       pinned: 'left',
     },
     {
-      headerName: 'Full Name',
+      headerName: t('clients.columns.full_name', 'Full Name'),
       valueGetter: (params) =>
         `${params.data?.firstName || ''} ${params.data?.lastName || ''}`,
       filter: 'agTextColumnFilter',
       width: 200,
       flex: 1,
     },
-    { field: 'email', headerName: 'Email', width: 220, flex: 1 },
-    { field: 'phone', headerName: 'Phone', width: 150, flex: 1 },
+    {
+      field: 'email',
+      headerName: t('form.labels.email', 'Email'),
+      width: 220,
+      flex: 1,
+    },
+    {
+      field: 'phone',
+      headerName: t('form.labels.phone', 'Phone'),
+      width: 150,
+      flex: 1,
+    },
     {
       field: 'documentId',
-      headerName: 'Document',
+      headerName: t('client_details.document', 'Document'),
       width: 180,
       flex: 1,
       valueGetter: (params) =>
@@ -169,7 +185,7 @@ export const ClientsGrid = () => {
     },
     {
       field: 'rating',
-      headerName: 'Rating',
+      headerName: t('clients.columns.rating', 'Rating'),
       width: 120,
       flex: 1,
       cellRenderer: (params: any) => {
@@ -186,26 +202,26 @@ export const ClientsGrid = () => {
       },
     },
     {
-      headerName: 'Status',
+      headerName: t('client_details.status.label', 'Status'),
       field: 'isBlacklisted',
       width: 150,
       cellRenderer: (params: any) => {
         if (params.value) {
           return (
             <span className="px-2 py-1 rounded text-xs bg-[#EC6142] text-white">
-              Blacklisted
+              {t('client_details.status.blacklisted', 'Blacklisted')}
             </span>
           );
         }
         return (
           <span className="px-2 py-1 rounded text-xs bg-green-600 text-white">
-            Active
+            {t('client_details.status.active', 'Active')}
           </span>
         );
       },
     },
     {
-      headerName: 'Blacklist Reason',
+      headerName: t('blacklist.labels.reason', 'Blacklist Reason'),
       field: 'blacklistReason',
       width: 200,
       flex: 1,
@@ -217,7 +233,7 @@ export const ClientsGrid = () => {
         ),
     },
     {
-      headerName: 'Actions',
+      headerName: t('clients.columns.actions', 'Actions'),
       pinned: 'right',
       width: 150,
       cellRenderer: (params: any) => (
@@ -229,7 +245,7 @@ export const ClientsGrid = () => {
               setEditDialogOpen(true);
             }}
           >
-            <Hammer size={20} /> Edit
+            <Hammer size={20} /> {t('clients.actions.edit', 'Edit')}
           </Button>
         </div>
       ),
@@ -260,7 +276,9 @@ export const ClientsGrid = () => {
     >
       {/* Header Section */}
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-xl font-bold">Clients Dashboard</h2>
+        <h2 className="text-xl font-bold">
+          {t('clients.header.title', 'Clients Dashboard')}
+        </h2>
 
         {/* Blacklist Action Buttons */}
         <div className="flex items-center gap-3">
@@ -273,7 +291,7 @@ export const ClientsGrid = () => {
                 className="flex items-center gap-2 border-orange-200 hover:border-orange-300 hover:bg-orange-50 text-orange-700"
               >
                 <Shield size={16} />
-                My Blacklist
+                {t('blacklist.trigger.org', 'My Blacklist')}
               </Button>
             }
           />
@@ -286,7 +304,7 @@ export const ClientsGrid = () => {
                 className="flex items-center gap-2 border-red-200 hover:border-red-300 hover:bg-red-50 text-red-700"
               >
                 <ShieldWarning size={16} />
-                Global Blacklist
+                {t('blacklist.trigger.global', 'Global Blacklist')}
               </Button>
             }
           />
@@ -295,11 +313,12 @@ export const ClientsGrid = () => {
 
       {/* Stats Bar */}
       <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
-        <span>Manage your clients below:</span>
+        <span>{t('clients.manage_hint', 'Manage your clients below:')}</span>
         <Separator orientation="vertical" className="h-4" />
         <div className="flex items-center gap-2">
           <span>
-            Total: <Badge variant="outline">{totalCount}</Badge>
+            {t('clients.total', 'Total')}:{' '}
+            <Badge variant="outline">{totalCount}</Badge>
           </span>
         </div>
         {blacklistedCount > 0 && (
@@ -307,7 +326,7 @@ export const ClientsGrid = () => {
             <Separator orientation="vertical" className="h-4" />
             <div className="flex items-center gap-2">
               <span>
-                Blacklisted:{' '}
+                {t('clients.blacklisted', 'Blacklisted')}:{' '}
                 <Badge variant="destructive" className="bg-[#EC6142]">
                   {blacklistedCount}
                 </Badge>
@@ -321,8 +340,9 @@ export const ClientsGrid = () => {
       {selectedRows.length > 0 && (
         <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
           <span className="text-sm font-medium">
-            {selectedRows.length} customer{selectedRows.length > 1 ? 's' : ''}{' '}
-            selected
+            {selectedRows.length} {t('clients.selection.customer', 'customer')}
+            {selectedRows.length > 1 ? 's' : ''}{' '}
+            {t('clients.selection.selected', 'selected')}
           </span>
           <Separator orientation="vertical" className="h-4" />
 
@@ -338,7 +358,7 @@ export const ClientsGrid = () => {
                   })
                 }
               >
-                <Eye size={16} /> View
+                <Eye size={16} /> {t('clients.actions.view', 'View')}
               </Button>
 
               {selectedRows[0].isBlacklisted ? (
@@ -348,7 +368,8 @@ export const ClientsGrid = () => {
                   onClick={() => unblacklistMutation.mutate(selectedRows[0].id)}
                   className="border-green-200 hover:border-green-300 text-green-700"
                 >
-                  <Prohibit size={16} /> Unblacklist
+                  <Prohibit size={16} />{' '}
+                  {t('clients.actions.unblacklist', 'Unblacklist')}
                 </Button>
               ) : (
                 <BlacklistDialog customerId={selectedRows[0].id} />
@@ -362,7 +383,10 @@ export const ClientsGrid = () => {
             className="ml-auto flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
             onClick={() => setShowDeleteDialog(true)}
           >
-            <Trash size={16} /> Delete ({selectedRows.length})
+            <Trash size={16} />{' '}
+            {t('clients.actions.delete_count', 'Delete ({count})', {
+              count: selectedRows.length,
+            })}
           </Button>
         </div>
       )}
@@ -373,7 +397,9 @@ export const ClientsGrid = () => {
           <div className="flex items-center justify-center h-full">
             <div className="flex flex-col items-center gap-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-              <p className="text-white text-center">Loading customers...</p>
+              <p className="text-white text-center">
+                {t('clients.loading', 'Loading customers...')}
+              </p>
             </div>
           </div>
         ) : (
@@ -398,6 +424,7 @@ export const ClientsGrid = () => {
               <PaginationPrevious
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 aria-disabled={page === 1}
+                aria-label={t('client_rentals.prev_page', 'Previous page')}
               />
             </PaginationItem>
             {getPageNumbers().map((p, idx, arr) => (
@@ -411,6 +438,13 @@ export const ClientsGrid = () => {
                   <PaginationLink
                     isActive={p === page}
                     onClick={() => setPage(p)}
+                    aria-label={t(
+                      'client_rentals.goto_page',
+                      'Go to page {{p}}',
+                      {
+                        p,
+                      },
+                    )}
                   >
                     {p}
                   </PaginationLink>
@@ -421,6 +455,7 @@ export const ClientsGrid = () => {
               <PaginationNext
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 aria-disabled={page === totalPages}
+                aria-label={t('client_rentals.next_page', 'Next page')}
               />
             </PaginationItem>
           </PaginationContent>
@@ -445,24 +480,50 @@ export const ClientsGrid = () => {
         onConfirm={handleDelete}
         title={
           selectedRows.length === 1
-            ? 'Delete Customer'
-            : `Delete ${selectedRows.length} Customers`
+            ? t('clients.confirm.delete_title_one', 'Delete Customer')
+            : t(
+                'clients.confirm.delete_title_many',
+                'Delete {{count}} Customers',
+                {
+                  count: selectedRows.length,
+                },
+              )
         }
         description={
           selectedRows.length === 1
-            ? `Are you sure you want to delete "${selectedRows[0].firstName} ${selectedRows[0].lastName}"?`
+            ? t(
+                'clients.confirm.delete_desc_one',
+                'Are you sure you want to delete "{{name}}"?',
+                {
+                  name: `${selectedRows[0].firstName} ${selectedRows[0].lastName}`,
+                },
+              )
             : selectedRows.length <= 5
-              ? `Are you sure you want to delete these ${selectedRows.length} customers: 
-       ${selectedRows.map((c) => `${c.firstName} ${c.lastName}`).join(', ')}?`
-              : `Are you sure you want to delete ${selectedRows.length} customers? 
-       ${selectedRows
-         .slice(0, 3)
-         .map((c) => `${c.firstName} ${c.lastName}`)
-         .join(', ')}...`
+              ? t(
+                  'clients.confirm.delete_desc_few',
+                  'Are you sure you want to delete these {{count}} customers: {{list}}?',
+                  {
+                    count: selectedRows.length,
+                    list: selectedRows
+                      .map((c) => `${c.firstName} ${c.lastName}`)
+                      .join(', '),
+                  },
+                )
+              : t(
+                  'clients.confirm.delete_desc_many',
+                  'Are you sure you want to delete {{count}} customers? {{list}}...',
+                  {
+                    count: selectedRows.length,
+                    list: selectedRows
+                      .slice(0, 3)
+                      .map((c) => `${c.firstName} ${c.lastName}`)
+                      .join(', '),
+                  },
+                )
         }
-        confirmText="Delete"
-        cancelText="Cancel"
-        loadingText="Deleting..."
+        confirmText={t('clients.actions.delete', 'Delete')}
+        cancelText={t('clients.actions.cancel', 'Cancel')}
+        loadingText={t('clients.actions.deleting', 'Deleting...')}
         variant="destructive"
       />
     </div>

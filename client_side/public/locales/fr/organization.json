@@ -1,0 +1,81 @@
+{
+  "org": {
+    "org": "Organisation",
+    "document": "document",
+    "created": "Créée le",
+    "unknown": "Inconnu",
+    "edit_btn": "Modifier l’organisation",
+    "empty_title": "Aucune organisation trouvée",
+    "empty_desc": "Vous n’avez pas encore créé d’organisation.",
+    "details": {
+      "title": "Détails de l’organisation",
+      "website": "Site web",
+      "phone": "Tél",
+      "address": "Adresse"
+    },
+    "docs": {
+      "title": "Documents légaux",
+      "subtitle": "Tous les documents de l’organisation sont regroupés ici.",
+      "document": "Document",
+      "view": "Voir",
+      "download": "Télécharger",
+      "missing": "Manquant",
+      "rc": "RC (Registre de commerce)",
+      "status": "Statuts",
+      "decision": "Décision",
+      "ceo_id": "CIN du gérant",
+      "fleet": "Liste du parc",
+      "model_g": "Modèle G",
+      "tax_id": "Identifiant fiscal",
+      "bilan": "Bilan"
+    },
+    "create": {
+      "title": "Créer une organisation",
+      "subtitle": "Renseignez les informations de base et, si vous le souhaitez, téléversez les documents maintenant.",
+      "creating": "Création…",
+      "create": "Créer",
+      "success_title": "Organisation créée",
+      "success_desc": "Votre organisation a été créée avec succès.",
+      "error_title": "Échec de la création",
+      "error_desc": "Veuillez vérifier les champs et réessayer."
+    },
+    "form": {
+      "name": "Nom de l’organisation",
+      "name_ph": "Nom de votre société",
+      "website_ph": "https://societe.com",
+      "phone_ph": "+1 555 0100",
+      "address_ph": "123 rue du Marché, Ville, Pays",
+      "docs_hint": "Vous pouvez les téléverser maintenant ou plus tard depuis la page de l’organisation.",
+      "rc_desc": "Extrait du registre de commerce (PDF).",
+      "status_desc": "Statuts de la société (PDF).",
+      "decision_desc": "Décision de la société (PDF).",
+      "ceo_id_desc": "Photo/scan clair de la CIN du gérant.",
+      "fleet_desc": "Inventaire complet du parc (PDF).",
+      "model_g_desc": "Document Modèle G (PDF).",
+      "tax_id_desc": "Identifiant fiscal (PDF).",
+      "bilan_desc": "Bilan financier (PDF).",
+      "errors": {
+        "name_short": "Le nom de l’organisation est trop court"
+      }
+    },
+    "logo": {
+      "title": "Logo de l’organisation",
+      "subtitle": "PNG, JPG, WEBP. Les images carrées donnent le meilleur rendu.",
+      "alt": "Logo",
+      "upload_success": "Logo de l’organisation téléversé avec succès..",
+      "upload_error": "Échec du téléversement de l’image. Veuillez réessayer.",
+      "choose": "Choisir une image"
+    },
+    "update": {
+      "title": "Modifier l’organisation",
+      "subtitle": "Mettre à jour les informations et les documents légaux",
+      "saving": "Enregistrement…",
+      "save_changes": "Enregistrer les modifications",
+      "saved": "Enregistré",
+      "success_desc": "Organisation mise à jour avec succès.",
+      "error_title": "Échec de la mise à jour",
+      "error_desc": "Veuillez vérifier les champs et réessayer.",
+      "docs_subtitle": "Tous les documents requis sont regroupés ici."
+    }
+  }
+}

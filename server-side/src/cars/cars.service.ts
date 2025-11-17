@@ -778,47 +778,37 @@ export class CarsService {
 
         // Prorated revenue (correlated subquery)
         actualRevenue: sql<number>`
-      (
-        SELECT COALESCE(
-          SUM(
-            CASE
-              WHEN r.total_paid > 0 THEN
-                r.total_paid::numeric *
-                (
-                  GREATEST(
-                    0::numeric,
-                    LEAST(
-                      EXTRACT(EPOCH FROM ${carMonthlyTargets.endDate}) / 86400.0,
-                      EXTRACT(EPOCH FROM COALESCE(r.returned_at, r.expected_end_date, r.start_date)) / 86400.0
-                    )
-                    -
-                    GREATEST(
-                      EXTRACT(EPOCH FROM ${carMonthlyTargets.startDate}) / 86400.0,
-                      EXTRACT(EPOCH FROM r.start_date) / 86400.0
-                    )
-                    + 1
-                  )
-                  /
-                  GREATEST(
-                    1::numeric,
-                    EXTRACT(EPOCH FROM COALESCE(r.returned_at, r.expected_end_date, r.start_date)) / 86400.0
-                    - EXTRACT(EPOCH FROM r.start_date) / 86400.0
-                    + 1
-                  )
-                )
-              ELSE 0
-            END
-          ),
-          0
-        )::numeric(12,2)
-        FROM ${rents} r
-        WHERE r.car_id = ${carId}
-          AND r.is_deleted = false
-          AND r.status <> 'canceled'
-          AND r.start_date <= ${carMonthlyTargets.endDate}
-          AND COALESCE(r.returned_at, r.expected_end_date, r.start_date) >= ${carMonthlyTargets.startDate}
-      )
-    `,
+(
+  SELECT COALESCE(
+    SUM(
+      -- cars.pricePerDay × overlapDays (inclusive +1, normalized to days)
+      (${cars.pricePerDay}::numeric) *
+      GREATEST(
+        0,
+        DATE_PART(
+          'day',
+          LEAST(
+            date_trunc('day', ${carMonthlyTargets.endDate}::timestamp),
+            date_trunc('day', COALESCE(r.returned_at, r.expected_end_date, r.start_date)::timestamp)
+          ) - GREATEST(
+            date_trunc('day', ${carMonthlyTargets.startDate}::timestamp),
+            date_trunc('day', r.start_date::timestamp)
+          )
+        ) + 1
+      )::numeric
+    ),
+    0
+  )::numeric(12,2)
+  FROM ${rents} r
+  LEFT JOIN ${cars} c ON c.id = r.car_id
+  WHERE r.car_id = ${carId}
+    AND r.is_deleted = false
+    AND r.status <> 'canceled'
+    -- overlap with target window
+    AND r.start_date <= ${carMonthlyTargets.endDate}
+    AND COALESCE(r.returned_at, r.expected_end_date, r.start_date) >= ${carMonthlyTargets.startDate}
+)
+`,
       })
       .from(carMonthlyTargets)
       .where(eq(carMonthlyTargets.carId, carId))
@@ -1145,51 +1135,46 @@ export class CarsService {
     const [actuals] = await this.dbService.db
       .select({
         revenue: sql<number>`
-        COALESCE(
-          SUM(
-            CASE 
-              WHEN ${rents.totalPaid} > 0 THEN
-                ${rents.totalPaid} * (
-                  GREATEST(0, 
-                    LEAST(
-                      EXTRACT(epoch FROM ${t.endDate}::timestamp) / 86400.0,
-                      EXTRACT(epoch FROM COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})::timestamp) / 86400.0
-                    ) - 
-                    GREATEST(
-                      EXTRACT(epoch FROM ${t.startDate}::timestamp) / 86400.0,
-                      EXTRACT(epoch FROM ${rents.startDate}) / 86400.0
-                    ) + 1
-                  ) / 
-                  GREATEST(1,
-                    EXTRACT(epoch FROM COALESCE(${rents.returnedAt}, ${rents.expectedEndDate})::timestamp) / 86400.0 - 
-                    EXTRACT(epoch FROM ${rents.startDate}) / 86400.0 + 1
-                  )
-                )
-              ELSE 0
-            END
-          ), 
-          0
-        )
-      `,
+      COALESCE(
+        SUM(
+          (${cars.pricePerDay}::numeric) *
+          GREATEST(
+            0,
+            DATE_PART(
+              'day',
+              LEAST(
+                date_trunc('day', ${t.endDate}::timestamp),
+                date_trunc('day', COALESCE(${rents.returnedAt}, ${rents.expectedEndDate}, ${rents.startDate})::timestamp)
+              ) -
+              GREATEST(
+                date_trunc('day', ${t.startDate}::timestamp),
+                date_trunc('day', ${rents.startDate}::timestamp)
+              )
+            ) + 1
+          )::numeric
+        ),
+        0
+      )
+    `,
         rentsCount: sql<number>`COUNT(*)`,
       })
       .from(rents)
+      .leftJoin(cars, eq(rents.carId, cars.id)) // <-- needed for pricePerDay
       .where(
         and(
           eq(rents.orgId, t.orgId),
           eq(rents.carId, t.carId),
           sql`${rents.isDeleted} = false`,
-          // overlap with target
+          // overlap with the target period
           sql`${rents.startDate} <= ${t.endDate}`,
           sql`(
-          ${rents.returnedAt} >= ${t.startDate} 
-          OR ${rents.expectedEndDate} >= ${t.startDate} 
-          OR ${rents.status} IN ('active', 'reserved') 
-          OR ${rents.isOpenContract} = true
-        )`,
+        ${rents.returnedAt} >= ${t.startDate}
+        OR ${rents.expectedEndDate} >= ${t.startDate}
+        OR ${rents.status} IN ('active', 'reserved')
+        OR ${rents.isOpenContract} = true
+      )`,
         ),
       );
-
     // 3) Derive card KPIs
     const now = ref;
     const end = new Date(t.endDate);

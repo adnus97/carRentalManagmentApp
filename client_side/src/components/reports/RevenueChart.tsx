@@ -9,17 +9,7 @@ import {
   ChartTooltip,
 } from '@/components/ui/chart';
 import { format, parseISO } from 'date-fns';
-
-const chartConfig = {
-  revenue: {
-    label: 'Revenue',
-    color: 'var(--accent-6)',
-  },
-  rents: {
-    label: 'Rents',
-    color: 'var(--gray-8)',
-  },
-} satisfies ChartConfig;
+import { useTranslation } from 'react-i18next';
 
 type TrendPoint = { date: string; revenue: number; rents: number };
 
@@ -34,6 +24,19 @@ export function RevenueChart({
   prevTrends = [],
   interval,
 }: RevenueChartProps) {
+  const { t } = useTranslation('reports');
+
+  const chartConfig: ChartConfig = {
+    revenue: {
+      label: t('chart.revenue', 'Revenue'),
+      color: 'var(--accent-6)',
+    },
+    rents: {
+      label: t('chart.rents', 'Rents'),
+      color: 'var(--gray-8)',
+    },
+  };
+
   const safeData = trends || [];
 
   const formatDate = (date: string) => {
@@ -92,9 +95,9 @@ export function RevenueChart({
 
         {/* ✅ Horizontal grid lines only */}
         <CartesianGrid
-          vertical={false} // only horizontal lines
-          stroke="var(--gray-10)" // use your theme color
-          strokeOpacity={0.2} // make them subtle
+          vertical={false}
+          stroke="var(--gray-10)"
+          strokeOpacity={0.2}
         />
 
         <XAxis
@@ -108,7 +111,6 @@ export function RevenueChart({
         />
 
         {/* ✅ Revenue axis (left) */}
-        {/* ✅ Primary axis (no yAxisId) - CartesianGrid will use this */}
         <YAxis
           orientation="left"
           stroke={chartConfig.revenue.color}
@@ -123,7 +125,7 @@ export function RevenueChart({
                 : `${val}`
           }
           label={{
-            value: 'Revenue (DHS)',
+            value: t('chart.axis_revenue', 'Revenue (DHS)'),
             angle: -90,
             position: 'insideLeft',
             fill: 'var(--muted-foreground)',
@@ -131,7 +133,7 @@ export function RevenueChart({
           }}
         />
 
-        {/* ✅ Secondary axis (keep yAxisId) */}
+        {/* ✅ Rents axis (right) */}
         <YAxis
           yAxisId="right"
           orientation="right"
@@ -141,7 +143,7 @@ export function RevenueChart({
           tick={{ fill: 'var(--gray-10)', fontSize: 12 }}
           tickFormatter={(val: any) => val}
           label={{
-            value: 'Rents',
+            value: t('chart.axis_rents', 'Rents'),
             angle: 90,
             position: 'insideRight',
             fill: 'var(--muted-foreground)',
@@ -153,7 +155,7 @@ export function RevenueChart({
         <ChartTooltip
           cursor={false}
           content={(props) => {
-            const { active, payload, label } = props;
+            const { active, payload, label } = props as any;
             if (!active || !payload?.length) return null;
             const row = payload[0].payload as TrendPoint;
             const prev = prevTrends.find((d) => d.date === row.date);
@@ -169,7 +171,9 @@ export function RevenueChart({
                     className="inline-block h-2.5 w-2.5 rounded-full"
                     style={{ backgroundColor: chartConfig.revenue.color }}
                   />
-                  <span className="flex-1">Revenue</span>
+                  <span className="flex-1">
+                    {t('chart.revenue', 'Revenue')}
+                  </span>
                   <span>
                     {new Intl.NumberFormat('en-US').format(row.revenue)} DHS
                   </span>
@@ -179,7 +183,7 @@ export function RevenueChart({
                     className="inline-block h-2.5 w-2.5 rounded-full"
                     style={{ backgroundColor: chartConfig.rents.color }}
                   />
-                  <span className="flex-1">Rents</span>
+                  <span className="flex-1">{t('chart.rents', 'Rents')}</span>
                   <span>{row.rents}</span>
                 </div>
               </div>
@@ -194,7 +198,7 @@ export function RevenueChart({
           fill="url(#fillRevenue)"
           stroke={chartConfig.revenue.color}
           strokeWidth={2}
-          name="Revenue"
+          name={t('chart.revenue', 'Revenue')}
           dot={false}
           activeDot={{ r: 4 }}
         />
@@ -207,10 +211,11 @@ export function RevenueChart({
           fill="url(#fillRents)"
           stroke={chartConfig.rents.color}
           strokeWidth={2}
-          name="Rents"
+          name={t('chart.rents', 'Rents')}
           dot={false}
           activeDot={{ r: 4 }}
         />
+
         <ChartLegend
           content={
             <ChartLegendContent payload={undefined} verticalAlign={undefined} />

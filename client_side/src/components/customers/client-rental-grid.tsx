@@ -8,7 +8,7 @@ import {
 } from 'ag-grid-community';
 import { useQuery } from '@tanstack/react-query';
 import { getRentsByCustomer, getCustomerById } from '../../api/customers';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { format } from 'date-fns';
 import {
   Pagination,
@@ -19,10 +19,13 @@ import {
   PaginationNext,
 } from '@/components/ui/pagination';
 import { Card } from '@/components/ui/card';
+import { useTranslation } from 'react-i18next';
 
 ModuleRegistry.registerModules([ClientSideRowModelModule]);
 
 export function ClientRentalsGrid({ customerId }: { customerId: string }) {
+  const { t } = useTranslation('client');
+
   const [page, setPage] = useState(1);
   const pageSize = 11;
 
@@ -43,97 +46,94 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
   const { data: allRentalsData, isLoading: loadingAllRentals } = useQuery({
     queryKey: ['customerRentsAll', customerId],
     queryFn: async () => {
-      // First, get the first page to know total pages
       const firstPage = await getRentsByCustomer(customerId, 1, pageSize);
       if (!firstPage?.totalPages || firstPage.totalPages === 1) {
         return firstPage?.data || [];
       }
-
-      // If there are multiple pages, fetch them all
       const allPages = await Promise.all(
         Array.from({ length: firstPage.totalPages }, (_, i) =>
           getRentsByCustomer(customerId, i + 1, pageSize),
         ),
       );
-
-      // Combine all results
       return allPages.flatMap((pageData) => pageData?.data || []);
     },
-    enabled: !!customerId, // Only run when we have a customerId
+    enabled: !!customerId,
   });
 
   const colDefs: ColDef[] = [
     {
-      headerName: 'Car',
+      headerName: t('client_rentals.car', 'Car'),
       field: 'car',
       flex: 1,
       valueGetter: (params) =>
         `${params.data?.car?.make || ''} ${params.data?.car?.model || ''}`,
     },
     {
-      headerName: 'Start Date',
+      headerName: t('client_rentals.start_date', 'Start Date'),
       field: 'startDate',
       flex: 1,
       valueFormatter: (params) =>
         params.value ? format(new Date(params.value), 'dd/MM/yyyy') : '—',
     },
     {
-      headerName: 'End Date',
+      headerName: t('client_rentals.end_date', 'End Date'),
       field: 'expectedEndDate',
       flex: 1,
       valueFormatter: (params) =>
         params.value ? format(new Date(params.value), 'dd/MM/yyyy') : '—',
     },
     {
-      headerName: 'Returned At',
+      headerName: t('client_rentals.returned_at', 'Returned At'),
       field: 'returnedAt',
       flex: 1,
       valueFormatter: (params) =>
         params.value ? format(new Date(params.value), 'dd/MM/yyyy') : '—',
     },
     {
-      headerName: 'Total Price',
+      headerName: t('client_rentals.total_price', 'Total Price'),
       field: 'totalPrice',
       flex: 1,
       valueFormatter: (p) => `${(p.value || 0).toLocaleString()} MAD`,
     },
     {
-      headerName: 'Paid',
+      headerName: t('client_rentals.paid', 'Paid'),
       field: 'totalPaid',
       flex: 1,
       valueFormatter: (p) => `${(p.value || 0).toLocaleString()} MAD`,
     },
     {
-      headerName: 'Deposit',
+      headerName: t('client_rentals.deposit', 'Deposit'),
       field: 'deposit',
       flex: 1,
       valueFormatter: (p) => (p.value || 0).toLocaleString(),
     },
     {
-      headerName: 'Guarantee',
+      headerName: t('client_rentals.guarantee', 'Guarantee'),
       field: 'guarantee',
       flex: 1,
       valueFormatter: (p) => (p.value || 0).toLocaleString(),
     },
     {
-      headerName: 'Late Fee',
+      headerName: t('client_rentals.late_fee', 'Late Fee'),
       field: 'lateFee',
       flex: 1,
       valueFormatter: (p) => (p.value || 0).toLocaleString(),
     },
     {
-      headerName: 'Fully Paid',
+      headerName: t('client_rentals.fully_paid', 'Fully Paid'),
       field: 'isFullyPaid',
       flex: 1,
       cellRenderer: (p: any) =>
         p.value ? (
-          <span className="text-green-500 font-bold">Yes</span>
+          <span className="text-green-500 font-bold">
+            {t('client_rentals.yes', 'Yes')}
+          </span>
         ) : (
-          <span className="text-red-500">No</span>
+          <span className="text-red-500">{t('client_rentals.no', 'No')}</span>
         ),
     },
     {
-      headerName: 'Status',
+      headerName: t('client_rentals.status', 'Status'),
       field: 'status',
       flex: 1,
       cellRenderer: (params: any) => {
@@ -148,11 +148,19 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
           cancelled:
             'bg-red-200 dark:bg-red-900 !text-red-800 dark:!text-red-300',
         };
+        const labelMap: Record<string, string> = {
+          reserved: t('client_rentals.status_reserved', 'reserved'),
+          active: t('client_rentals.status_active', 'active'),
+          completed: t('client_rentals.status_completed', 'completed'),
+          cancelled: t('client_rentals.status_cancelled', 'cancelled'),
+        };
         return (
           <span
-            className={`px-2 py-1 rounded text-xs ${colors[status] || 'bg-gray-400'}`}
+            className={`px-2 py-1 rounded text-xs ${
+              colors[status] || 'bg-gray-400'
+            }`}
           >
-            {status}
+            {labelMap[status] || status}
           </span>
         );
       },
@@ -160,11 +168,15 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
   ];
 
   if (isLoading || loadingCustomer || loadingAllRentals) {
-    return <p>Loading client details...</p>;
+    return <p>{t('client_rentals.loading', 'Loading client details...')}</p>;
   }
 
   if (isError) {
-    return <p className="text-red-500">Failed to load rentals.</p>;
+    return (
+      <p className="text-red-500">
+        {t('client_rentals.load_failed', 'Failed to load rentals.')}
+      </p>
+    );
   }
 
   // ✅ Safe data access with fallbacks
@@ -178,77 +190,94 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
     (sum: number, r: any) => sum + (r?.totalPaid || 0),
     0,
   );
+  const totalPriceSum = allRentals.reduce(
+    (sum: number, r: any) => sum + (r?.totalPrice || 0),
+    0,
+  );
+  const totalLeft = Math.max(0, totalPriceSum - totalSpent);
   const avgSpendPerRental = totalRentals > 0 ? totalSpent / totalRentals : 0;
-
-  // ✅ Debug output
-  console.log('Stats calculation:', {
-    totalRentals,
-    totalSpent,
-    avgSpendPerRental,
-    totalPages,
-    currentPageRentals: rentals.length,
-    allRentalsLength: allRentals.length,
-  });
 
   return (
     <div className="space-y-6">
       {/* ✅ Stats Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Rentals */}
         <Card
           className={[
             'text-center',
             'p-6 border border-border shadow-md rounded-lg',
             'relative overflow-hidden rounded-xl border shadow-sm',
-            // Light mode
             'border-gray-200 bg-white text-gray-900',
             'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
-            // Dark mode (Insurance style)
             'dark:border-border dark:text-gray-100 dark:shadow-lg',
             'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
           ].join(' ')}
         >
-          {/* Dark-mode glow orbs */}
           <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
           <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
-          <p className="text-sm text-muted-foreground">Total Rentals</p>
+          <p className="text-sm text-muted-foreground">
+            {t('client_rentals.stat_total_rentals', 'Total Rentals')}
+          </p>
           <p className="text-xl font-bold">{totalRentals}</p>
         </Card>
+
+        {/* Total Spent */}
         <Card
           className={[
             'text-center',
             'p-6 border border-border shadow-md rounded-lg',
             'relative overflow-hidden rounded-xl border shadow-sm',
-            // Light mode
             'border-gray-200 bg-white text-gray-900',
             'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
-            // Dark mode (Insurance style)
             'dark:border-border dark:text-gray-100 dark:shadow-lg',
             'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
           ].join(' ')}
         >
-          {/* Dark-mode glow orbs */}
           <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
           <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
-          <p className="text-sm text-muted-foreground">Total Spent</p>
+          <p className="text-sm text-muted-foreground">
+            {t('client_rentals.stat_total_spent', 'Total Spent')}
+          </p>
           <p className="text-xl font-bold">{totalSpent.toLocaleString()} MAD</p>
         </Card>
+
+        {/* Total Left */}
         <Card
           className={[
             'text-center',
             'p-6 border border-border shadow-md rounded-lg',
             'relative overflow-hidden rounded-xl border shadow-sm',
-            // Light mode
             'border-gray-200 bg-white text-gray-900',
             'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
-            // Dark mode (Insurance style)
             'dark:border-border dark:text-gray-100 dark:shadow-lg',
             'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
           ].join(' ')}
         >
-          {/* Dark-mode glow orbs */}
           <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
           <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
-          <p className="text-sm text-muted-foreground">Avg Spend / Rental</p>
+          <p className="text-sm text-muted-foreground">
+            {t('client_rentals.stat_total_left', 'Total Left')}
+          </p>
+          <p className="text-xl font-bold">{totalLeft.toLocaleString()} MAD</p>
+        </Card>
+
+        {/* Avg Spend / Rental */}
+        <Card
+          className={[
+            'text-center',
+            'p-6 border border-border shadow-md rounded-lg',
+            'relative overflow-hidden rounded-xl border shadow-sm',
+            'border-gray-200 bg-white text-gray-900',
+            'bg-[linear-gradient(180deg,rgba(2,6,23,0.03)_0%,rgba(2,6,23,0)_18%)]',
+            'dark:border-border dark:text-gray-100 dark:shadow-lg',
+            'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
+          ].join(' ')}
+        >
+          <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
+          <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
+          <p className="text-sm text-muted-foreground">
+            {t('client_rentals.stat_avg_spend', 'Avg Spend / Rental')}
+          </p>
           <p className="text-xl font-bold">
             {avgSpendPerRental.toFixed(2)} MAD
           </p>
@@ -276,11 +305,18 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
             <PaginationPrevious
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               aria-disabled={page === 1}
+              aria-label={t('client_rentals.prev_page', 'Previous page')}
             />
           </PaginationItem>
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <PaginationItem key={p}>
-              <PaginationLink isActive={p === page} onClick={() => setPage(p)}>
+              <PaginationLink
+                isActive={p === page}
+                onClick={() => setPage(p)}
+                aria-label={t('client_rentals.goto_page', 'Go to page {{p}}', {
+                  p,
+                })}
+              >
                 {p}
               </PaginationLink>
             </PaginationItem>
@@ -289,6 +325,7 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
             <PaginationNext
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               aria-disabled={page === totalPages}
+              aria-label={t('client_rentals.next_page', 'Next page')}
             />
           </PaginationItem>
         </PaginationContent>

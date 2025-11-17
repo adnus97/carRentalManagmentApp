@@ -18,9 +18,10 @@ import { FileUploader } from '@/components/file-uploader';
 
 import { createOrganization, CreateOrganizationDto } from '@/api/organization';
 import { Building2, Save, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const schema = z.object({
-  name: z.string().min(2, 'Organization name is too short'),
+  name: z.string().min(2, 'org.form.errors.name_short'),
 
   website: z.string().url().optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
+  const { t } = useTranslation('organization');
   const [isUploading, setIsUploading] = useState(false);
 
   // File ID states
@@ -70,23 +72,26 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
   const mutation = useMutation({
     mutationFn: (data: CreateOrganizationDto) => createOrganization(data),
     onSuccess: (org) => {
-      // Refresh any org queries
       queryClient.invalidateQueries({ queryKey: ['organization', 'user'] });
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
       toast({
-        title: 'Organization created',
+        title: t('org.create.success_title', 'Organization created'),
         type: 'success',
-        description: 'Your organization has been created successfully.',
+        description: t(
+          'org.create.success_desc',
+          'Your organization has been created successfully.',
+        ),
       });
       onSuccess?.(org.id);
     },
     onError: (err: any) => {
       console.error(err);
       toast({
-        title: 'Creation failed',
+        title: t('org.create.error_title', 'Creation failed'),
         type: 'error',
         description:
-          err?.response?.data?.message || 'Please review fields and try again.',
+          err?.response?.data?.message ||
+          t('org.create.error_desc', 'Please review fields and try again.'),
       });
     },
   });
@@ -100,7 +105,6 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
       website: values.website?.trim() || undefined,
       phone: values.phone?.trim() || undefined,
       address: values.address?.trim() || undefined,
-      // include only provided file IDs
       imageFileId: logoFileId,
       rcFileId,
       statusFileId,
@@ -130,10 +134,13 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-semibold leading-tight">
-                  Create Organization
+                  {t('org.create.title', 'Create Organization')}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Fill in basic details and optionally upload documents now.
+                  {t(
+                    'org.create.subtitle',
+                    'Fill in basic details and optionally upload documents now.',
+                  )}
                 </p>
               </div>
             </div>
@@ -146,7 +153,7 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
                 disabled={isSubmitting || isUploading}
               >
                 <XCircle className="h-4 w-4" />
-                Cancel
+                {t('clients.actions.cancel', 'Cancel')}
               </Button>
               <Button
                 onClick={handleSubmit(onSubmit)}
@@ -156,12 +163,12 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
                 {isSubmitting ? (
                   <>
                     <Loader />
-                    Creating...
+                    {t('org.create.creating', 'Creating...')}
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4" />
-                    Create
+                    {t('org.create.create', 'Create')}
                   </>
                 )}
               </Button>
@@ -178,46 +185,56 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
             <CardContent className="p-6 space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="name">
-                  Organization Name <span className="text-red-600">*</span>
+                  {t('org.form.name', 'Organization Name')}{' '}
+                  <span className="text-red-600">*</span>
                 </Label>
                 <Input
                   id="name"
-                  placeholder="Your company name"
+                  placeholder={t('org.form.name_ph', 'Your company name')}
                   {...register('name')}
                 />
                 {errors.name && (
-                  <p className="text-xs text-red-500">{errors.name.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="website">Website</Label>
-                <Input
-                  id="website"
-                  placeholder="https://company.com"
-                  {...register('website')}
-                />
-                {errors.website && (
                   <p className="text-xs text-red-500">
-                    {errors.website.message}
+                    {t(errors.name.message as string)}
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="website">
+                  {t('org.details.website', 'Website')}
+                </Label>
+                <Input
+                  id="website"
+                  placeholder={t('org.form.website_ph', 'https://company.com')}
+                  {...register('website')}
+                />
+                {errors.website && (
+                  <p className="text-xs text-red-500">
+                    {t(errors.website.message as string)}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">{t('form.labels.phone', 'Phone')}</Label>
                 <Input
                   id="phone"
-                  placeholder="+1 555 0100"
+                  placeholder={t('org.form.phone_ph', '+1 555 0100')}
                   {...register('phone')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address">
+                  {t('form.labels.address', 'Address')}
+                </Label>
                 <Input
                   id="address"
-                  placeholder="123 Market St, City, Country"
+                  placeholder={t(
+                    'org.form.address_ph',
+                    '123 Market St, City, Country',
+                  )}
                   {...register('address')}
                 />
               </div>
@@ -227,9 +244,14 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
           <Card className="border-gray-200 dark:border-border">
             <CardContent className="p-6 space-y-3">
               <div>
-                <h3 className="font-medium">Organization Logo</h3>
+                <h3 className="font-medium">
+                  {t('org.logo.title', 'Organization Logo')}
+                </h3>
                 <p className="text-xs text-muted-foreground">
-                  PNG, JPG, WEBP. Square images look best.
+                  {t(
+                    'org.logo.subtitle',
+                    'PNG, JPG, WEBP. Square images look best.',
+                  )}
                 </p>
               </div>
               <UploadComponent
@@ -247,91 +269,119 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
             <CardContent className="p-6 space-y-6">
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <span className="text-xl">⚖️</span> Legal Documents
+                  <span className="text-xl">⚖️</span>{' '}
+                  {t('org.docs.title', 'Legal Documents')}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  You can upload these now or later from the organization page.
+                  {t(
+                    'org.form.docs_hint',
+                    'You can upload these now or later from the organization page.',
+                  )}
                 </p>
               </div>
 
               <FileUploader
-                label="RC (Registre de Commerce)"
+                label={t('org.docs.rc', 'RC (Registre de Commerce)')}
                 accept=".pdf"
                 folder="organizations/legal"
                 currentFile={undefined}
                 onUploadProgress={setIsUploading}
                 onUploadSuccess={(file) => setRcFileId(file.id)}
-                description="Official commercial register document (PDF)."
+                description={t(
+                  'org.form.rc_desc',
+                  'Official commercial register document (PDF).',
+                )}
               />
 
               <FileUploader
-                label="Status"
+                label={t('org.docs.status', 'Status')}
                 accept=".pdf"
                 folder="organizations/legal"
                 currentFile={undefined}
                 onUploadProgress={setIsUploading}
                 onUploadSuccess={(file) => setStatusFileId(file.id)}
-                description="Company status document (PDF)."
+                description={t(
+                  'org.form.status_desc',
+                  'Company status document (PDF).',
+                )}
               />
 
               <FileUploader
-                label="Decision"
+                label={t('org.docs.decision', 'Decision')}
                 accept=".pdf"
                 folder="organizations/legal"
                 currentFile={undefined}
                 onUploadProgress={setIsUploading}
                 onUploadSuccess={(file) => setDecisionFileId(file.id)}
-                description="Company decision document (PDF)."
+                description={t(
+                  'org.form.decision_desc',
+                  'Company decision document (PDF).',
+                )}
               />
 
               <FileUploader
-                label="CEO ID Card"
+                label={t('org.docs.ceo_id', 'CEO ID Card')}
                 accept=".jpg,.jpeg,.png,.webp"
                 folder="organizations/identity"
                 currentFile={undefined}
                 onUploadProgress={setIsUploading}
                 onUploadSuccess={(file) => setCeoIdCardFileId(file.id)}
-                description="Clear photo/scan of the CEO's ID card."
+                description={t(
+                  'org.form.ceo_id_desc',
+                  "Clear photo/scan of the CEO's ID card.",
+                )}
               />
 
               <FileUploader
-                label="Fleet List"
+                label={t('org.docs.fleet', 'Fleet List')}
                 accept=".pdf"
                 folder="organizations/fleet"
                 currentFile={undefined}
                 onUploadProgress={setIsUploading}
                 onUploadSuccess={(file) => setFleetListFileId(file.id)}
-                description="Complete fleet inventory (PDF)."
+                description={t(
+                  'org.form.fleet_desc',
+                  'Complete fleet inventory (PDF).',
+                )}
               />
 
               <FileUploader
-                label="Model G"
+                label={t('org.docs.model_g', 'Model G')}
                 accept=".pdf"
                 folder="organizations/fleet"
                 currentFile={undefined}
                 onUploadProgress={setIsUploading}
                 onUploadSuccess={(file) => setModelGFileId(file.id)}
-                description="Model G document (PDF)."
+                description={t(
+                  'org.form.model_g_desc',
+                  'Model G document (PDF).',
+                )}
               />
 
               <FileUploader
-                label="Identifiant Fiscale"
+                label={t('org.docs.tax_id', 'Identifiant Fiscale')}
                 accept=".pdf"
                 folder="organizations/financial"
                 currentFile={undefined}
                 onUploadProgress={setIsUploading}
                 onUploadSuccess={(file) => setIdentifiantFiscaleFileId(file.id)}
-                description="Tax identification document (PDF)."
+                description={t(
+                  'org.form.tax_id_desc',
+                  'Tax identification document (PDF).',
+                )}
               />
 
               <FileUploader
-                label="Bilan"
+                label={t('org.docs.bilan', 'Bilan')}
                 accept=".pdf"
                 folder="organizations/financial"
                 currentFile={undefined}
                 onUploadProgress={setIsUploading}
                 onUploadSuccess={(file) => setBilanFileId(file.id)}
-                description="Financial balance sheet (PDF)."
+                description={t(
+                  'org.form.bilan_desc',
+                  'Financial balance sheet (PDF).',
+                )}
               />
             </CardContent>
           </Card>
@@ -349,7 +399,7 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
               disabled={isSubmitting || isUploading}
             >
               <XCircle className="h-4 w-4" />
-              Cancel
+              {t('clients.actions.cancel', 'Cancel')}
             </Button>
             <Button
               onClick={handleSubmit(onSubmit)}
@@ -359,12 +409,12 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
               {isSubmitting ? (
                 <>
                   <Loader />
-                  Creating...
+                  {t('org.create.creating', 'Creating...')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4" />
-                  Create
+                  {t('org.create.create', 'Create')}
                 </>
               )}
             </Button>

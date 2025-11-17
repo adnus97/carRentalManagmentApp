@@ -63,7 +63,9 @@
   },
   "form": {
     "title": "Ajouter un nouveau client",
+    "edit_title": "Modifier le client",
     "subtitle": "Remplissez le formulaire ci‑dessous pour ajouter un nouveau client au système.",
+    "edit_subtitle": "Mettez à jour les informations du client ci‑dessous.",
     "labels": {
       "first": "Prénom",
       "last": "Nom",
@@ -143,7 +145,8 @@
       "title": "Échec du téléversement",
       "desc": "Échec du téléversement. Veuillez réessayer."
     },
-    "no_file": "Aucun fichier choisi"
+    "no_file": "Aucun fichier choisi",
+    "current_file": "Fichier actuel"
   },
   "edit": {
     "title": "Edit Client",
@@ -200,6 +203,94 @@
       "downloading_desc": "Téléchargement de {{title}}…",
       "error_download_title": "Erreur de téléchargement",
       "error_download_desc": "Impossible de télécharger {{title}}. Veuillez réessayer."
+    },
+    "rate_success_title": "Évalué",
+    "rate_success_desc": "Client évalué avec succès",
+    "rate_error_desc": "Échec de l’évaluation du client",
+    "rate_comment_ph": "Commentaire facultatif",
+    "rate_star": "Noter {{star}} étoile",
+    "submitting": "Envoi…",
+    "submit": "Valider"
+  },
+  "client_rentals": {
+    "car": "Voiture",
+    "start_date": "Date de début",
+    "end_date": "Date de fin",
+    "returned_at": "Date de retour",
+    "total_price": "Prix total",
+    "paid": "Payé",
+    "deposit": "Dépôt",
+    "guarantee": "Caution",
+    "late_fee": "Frais de retard",
+    "fully_paid": "Entièrement payé",
+    "yes": "Oui",
+    "no": "Non",
+    "status": "Statut",
+    "status_reserved": "réservé",
+    "status_active": "actif",
+    "status_completed": "terminé",
+    "status_cancelled": "annulé",
+    "loading": "Chargement des détails du client…",
+    "load_failed": "Échec du chargement des locations.",
+    "stat_total_rentals": "Nombre de locations",
+    "stat_total_spent": "Montant total dépensé",
+    "stat_avg_spend": "Dépense moyenne / location",
+    "prev_page": "Page précédente",
+    "next_page": "Page suivante",
+    "goto_page": "Aller à la page {{p}}",
+    "stat_total_left": "Montant restant"
+  },
+  "client_spending": {
+    "title": "Dépenses du client dans le temps",
+    "subtitle": "Affichage des dépenses et des locations sur la période sélectionnée",
+    "empty_subtitle": "Aucune donnée de dépense disponible pour ce client",
+    "empty": "Aucune donnée à afficher",
+    "range_placeholder": "3 derniers mois",
+    "range_90d": "3 derniers mois",
+    "range_30d": "30 derniers jours",
+    "range_7d": "7 derniers jours",
+    "series_both": "Les deux",
+    "series_spending": "Dépenses",
+    "series_rentals": "Locations",
+    "currency": "MAD",
+    "locale": "fr-FR"
+  },
+  "clients": {
+    "success": "Succès !",
+    "error": "Erreur",
+    "deleted": "Client supprimé.",
+    "delete_failed": "Échec de la suppression du client",
+    "unblacklisted": "Client retiré de la liste noire.",
+    "load_edit_failed": "Échec du chargement des détails du client pour modification",
+    "header": { "title": "Tableau de bord des clients" },
+    "manage_hint": "Gérez vos clients ci‑dessous :",
+    "total": "Total",
+    "blacklisted": "Sur liste noire",
+    "columns": {
+      "full_name": "Nom complet",
+      "rating": "Note",
+      "actions": "Actions"
+    },
+    "actions": {
+      "edit": "Modifier",
+      "view": "Voir",
+      "unblacklist": "Retirer de la liste noire",
+      "delete": "Supprimer",
+      "delete_count": "Supprimer ({count})",
+      "cancel": "Annuler",
+      "deleting": "Suppression…"
+    },
+    "selection": {
+      "customer": "client",
+      "selected": "sélectionné(s)"
+    },
+    "loading": "Chargement des clients…",
+    "confirm": {
+      "delete_title_one": "Supprimer le client",
+      "delete_title_many": "Supprimer {{count}} clients",
+      "delete_desc_one": "Êtes‑vous sûr de vouloir supprimer « {{name}} » ?",
+      "delete_desc_few": "Êtes‑vous sûr de vouloir supprimer ces {{count}} clients : {{list}} ?",
+      "delete_desc_many": "Êtes‑vous sûr de vouloir supprimer {{count}} clients ? {{list}}..."
     }
   }
 }

@@ -1,0 +1,136 @@
+{
+  "labels": {
+    "insurance": "assurance",
+    "technical_visit": "visite technique"
+  },
+  "segments": {
+    "expired": "Expiré",
+    "le3": "≤3 jours",
+    "le7": "≤7 jours",
+    "le30": "≤30 jours"
+  },
+  "summary": {
+    "expiring_within_30": "expirent sous 30 jours",
+    "Expiring within 30 days": "Expirent sous 30 jours"
+  },
+  "breakdown": {
+    "title": "Répartition"
+  },
+  "empty": {
+    "all_good": "Tout est bon — aucune {{label}} n’expire bientôt."
+  },
+  "cars": {
+    "at_risk": "Véhicules à risque",
+    "none_in_category": "Aucun véhicule dans cette catégorie",
+    "unknown": "Inconnu"
+  },
+  "filters": {
+    "bucket": "Catégorie",
+    "sort": "Trier par",
+    "soonest": "Le plus proche",
+    "latest": "Le plus lointain",
+    "make": "Marque"
+  },
+  "format": {
+    "expired_ago": "Expiré il y a {{d}} j",
+    "in_days": "Dans {{d}} j"
+  },
+  "kpi": {
+    "revenue_billed": "Revenu (Facturé)",
+    "revenue_collected": "Revenu (Collecté)",
+    "open_ar": "A/R Ouvert",
+    "total_rents": "Locations totales",
+    "fleet_size": "Taille de flotte",
+    "utilization": "Taux d’utilisation",
+    "adr": "ADR",
+    "revpar": "RevPAR",
+    "maintenance_costs": "Coûts de maintenance",
+    "lease_costs": "Coûts de location",
+    "net_profit": "Résultat net",
+    "period_days": "Jours de période",
+    "rented_days": "Jours loués"
+  },
+  "kpi_desc": {
+    "revenue_billed": "Revenu total facturé pour la période sélectionnée (indépendamment des paiements).",
+    "revenue_collected": "Trésorerie réellement encaissée pendant la période.",
+    "open_ar": "Factures impayées (comptes clients).",
+    "total_rents": "Nombre de contrats de location pendant la période.",
+    "fleet_size": "Nombre total de véhicules de la flotte.",
+    "utilization": "Jours loués ÷ Jours disponibles sur la période.",
+    "adr": "Revenu moyen par jour loué.",
+    "revpar": "Revenu par jour disponible sur l’ensemble de la flotte.",
+    "maintenance_costs": "Total des dépenses de maintenance sur la période.",
+    "lease_costs": "Total des coûts de location au prorata de la période.",
+    "net_profit": "Revenu encaissé moins coûts de maintenance et de location.",
+    "period_days": "Nombre de jours calendaires dans l’intervalle sélectionné.",
+    "rented_days": "Somme des jours de location sur la période pour tous les véhicules."
+  },
+  "overdue": {
+    "none": "Aucune location en retard",
+    "title": "Locations en retard",
+    "contract": "Contrat",
+    "na": "N/A"
+  },
+  "chart": {
+    "revenue": "Revenus",
+    "rents": "Locations",
+    "axis_revenue": "Revenus (DHS)",
+    "axis_rents": "Locations"
+  },
+  "targets": {
+    "none": "Aucune donnée d'objectifs",
+    "scroll_left": "Faire défiler vers la gauche",
+    "scroll_right": "Faire défiler vers la droite",
+    "period_progress": "Progression de la période de l'objectif",
+    "elapsed_of_period": "{{pct}} % de la période écoulés",
+    "elapsed": "écoulés",
+    "remaining": "restants",
+    "total_days": "jours au total",
+    "active": "Actif",
+    "expired": "Expiré",
+    "days": "Jours",
+    "breakdown": "Détail",
+    "soon": "Bientôt (≤30j)"
+  },
+  "topcars": {
+    "none": "Aucune donnée de meilleures voitures"
+  },
+  "currency": "DHS",
+  "reports": {
+    "title": "Rapports",
+    "subtitle": "Performance de la flotte, revenus, risques et tendances",
+    "refresh": "Rafraîchir",
+    "export_csv": "Exporter CSV",
+    "mode_placeholder": "Choisir un mode",
+    "mode_preset": "Filtres prédéfinis",
+    "mode_custom": "Plage personnalisée",
+    "select_period": "Choisir une période",
+    "preset_today": "Aujourd'hui",
+    "preset_yesterday": "Hier",
+    "preset_last7": "7 derniers jours",
+    "preset_last30": "30 derniers jours",
+    "preset_last90": "90 derniers jours",
+    "preset_this_year": "Cette année",
+    "preset_prev_month": "Mois précédent",
+    "preset_prev_trimester": "Trimestre précédent",
+    "preset_prev_semester": "Semestre précédent",
+    "preset_prev_year": "Année précédente",
+    "from": "Du :",
+    "to": "Au :",
+    "start_date": "Date de début",
+    "end_date": "Date de fin",
+    "all_cars": "Tous les véhicules",
+    "days": "jours",
+    "loading": "Chargement des rapports…",
+    "fix_date_range": "Veuillez corriger la plage de dates pour afficher les rapports",
+    "revenue_rents_over_time": "Revenus et locations au fil du temps",
+    "targets_vs_actuals": "Objectifs vs Réalisé",
+    "include_expired": "Inclure les expirés",
+    "insurance_risk": "Risque assurance",
+    "technical_inspection_risk": "Risque visite technique",
+    "insurance_and_technical": "(Assurance & Visite technique)",
+    "err_end_after_start": "La date de fin doit être postérieure à la date de début",
+    "err_max_range": "La plage de dates ne peut pas dépasser 365 jours",
+    "top_cars_by_revenue": "Top Voitures par Revenu"
+  }
+}

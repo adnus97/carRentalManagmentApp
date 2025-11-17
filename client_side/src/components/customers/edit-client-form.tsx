@@ -189,10 +189,10 @@ export function EditClientDialog({
     >
       <DialogContent className="sm:max-w-[520px] pt-8 max-h-[80vh] overflow-y-auto">
         <DialogTitle className="pb-1 text-lg font-semibold">
-          {t('edit.title', 'Edit Client')}
+          {t('form.edit_title', 'Edit Client')}
         </DialogTitle>
         <p className="text-sm text-muted-foreground mb-4">
-          {t('edit.subtitle', 'Update the client information below.')}
+          {t('form.edit_subtitle', 'Update the client information below.')}
         </p>
         <Separator className="mb-4" />
 

@@ -4,15 +4,17 @@ import { Badge } from '../ui/badge';
 import { useNotificationSummary } from '../../hooks/useNotifications';
 import { getCategoryIcon, CATEGORY_COLORS } from '../../utils/notifications';
 import { NotificationCategory } from '../../types/notifications';
+import { useTranslation } from 'react-i18next';
 
 export function NotificationSummary() {
+  const { t } = useTranslation('notification');
   const { data: summary, isLoading } = useNotificationSummary();
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Notifications</CardTitle>
+          <CardTitle>{t('header.title', 'Notifications')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-2">
@@ -36,16 +38,18 @@ export function NotificationSummary() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          Notifications
+          {t('header.title', 'Notifications')}
           <Badge variant={summary.unread > 0 ? 'destructive' : 'secondary'}>
-            {summary.unread} unread
+            {t('header.unread', '{{count}} unread', { count: summary.unread })}
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Categories */}
         <div>
-          <h4 className="text-sm font-medium mb-2">By Category</h4>
+          <h4 className="text-sm font-medium mb-2">
+            {t('summary.by_category', 'By Category')}
+          </h4>
           <div className="space-y-1">
             {categoryEntries
               .filter(([_, count]) => count > 0)
@@ -60,7 +64,13 @@ export function NotificationSummary() {
                     <div className="flex items-center gap-2">
                       <Icon size={14} className={CATEGORY_COLORS[category]} />
                       <span className="capitalize">
-                        {category.toLowerCase()}
+                        {
+                          // Try to translate known category names; fallback to the raw
+                          t(
+                            `categories.${category.toLowerCase()}`,
+                            category.toLowerCase(),
+                          )
+                        }
                       </span>
                     </div>
                     <Badge variant="outline" className="text-xs">
@@ -75,7 +85,9 @@ export function NotificationSummary() {
         {/* Priorities */}
         {priorityEntries.some(([_, count]) => Number(count) > 0) && (
           <div>
-            <h4 className="text-sm font-medium mb-2">By Priority</h4>
+            <h4 className="text-sm font-medium mb-2">
+              {t('summary.by_priority', 'By Priority')}
+            </h4>
             <div className="space-y-1">
               {priorityEntries
                 .filter(([_, count]) => Number(count) > 0)
@@ -91,7 +103,12 @@ export function NotificationSummary() {
                     key={priority}
                     className="flex items-center justify-between text-sm"
                   >
-                    <span className="capitalize">{priority.toLowerCase()}</span>
+                    <span className="capitalize">
+                      {t(
+                        `priority.${String(priority).toLowerCase()}`,
+                        String(priority).toLowerCase(),
+                      )}
+                    </span>
                     <Badge
                       variant="outline"
                       className={`text-xs ${
@@ -102,7 +119,7 @@ export function NotificationSummary() {
                             : 'border-gray-500 text-gray-700'
                       }`}
                     >
-                      {count}
+                      {count as number}
                     </Badge>
                   </div>
                 ))}
@@ -111,7 +128,9 @@ export function NotificationSummary() {
         )}
 
         <div className="pt-2 border-t text-xs text-gray-500">
-          Total: {summary.total} notifications
+          {t('summary.total', 'Total: {{count}} notifications', {
+            count: summary.total,
+          })}
         </div>
       </CardContent>
     </Card>

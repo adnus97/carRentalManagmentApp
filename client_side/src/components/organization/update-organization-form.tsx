@@ -23,9 +23,10 @@ import {
   UpdateOrganizationDto,
 } from '@/api/organization';
 import { Building2, Save, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const schema = z.object({
-  name: z.string().min(2, 'Organization name is too short'),
+  name: z.string().min(2, 'org.form.errors.name_short'),
   email: z.string().email().optional().or(z.literal('')),
   website: z.string().url().optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
@@ -45,9 +46,9 @@ export function UpdateOrganizationForm({
   onCancel,
   onSuccess,
 }: Props) {
+  const { t } = useTranslation('organization');
   const [isUploading, setIsUploading] = useState(false);
 
-  // Store file IDs instead of URLs
   const [logoFileId, setLogoFileId] = useState<string | undefined>();
   const [rcFileId, setRcFileId] = useState<string | undefined>();
   const [statusFileId, setStatusFileId] = useState<string | undefined>();
@@ -84,18 +85,24 @@ export function UpdateOrganizationForm({
       queryClient.invalidateQueries({ queryKey: ['organization', 'user'] });
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
       toast({
-        title: 'Saved',
+        title: t('org.update.saved', 'Saved'),
         type: 'success',
-        description: 'Organization updated successfully.',
+        description: t(
+          'org.update.success_desc',
+          'Organization updated successfully.',
+        ),
       });
       onSuccess?.();
     },
     onError: (err) => {
       console.error(err);
       toast({
-        title: 'Update failed',
+        title: t('org.update.error_title', 'Update failed'),
         type: 'error',
-        description: 'Please review fields and try again.',
+        description: t(
+          'org.update.error_desc',
+          'Please review fields and try again.',
+        ),
       });
     },
   });
@@ -111,7 +118,6 @@ export function UpdateOrganizationForm({
       address: values.address?.trim() || undefined,
     };
 
-    // Only include file IDs if they've been updated
     if (logoFileId) payload.imageFileId = logoFileId;
     if (rcFileId) payload.rcFileId = rcFileId;
     if (statusFileId) payload.statusFileId = statusFileId;
@@ -126,7 +132,6 @@ export function UpdateOrganizationForm({
     mutation.mutate(payload);
   };
 
-  // Helper function to get file URL from file ID
   const getCurrentFileUrl = (fileId?: string): string | undefined => {
     return fileId ? getFileServeUrl(fileId) : undefined;
   };
@@ -145,7 +150,7 @@ export function UpdateOrganizationForm({
                 {organization.imageFileId ? (
                   <img
                     src={getCurrentFileUrl(organization.imageFileId)}
-                    alt="Logo"
+                    alt={t('org.logo.alt', 'Logo')}
                     className="h-full w-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -168,10 +173,13 @@ export function UpdateOrganizationForm({
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-semibold leading-tight">
-                  Edit Organization
+                  {t('org.update.title', 'Edit Organization')}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Update details and legal documents
+                  {t(
+                    'org.update.subtitle',
+                    'Update details and legal documents',
+                  )}
                 </p>
               </div>
             </div>
@@ -184,7 +192,7 @@ export function UpdateOrganizationForm({
                 disabled={isSubmitting || isUploading}
               >
                 <XCircle className="h-4 w-4" />
-                Cancel
+                {t('clients.actions.cancel', 'Cancel')}
               </Button>
               <Button
                 onClick={handleSubmit(onSubmit)}
@@ -194,12 +202,12 @@ export function UpdateOrganizationForm({
                 {isSubmitting ? (
                   <>
                     <Loader />
-                    Saving...
+                    {t('org.update.saving', 'Saving...')}
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4" />
-                    Save Changes
+                    {t('org.update.save_changes', 'Save Changes')}
                   </>
                 )}
               </Button>
@@ -216,46 +224,56 @@ export function UpdateOrganizationForm({
             <CardContent className="p-6 space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="name">
-                  Organization Name <span className="text-red-600">*</span>
+                  {t('org.form.name', 'Organization Name')}{' '}
+                  <span className="text-red-600">*</span>
                 </Label>
                 <Input
                   id="name"
-                  placeholder="Your company name"
+                  placeholder={t('org.form.name_ph', 'Your company name')}
                   {...register('name')}
                 />
                 {errors.name && (
-                  <p className="text-xs text-red-500">{errors.name.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="website">Website</Label>
-                <Input
-                  id="website"
-                  placeholder="https://company.com"
-                  {...register('website')}
-                />
-                {errors.website && (
                   <p className="text-xs text-red-500">
-                    {errors.website.message}
+                    {t(errors.name.message as string)}
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="website">
+                  {t('org.details.website', 'Website')}
+                </Label>
+                <Input
+                  id="website"
+                  placeholder={t('org.form.website_ph', 'https://company.com')}
+                  {...register('website')}
+                />
+                {errors.website && (
+                  <p className="text-xs text-red-500">
+                    {t(errors.website.message as string)}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">{t('org.details.phone', 'Phone')}</Label>
                 <Input
                   id="phone"
-                  placeholder="+1 555 0100"
+                  placeholder={t('org.form.phone_ph', '+1 555 0100')}
                   {...register('phone')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address">
+                  {t('org.details.address', 'Address')}
+                </Label>
                 <Input
                   id="address"
-                  placeholder="123 Market St, City, Country"
+                  placeholder={t(
+                    'org.form.address_ph',
+                    '123 Market St, City, Country',
+                  )}
                   {...register('address')}
                 />
               </div>
@@ -265,9 +283,14 @@ export function UpdateOrganizationForm({
           <Card className="border-gray-200 dark:border-border">
             <CardContent className="p-6 space-y-3">
               <div>
-                <h3 className="font-medium">Organization Logo</h3>
+                <h3 className="font-medium">
+                  {t('org.logo.title', 'Organization Logo')}
+                </h3>
                 <p className="text-xs text-muted-foreground">
-                  PNG, JPG, WEBP. Square images look best.
+                  {t(
+                    'org.logo.subtitle',
+                    'PNG, JPG, WEBP. Square images look best.',
+                  )}
                 </p>
               </div>
               <UploadComponent
@@ -285,78 +308,100 @@ export function UpdateOrganizationForm({
             <CardContent className="p-6 space-y-6">
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <span className="text-xl">⚖️</span> Legal Documents
+                  <span className="text-xl">⚖️</span>{' '}
+                  {t('org.docs.title', 'Legal Documents')}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  All required documents consolidated here.
+                  {t(
+                    'org.update.docs_subtitle',
+                    'All required documents consolidated here.',
+                  )}
                 </p>
               </div>
 
               {/* Core legal */}
               <FileUploader
-                label="RC (Registre de Commerce)"
+                label={t('org.docs.rc', 'RC (Registre de Commerce)')}
                 accept=".pdf"
                 folder="organizations/legal"
                 currentFile={getCurrentFileUrl(organization.rcFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setRcFileId(file.id)}
-                description="Official commercial register document (PDF)."
+                description={t(
+                  'org.form.rc_desc',
+                  'Official commercial register document (PDF).',
+                )}
               />
 
               <FileUploader
-                label="Status"
+                label={t('org.docs.status', 'Status')}
                 accept=".pdf"
                 folder="organizations/legal"
                 currentFile={getCurrentFileUrl(organization.statusFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setStatusFileId(file.id)}
-                description="Company status document (PDF)."
+                description={t(
+                  'org.form.status_desc',
+                  'Company status document (PDF).',
+                )}
               />
 
               <FileUploader
-                label="Decision"
+                label={t('org.docs.decision', 'Decision')}
                 accept=".pdf"
                 folder="organizations/legal"
                 currentFile={getCurrentFileUrl(organization.decisionFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setDecisionFileId(file.id)}
-                description="Company decision document (PDF)."
+                description={t(
+                  'org.form.decision_desc',
+                  'Company decision document (PDF).',
+                )}
               />
 
               <FileUploader
-                label="CEO ID Card"
+                label={t('org.docs.ceo_id', 'CEO ID Card')}
                 accept=".jpg,.jpeg,.png,.webp"
                 folder="organizations/identity"
                 currentFile={getCurrentFileUrl(organization.ceoIdCardFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setCeoIdCardFileId(file.id)}
-                description="Clear photo/scan of the CEO's ID card."
+                description={t(
+                  'org.form.ceo_id_desc',
+                  "Clear photo/scan of the CEO's ID card.",
+                )}
               />
 
               {/* Fleet items */}
               <FileUploader
-                label="Fleet List"
+                label={t('org.docs.fleet', 'Fleet List')}
                 accept=".pdf"
                 folder="organizations/fleet"
                 currentFile={getCurrentFileUrl(organization.fleetListFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setFleetListFileId(file.id)}
-                description="Complete fleet inventory (PDF)."
+                description={t(
+                  'org.form.fleet_desc',
+                  'Complete fleet inventory (PDF).',
+                )}
               />
 
               <FileUploader
-                label="Model G"
+                label={t('org.docs.model_g', 'Model G')}
                 accept=".pdf"
                 folder="organizations/fleet"
                 currentFile={getCurrentFileUrl(organization.modelGFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setModelGFileId(file.id)}
-                description="Model G document (PDF)."
+                description={t(
+                  'org.form.model_g_desc',
+                  'Model G document (PDF).',
+                )}
               />
 
               {/* Financial items */}
               <FileUploader
-                label="Identifiant Fiscale"
+                label={t('org.docs.tax_id', 'Identifiant Fiscale')}
                 accept=".pdf"
                 folder="organizations/financial"
                 currentFile={getCurrentFileUrl(
@@ -364,17 +409,23 @@ export function UpdateOrganizationForm({
                 )}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setIdentifiantFiscaleFileId(file.id)}
-                description="Tax identification document (PDF)."
+                description={t(
+                  'org.form.tax_id_desc',
+                  'Tax identification document (PDF).',
+                )}
               />
 
               <FileUploader
-                label="Bilan"
+                label={t('org.docs.bilan', 'Bilan')}
                 accept=".pdf"
                 folder="organizations/financial"
                 currentFile={getCurrentFileUrl(organization.bilanFileId)}
                 onUploadProgress={onUploadProgress}
                 onUploadSuccess={(file) => setBilanFileId(file.id)}
-                description="Financial balance sheet (PDF)."
+                description={t(
+                  'org.form.bilan_desc',
+                  'Financial balance sheet (PDF).',
+                )}
               />
             </CardContent>
           </Card>
@@ -392,7 +443,7 @@ export function UpdateOrganizationForm({
               disabled={isSubmitting || isUploading}
             >
               <XCircle className="h-4 w-4" />
-              Cancel
+              {t('clients.actions.cancel', 'Cancel')}
             </Button>
             <Button
               onClick={handleSubmit(onSubmit)}
@@ -402,12 +453,12 @@ export function UpdateOrganizationForm({
               {isSubmitting ? (
                 <>
                   <Loader />
-                  Saving...
+                  {t('org.update.saving', 'Saving...')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4" />
-                  Save Changes
+                  {t('org.update.save_changes', 'Save Changes')}
                 </>
               )}
             </Button>
