@@ -492,7 +492,7 @@ export class RentsService {
           priority: 'MEDIUM',
           title: 'New Rental Created',
           message: `${customer?.firstName} ${customer?.lastName} rented ${car?.make} ${car?.model} - Contract #${rentContractId}`, // 🆕 Use rentContractId
-          actionUrl: `/rentals/${id}`,
+          actionUrl: `/rents`,
           actionLabel: 'View Rental',
           metadata: {
             rentalId: id,
@@ -1006,7 +1006,7 @@ export class RentsService {
             title: 'Payment Received',
             message: `Payment of ${paymentAmount}DHS received for rental #${rent.rentContractId}`,
             level: 'success',
-            actionUrl: `/rentals/${id}`,
+            actionUrl: `/rents`,
             actionLabel: 'View Rental',
             metadata: {
               rentalId: id,
@@ -1046,7 +1046,7 @@ export class RentsService {
             title,
             message: `Rental ${rent.rentContractId} status changed to ${updateRentDto.status}`,
             level,
-            actionUrl: `/rentals/${id}`,
+            actionUrl: `/rents`,
             actionLabel: 'View Rental',
             metadata: {
               rentalId: id,
@@ -1087,7 +1087,7 @@ export class RentsService {
               title,
               message,
               level: 'warning',
-              actionUrl: `/rentals/${id}`,
+              actionUrl: `/rents`,
               actionLabel: 'View Rental',
               metadata: {
                 rentalId: id,
@@ -1472,7 +1472,7 @@ export class RentsService {
           priority: 'MEDIUM',
           title: 'New Rental Created',
           message: `${customer?.firstName} ${customer?.lastName} rented ${car?.make} ${car?.model} - Contract #${rentContractId}`, // 🆕 Use rentContractId
-          actionUrl: `/rentals/${id}`,
+          actionUrl: `/rents`,
           actionLabel: 'View Rental',
           metadata: {
             rentalId: id,

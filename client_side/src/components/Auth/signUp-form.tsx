@@ -1,3 +1,6 @@
+'use client';
+
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,32 +19,31 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader } from '@/components/loader';
 import { useUser } from '@/contexts/user-context';
-import { useState } from 'react';
 import { toast } from '../ui/toast';
 import { ModeToggle } from '../mode-toggle';
+import LanguageSelector from '../language-selector';
+import { useTranslation } from 'react-i18next';
 
+// Zod schema with i18n keys (so UI can do t(errors.field.message))
 const schema = z
   .object({
-    name: z.string().min(2),
+    name: z.string().min(2, 'signup.zod.name_min'),
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters long')
-      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-      .regex(/[0-9]/, 'Password must contain at least one number')
-      .regex(
-        /[@$!%*?&]/,
-        'Password must contain at least one special character',
-      ),
+      .min(8, 'signup.zod.password_min')
+      .regex(/[A-Z]/, 'signup.zod.password_upper')
+      .regex(/[a-z]/, 'signup.zod.password_lower')
+      .regex(/[0-9]/, 'signup.zod.password_number')
+      .regex(/[@$!%*?&]/, 'signup.zod.password_special'),
     email: z
       .string()
-      .email('Invalid email address')
-      .nonempty('Email is required'),
+      .email('signup.zod.email_invalid')
+      .nonempty('signup.zod.email_required'),
     passwordVerification: z.string(),
   })
   .refine((data) => data.password === data.passwordVerification, {
     path: ['passwordVerification'],
-    message: 'Passwords do not match',
+    message: 'signup.zod.passwords_mismatch',
   });
 
 type FormFields = z.infer<typeof schema>;
@@ -50,6 +52,7 @@ export function SignupForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -74,45 +77,51 @@ export function SignupForm({
     } catch (error: any) {
       toast({
         type: 'error',
-        title: 'Google Sign Up Failed',
-        description: error?.message || 'Failed to sign up with Google',
+        title: t('signup.failed_title', 'Signup Failed'),
+        description:
+          error?.message || t('signup.failed_title', 'Signup Failed'),
       });
     }
   };
 
   const onSubmit = async (data: FormFields) => {
     try {
-      const response = await authClient.signUp.email(
+      await authClient.signUp.email(
         {
           email: data.email,
           password: data.password,
           name: data.name,
         },
         {
-          onRequest: (ctx: any) => {},
-          onSuccess: (ctx: any) => {
+          onRequest: () => {},
+          onSuccess: () => {
             setUserEmail(data.email);
             setShowVerificationMessage(true);
             reset();
 
             toast({
               type: 'success',
-              title: 'Account Created',
-              description: 'Please check your email to verify your account.',
+              title: t('signup.created_title', 'Account Created'),
+              description: t(
+                'signup.created_desc',
+                'Check your email to verify your account.',
+              ),
             });
           },
           onError: (ctx: any) => {
-            if (ctx.error.code === 'USER_ALREADY_EXISTS') {
+            if (ctx?.error?.code === 'USER_ALREADY_EXISTS') {
               toast({
                 type: 'error',
-                title: 'Error',
+                title: t('signup.failed_title', 'Signup Failed'),
                 description: ctx.error.message,
               });
             } else {
               toast({
                 type: 'error',
-                title: 'Signup Failed',
-                description: ctx.error.message || 'Failed to create account',
+                title: t('signup.failed_title', 'Signup Failed'),
+                description:
+                  ctx?.error?.message ||
+                  t('signup.failed_title', 'Signup Failed'),
               });
             }
           },
@@ -121,8 +130,9 @@ export function SignupForm({
     } catch (error: any) {
       toast({
         type: 'error',
-        title: 'Error',
-        description: error?.message || 'An unexpected error occurred',
+        title: t('signup.failed_title', 'Signup Failed'),
+        description:
+          error?.message || t('signup.failed_title', 'Signup Failed'),
       });
     }
   };
@@ -142,9 +152,11 @@ export function SignupForm({
         <div className="flex items-center justify-center min-h-screen p-4">
           <Card className="bg-gray-2 w-full max-w-md">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Check Your Email</CardTitle>
+              <CardTitle className="text-xl">
+                {t('signup.verify_title', 'Check Your Email')}
+              </CardTitle>
               <CardDescription>
-                We've sent a verification link to {userEmail}
+                {t('signup.verify_desc', { email: userEmail })}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center space-y-4">
@@ -165,11 +177,10 @@ export function SignupForm({
               </div>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Click the verification link in your email to activate your
-                  account.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Didn't receive the email? Check your spam folder.
+                  {t(
+                    'signup.verify_hint',
+                    'Click the link to activate your account. Check your spam if you don’t see it.',
+                  )}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -178,13 +189,13 @@ export function SignupForm({
                   onClick={() => setShowVerificationMessage(false)}
                   className="flex-1"
                 >
-                  Try Different Email
+                  {t('common.try_different_email', 'Try Different Email')}
                 </Button>
                 <Button
                   onClick={() => navigate({ to: '/login' })}
                   className="flex-1"
                 >
-                  Back to Login
+                  {t('common.back_to_login', 'Back to Login')}
                 </Button>
               </div>
             </CardContent>
@@ -195,12 +206,11 @@ export function SignupForm({
   }
 
   return (
-    <div
-      className={cn('relative w-full min-h-screen flex flex-col', className)}
-      {...props}
-    >
-      {/* Theme Toggle - Absolute Top Right */}
-      <div className="absolute top-4 right-4 z-10">
+    <div className="flex min-h-screen flex-col w-full">
+      <div className="flex w-full items-center justify-between gap-4 px-4 py-3">
+        <div>
+          <LanguageSelector />
+        </div>
         <ModeToggle />
       </div>
 
@@ -209,9 +219,11 @@ export function SignupForm({
         <div className="w-full max-w-md space-y-4">
           <Card className="bg-gray-2">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Sign Up</CardTitle>
+              <CardTitle className="text-xl">
+                {t('signup.title', 'Sign Up')}
+              </CardTitle>
               <CardDescription>
-                Sign up to have an easy life as a car renting agency owner.
+                {t('signup.subtitle', 'Create your account to get started.')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -220,28 +232,32 @@ export function SignupForm({
                   <div className="grid gap-6">
                     <div className="grid gap-2">
                       <Label htmlFor="name" className="text-justify">
-                        Name <span className="text-red-700">*</span>
+                        {t('common.name', 'Name')}{' '}
+                        <span className="text-red-700">*</span>
                       </Label>
                       <Input
                         id="name"
-                        type="name"
+                        type="text"
                         className={
                           errors.name
                             ? 'border-red-600 focus:outline-none focus:ring-0 focus:ring-offset-0'
                             : ''
                         }
-                        {...register('name', { required: 'Name required' })}
+                        {...register('name', {
+                          required: 'signup.zod.name_min',
+                        })}
                       />
                       {errors.name && (
                         <span className="text-red-600 text-sm">
-                          {errors.name.message}
+                          {t(errors.name.message as any)}
                         </span>
                       )}
                     </div>
 
                     <div className="grid gap-2">
                       <Label htmlFor="email" className="text-justify">
-                        Email <span className="text-red-700">*</span>
+                        {t('common.email', 'Email')}{' '}
+                        <span className="text-red-700">*</span>
                       </Label>
                       <Input
                         id="email"
@@ -254,14 +270,15 @@ export function SignupForm({
                       />
                       {errors.email && (
                         <span className="text-red-600 text-sm">
-                          {errors.email.message}
+                          {t(errors.email.message as any)}
                         </span>
                       )}
                     </div>
 
                     <div className="grid gap-2">
                       <Label htmlFor="password">
-                        Password <span className="text-red-700">*</span>
+                        {t('common.password', 'Password')}{' '}
+                        <span className="text-red-700">*</span>
                       </Label>
                       <Input
                         id="password"
@@ -273,14 +290,14 @@ export function SignupForm({
                       />
                       {errors.password && (
                         <span className="text-red-600 text-sm">
-                          {errors.password.message}
+                          {t(errors.password.message as any)}
                         </span>
                       )}
                     </div>
 
                     <div className="grid gap-2">
                       <Label htmlFor="passwordVerification">
-                        Password Verification{' '}
+                        {t('common.confirm_password', 'Confirm Password')}{' '}
                         <span className="text-red-700">*</span>
                       </Label>
                       <Input
@@ -295,7 +312,7 @@ export function SignupForm({
                       />
                       {errors.passwordVerification && (
                         <span className="text-red-600 text-sm">
-                          {errors.passwordVerification.message}
+                          {t(errors.passwordVerification.message as any)}
                         </span>
                       )}
                     </div>
@@ -308,29 +325,26 @@ export function SignupForm({
                       {isSubmitting ? (
                         <>
                           <Loader />
-                          <span>Loading...</span>
+                          <span>
+                            {t('signup.button_loading', 'Creating...')}
+                          </span>
                         </>
                       ) : (
-                        'Sign Up'
+                        t('signup.button', 'Sign Up')
                       )}
                     </Button>
                   </div>
 
                   <div className="text-center text-sm">
-                    Already have an account?{' '}
+                    {t('common.already_account', 'Already have an account?')}{' '}
                     <Link to="/login" className="underline underline-offset-4">
-                      Login
+                      {t('signup.signup_link', 'Sign up')}
                     </Link>
                   </div>
                 </div>
               </form>
             </CardContent>
           </Card>
-
-          <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary">
-            By clicking continue, you agree to our{' '}
-            <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
-          </div>
         </div>
       </div>
     </div>

@@ -1,0 +1,65 @@
+{
+  "notifications": {
+    "rental": {
+      "started": {
+        "title": "Location démarrée",
+        "message": "Le contrat n°{{contractId}} a démarré",
+        "action_label": "Voir la location",
+        "email_subject": "🚗 Location démarrée - Contrat n°{{contractId}}",
+        "email_heading": "Location démarrée",
+        "email_body": "Une location vient de démarrer :"
+      },
+      "completed": {
+        "title": "Location terminée",
+        "message": "Le contrat n°{{contractId}} est terminé",
+        "action_label": "Voir la location",
+        "email_subject": "✅ Location terminée - Contrat n°{{contractId}}",
+        "email_heading": "Location terminée",
+        "email_body": "Une location a été terminée :"
+      },
+      "overdue": {
+        "title": "Location en retard",
+        "message": "Le contrat n°{{contractId}} a {{days}} jour(s) de retard",
+        "action_label": "Contacter le client",
+        "email_subject": "⚠️ LOCATION EN RETARD - Contrat n°{{contractId}}",
+        "email_heading": "Location en retard",
+        "email_body": "Action requise : une location a {{days}} jour(s) de retard !"
+      },
+      "return_reminder": {
+        "title": "Retour dans {{days}} {{unit}}",
+        "message": "Le contrat n°{{contractId}} doit être retourné dans {{days}} {{unit}}",
+        "action_label": "Voir la location",
+        "email_subject": "⏰ Rappel de retour - Contrat n°{{contractId}} ({{days}} {{unit}})",
+        "email_heading": "Rappel de retour",
+        "email_body": "Une location doit être retournée dans {{days}} {{unit}} :"
+      }
+    },
+    "car": {
+      "insurance": {
+        "very_soon": {
+          "title": "Assurance expire très bientôt !",
+          "level": "error"
+        },
+        "this_week": {
+          "title": "Assurance expirant cette semaine",
+          "level": "error"
+        },
+        "this_month": {
+          "title": "Assurance expirant ce mois-ci",
+          "level": "warning"
+        },
+        "message": "L'assurance du véhicule {{make}} {{model}} expire dans {{days}} jours",
+        "action_label": "Mettre à jour l'assurance",
+        "email_subject": "{{urgency}} : Assurance expirante - {{make}} {{model}} ({{days}} jours)",
+        "email_heading": "Assurance expirant bientôt",
+        "email_body": "L'assurance d'un de vos véhicules expire dans {{days}} jours :"
+      }
+    },
+    "common": {
+      "view_rental": "Voir la location",
+      "day": "jour",
+      "days": "jours",
+      "hi_user": "Bonjour {{name}},"
+    }
+  }
+}

@@ -20,11 +20,29 @@ import { R2Module } from './r2/r2.module';
 import { FilesModule } from './files/files.module';
 import { EmailModule } from './email/email.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+import path, { join } from 'path';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { AdminModule } from './admin/admin.module';
+import {
+  I18nModule,
+  AcceptLanguageResolver,
+  QueryResolver,
+  HeaderResolver,
+} from 'nestjs-i18n';
 @Module({
   imports: [
+    I18nModule.forRoot({
+      fallbackLanguage: 'en',
+      loaderOptions: {
+        path: path.join(process.cwd(), 'public', 'i18n'),
+        watch: process.env.NODE_ENV !== 'production',
+      },
+      resolvers: [
+        { use: QueryResolver, options: ['lang', 'locale'] },
+        AcceptLanguageResolver,
+      ],
+    }),
+
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public'),
       serveRoot: '/',
