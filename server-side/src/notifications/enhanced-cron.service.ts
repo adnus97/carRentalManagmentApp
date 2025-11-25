@@ -1,4 +1,3 @@
-// src/notifications/enhanced-cron.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DatabaseService } from '../db';
@@ -12,6 +11,9 @@ import { users } from '../db/schema/users';
 import { eq, lte, gte, and, sql } from 'drizzle-orm';
 import { I18nService } from 'nestjs-i18n';
 
+type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+type Level = 'info' | 'warning' | 'error';
+
 @Injectable()
 export class EnhancedCronService {
   private readonly logger = new Logger(EnhancedCronService.name);
@@ -20,10 +22,11 @@ export class EnhancedCronService {
     private readonly dbService: DatabaseService,
     private readonly notificationsService: NotificationsService,
     private readonly emailService: EmailService,
-    private readonly i18n: I18nService, // i18n injected
+    private readonly i18n: I18nService,
   ) {}
 
-  // Locale helpers
+  // ========== LOCALE + HELPERS ==========
+
   private async getOrgOwner(orgId: string) {
     const [org] = await this.dbService.db
       .select({ userId: organization.userId })
@@ -37,7 +40,7 @@ export class EnhancedCronService {
       .select()
       .from(users)
       .where(eq(users.id, userId));
-    return user as any; // may or may not have locale; we will fallback to 'en'
+    return user as any; // user: { id, email, name, locale?: 'en' | 'fr' | 'en-US' ... }
   }
 
   private async getCarDetails(carId: string) {
@@ -56,22 +59,29 @@ export class EnhancedCronService {
     return customer;
   }
 
+  // Determine user language. Store users.locale (e.g., 'en' | 'fr').
+  // I18n fallbacks (e.g., 'fr-FR' -> 'fr') are configured in I18nModule.
   private async getLocale(userId: string): Promise<string> {
     const user = await this.getUserDetails(userId);
-    // if you add users.locale later, this will pick it up; otherwise defaults to 'en'
-    return user?.locale || 'en';
+    return user?.locale || 'fr';
   }
 
+  // Translate helper with enforced namespace "common".
+  // Call with relative keys such as 'notifications.rental.started.title'
   private async t(
     userId: string,
     key: string,
     vars?: Record<string, any>,
   ): Promise<string> {
     const lang = await this.getLocale(userId);
-    return this.i18n.t(key, { lang, args: vars ?? {} }) as unknown as string;
-  }
+    const namespaced = `common.${key}`;
 
-  // ================= CRONS =================
+    return this.i18n.translate(namespaced, {
+      lang,
+      args: vars ?? {},
+    });
+  }
+  // ========== CRONS ==========
 
   @Cron(CronExpression.EVERY_MINUTE)
   async autoUpdateRentStatuses() {
@@ -79,7 +89,7 @@ export class EnhancedCronService {
       const now = new Date();
       let totalUpdated = 0;
 
-      // 1) reserved -> active
+      // reserved -> active
       const reservedToActive = await this.dbService.db
         .update(rents)
         .set({ status: 'active' })
@@ -102,7 +112,6 @@ export class EnhancedCronService {
         const orgOwner = await this.getOrgOwner(rent.orgId);
         if (!orgOwner) continue;
 
-        // Translate title & message only (as requested)
         const title = await this.t(
           orgOwner.userId,
           'notifications.rental.started.title',
@@ -122,7 +131,10 @@ export class EnhancedCronService {
           title,
           message,
           actionUrl: `/rents`,
-          actionLabel: 'View Rental', // keep static for now
+          actionLabel: await this.t(
+            orgOwner.userId,
+            'notifications.common.view_rental',
+          ),
           metadata: { rentalId: rent.id },
         });
 
@@ -130,7 +142,7 @@ export class EnhancedCronService {
       }
       totalUpdated += reservedToActive.length;
 
-      // 2) active -> completed
+      // active -> completed (returnedAt <= now)
       const activeToCompleted = await this.dbService.db
         .update(rents)
         .set({ status: 'completed' })
@@ -173,7 +185,10 @@ export class EnhancedCronService {
           title,
           message,
           actionUrl: `/rents`,
-          actionLabel: 'View Rental',
+          actionLabel: await this.t(
+            orgOwner.userId,
+            'notifications.common.view_rental',
+          ),
           metadata: { rentalId: rent.id },
         });
 
@@ -243,7 +258,10 @@ export class EnhancedCronService {
           title,
           message,
           actionUrl: `/rents`,
-          actionLabel: 'Contact Customer',
+          actionLabel: await this.t(
+            orgOwner.userId,
+            'notifications.rental.overdue.action_label',
+          ),
           metadata: {
             rentalId: rental.id,
             customerId: rental.customerId,
@@ -323,7 +341,10 @@ export class EnhancedCronService {
             title,
             message,
             actionUrl: `/rents`,
-            actionLabel: 'View Rental',
+            actionLabel: await this.t(
+              orgOwner.userId,
+              'notifications.common.view_rental',
+            ),
             metadata: { rentalId: rental.id, daysUntilReturn: days },
           });
 
@@ -339,7 +360,8 @@ export class EnhancedCronService {
     }
   }
 
-  @Cron('0 8 * * *')
+  // TEMP for testing. Change back to '0 8 * * *' in prod.
+  @Cron(CronExpression.EVERY_DAY_AT_10AM)
   async checkInsuranceExpiry() {
     try {
       const now = new Date();
@@ -373,8 +395,8 @@ export class EnhancedCronService {
             (1000 * 60 * 60 * 24),
         );
 
-        let priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-        let level: 'info' | 'warning' | 'error';
+        let priority: Priority;
+        let level: Level;
         let titleKey = 'notifications.car.insurance.this_month.title';
 
         if (daysUntilExpiry <= 3) {
@@ -395,11 +417,7 @@ export class EnhancedCronService {
         const message = await this.t(
           orgOwner.userId,
           'notifications.car.insurance.message',
-          {
-            make: car.make,
-            model: car.model,
-            days: daysUntilExpiry,
-          },
+          { make: car.make, model: car.model, days: daysUntilExpiry },
         );
 
         await this.notificationsService.createNotification({
@@ -412,7 +430,10 @@ export class EnhancedCronService {
           message,
           level,
           actionUrl: `/carDetails/${car.id}`,
-          actionLabel: 'Update Insurance',
+          actionLabel: await this.t(
+            orgOwner.userId,
+            'notifications.car.insurance.action_label',
+          ),
           metadata: {
             carId: car.id,
             daysUntilExpiry,
@@ -444,7 +465,7 @@ export class EnhancedCronService {
     }
   }
 
-  // ================= EMAILS (localized) =================
+  // ========== EMAILS (localized) ==========
 
   private async sendRentalStartedEmail(userId: string, rental: any) {
     try {
@@ -471,6 +492,19 @@ export class EnhancedCronService {
       });
       const btn = await this.t(userId, 'notifications.common.view_rental');
 
+      const lblContract = await this.t(
+        userId,
+        'notifications.rental.email_labels.contract',
+      );
+      const lblVehicle = await this.t(
+        userId,
+        'notifications.rental.email_labels.vehicle',
+      );
+      const lblCustomer = await this.t(
+        userId,
+        'notifications.rental.email_labels.customer',
+      );
+
       await this.emailService.sendEmail({
         recipients: [user.email],
         subject,
@@ -479,9 +513,9 @@ export class EnhancedCronService {
           <p>${hi}</p>
           <p>${body}</p>
           <ul>
-            <li><strong>Contract ID:</strong> ${rental.rentContractId}</li>
-            <li><strong>Car:</strong> ${car.make} ${car.model}</li>
-            <li><strong>Customer:</strong> ${customer.firstName} ${customer.lastName}</li>
+            <li><strong>${lblContract}:</strong> ${rental.rentContractId}</li>
+            <li><strong>${lblVehicle}:</strong> ${car.make} ${car.model}</li>
+            <li><strong>${lblCustomer}:</strong> ${customer.firstName} ${customer.lastName}</li>
           </ul>
           <a href="${process.env.BETTER_AUTH_URL}/rents" style="display:inline-block;padding:10px 20px;background:#667eea;color:white;text-decoration:none;border-radius:5px;">${btn}</a>
         `,
@@ -515,6 +549,15 @@ export class EnhancedCronService {
       });
       const btn = await this.t(userId, 'notifications.common.view_rental');
 
+      const lblContract = await this.t(
+        userId,
+        'notifications.rental.email_labels.contract',
+      );
+      const lblVehicle = await this.t(
+        userId,
+        'notifications.rental.email_labels.vehicle',
+      );
+
       await this.emailService.sendEmail({
         recipients: [user.email],
         subject,
@@ -523,8 +566,8 @@ export class EnhancedCronService {
           <p>${hi}</p>
           <p>${body}</p>
           <ul>
-            <li><strong>Contract ID:</strong> ${rental.rentContractId}</li>
-            <li><strong>Car:</strong> ${car.make} ${car.model}</li>
+            <li><strong>${lblContract}:</strong> ${rental.rentContractId}</li>
+            <li><strong>${lblVehicle}:</strong> ${car.make} ${car.model}</li>
           </ul>
           <a href="${process.env.BETTER_AUTH_URL}/rents" style="display:inline-block;padding:10px 20px;background:#10b981;color:white;text-decoration:none;border-radius:5px;">${btn}</a>
         `,
@@ -564,6 +607,23 @@ export class EnhancedCronService {
       });
       const btn = await this.t(userId, 'notifications.common.view_rental');
 
+      const lblContract = await this.t(
+        userId,
+        'notifications.rental.email_labels.contract',
+      );
+      const lblVehicle = await this.t(
+        userId,
+        'notifications.rental.email_labels.vehicle',
+      );
+      const lblCustomer = await this.t(
+        userId,
+        'notifications.rental.email_labels.customer',
+      );
+      const lblPhone = await this.t(
+        userId,
+        'notifications.rental.email_labels.phone',
+      );
+
       await this.emailService.sendEmail({
         recipients: [user.email],
         subject,
@@ -572,11 +632,11 @@ export class EnhancedCronService {
           <p>${hi}</p>
           <p>${body}</p>
           <ul>
-            <li><strong>Contract ID:</strong> ${rental.rentContractId}</li>
-            <li><strong>Car:</strong> ${car.make} ${car.model}</li>
-            <li><strong>Customer:</strong> ${customer.firstName} ${customer.lastName}</li>
-            <li><strong>Customer:</strong> ${customer.phone}</li>
-            <li><strong>Days Overdue:</strong> ${daysOverdue}</li>
+            <li><strong>${lblContract}:</strong> ${rental.rentContractId}</li>
+            <li><strong>${lblVehicle}:</strong> ${car.make} ${car.model}</li>
+            <li><strong>${lblCustomer}:</strong> ${customer.firstName} ${customer.lastName}</li>
+            <li><strong>${lblPhone}:</strong> ${customer.phone}</li>
+            <li><strong>${await this.t(userId, 'notifications.common.days')}:</strong> ${daysOverdue}</li>
           </ul>
           <a href="${process.env.BETTER_AUTH_URL}/rents" style="display:inline-block;padding:10px 20px;background:#ef4444;color:white;text-decoration:none;border-radius:5px;">${btn}</a>
         `,
@@ -606,11 +666,7 @@ export class EnhancedCronService {
       const subject = await this.t(
         userId,
         'notifications.rental.return_reminder.email_subject',
-        {
-          contractId: rental.rentContractId,
-          days: daysUntilReturn,
-          unit,
-        },
+        { contractId: rental.rentContractId, days: daysUntilReturn, unit },
       );
       const heading = await this.t(
         userId,
@@ -626,6 +682,27 @@ export class EnhancedCronService {
       });
       const btn = await this.t(userId, 'notifications.common.view_rental');
 
+      const lblContract = await this.t(
+        userId,
+        'notifications.rental.email_labels.contract',
+      );
+      const lblVehicle = await this.t(
+        userId,
+        'notifications.rental.email_labels.vehicle',
+      );
+      const lblCustomer = await this.t(
+        userId,
+        'notifications.rental.email_labels.customer',
+      );
+      const lblPhone = await this.t(
+        userId,
+        'notifications.rental.email_labels.phone',
+      );
+      const lblExpected = await this.t(
+        userId,
+        'notifications.rental.email_labels.expected_return',
+      );
+
       await this.emailService.sendEmail({
         recipients: [user.email],
         subject,
@@ -634,11 +711,11 @@ export class EnhancedCronService {
           <p>${hi}</p>
           <p>${body}</p>
           <ul>
-            <li><strong>Contract ID:</strong> ${rental.rentContractId}</li>
-            <li><strong>Car:</strong> ${car.make} ${car.model}</li>
-            <li><strong>Customer:</strong> ${customer.firstName} ${customer.lastName}</li>
-            <li><strong>Customer:</strong> ${customer.phone}</li>
-            <li><strong>Expected Return:</strong> ${rental.expectedEndDate?.toLocaleDateString?.() || ''}</li>
+            <li><strong>${lblContract}:</strong> ${rental.rentContractId}</li>
+            <li><strong>${lblVehicle}:</strong> ${car.make} ${car.model}</li>
+            <li><strong>${lblCustomer}:</strong> ${customer.firstName} ${customer.lastName}</li>
+            <li><strong>${lblPhone}:</strong> ${customer.phone}</li>
+            <li><strong>${lblExpected}:</strong> ${rental.expectedEndDate?.toLocaleDateString?.() || ''}</li>
           </ul>
           <a href="${process.env.BETTER_AUTH_URL}/rents" style="display:inline-block;padding:10px 20px;background:#667eea;color:white;text-decoration:none;border-radius:5px;">${btn}</a>
         `,
@@ -662,12 +739,7 @@ export class EnhancedCronService {
       const subject = await this.t(
         userId,
         'notifications.car.insurance.email_subject',
-        {
-          urgency,
-          make: car.make,
-          model: car.model,
-          days: daysUntilExpiry,
-        },
+        { urgency, make: car.make, model: car.model, days: daysUntilExpiry },
       );
       const heading = await this.t(
         userId,
@@ -677,6 +749,15 @@ export class EnhancedCronService {
         userId,
         'notifications.car.insurance.email_body',
         { days: daysUntilExpiry },
+      );
+
+      const carLabel = await this.t(
+        userId,
+        'notifications.car.insurance.email_car_label',
+      );
+      const expLabel = await this.t(
+        userId,
+        'notifications.car.insurance.email_expiry_label',
       );
 
       await this.emailService.sendEmail({
@@ -689,10 +770,12 @@ export class EnhancedCronService {
           })}</p>
           <p>${body}</p>
           <ul>
-            <li><strong>Car:</strong> ${car.make} ${car.model} (${car.year})</li>
-            <li><strong>Expiry Date:</strong> ${car.insuranceExpiryDate?.toLocaleDateString?.() || ''}</li>
+            <li><strong>${carLabel}:</strong> ${car.make} ${car.model} (${car.year})</li>
+            <li><strong>${expLabel}:</strong> ${car.insuranceExpiryDate?.toLocaleDateString?.() || ''}</li>
           </ul>
-          <a href="${process.env.BETTER_AUTH_URL}/cars/${car.id}" style="display:inline-block;padding:10px 20px;background:#667eea;color:white;text-decoration:none;border-radius:5px;">Update Insurance</a>
+          <a href="${process.env.BETTER_AUTH_URL}/cars/${car.id}" style="display:inline-block;padding:10px 20px;background:#667eea;color:white;text-decoration:none;border-radius:5px;">
+            ${await this.t(userId, 'notifications.car.insurance.action_label')}
+          </a>
         `,
       });
     } catch (error) {

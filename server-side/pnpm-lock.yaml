@@ -121,7 +121,7 @@ importers:
         version: 11.1.0
     devDependencies:
       '@nestjs/cli':
-        specifier: ^10.0.0
+        specifier: ^10.4.9
         version: 10.4.9(esbuild@0.19.12)
       '@nestjs/mapped-types':
         specifier: ^2.1.0

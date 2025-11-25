@@ -1,0 +1,70 @@
+{
+  "notifications": {
+    "common": {
+      "view_rental": "View Rental",
+      "day": "day",
+      "days": "days",
+      "hi_user": "Hi {name},"
+    },
+    "rental": {
+      "started": {
+        "title": "Rental Started",
+        "message": "Rental #{contractId} has started",
+        "email_subject": "🚗 Rental Started - Contract #{contractId}",
+        "email_heading": "Rental Started",
+        "email_body": "A rental has just started:"
+      },
+      "email_labels": {
+        "contract": "Contract",
+        "vehicle": "Vehicle",
+        "customer": "Customer",
+        "phone": "Phone",
+        "expected_return": "Expected Return"
+      },
+      "completed": {
+        "title": "Rental Completed",
+        "message": "Rental #{contractId} has been completed",
+        "email_subject": "✅ Rental Completed - Contract #{contractId}",
+        "email_heading": "Rental Completed",
+        "email_body": "A rental has been completed:"
+      },
+      "overdue": {
+        "title": "Rental Overdue",
+        "message": "Rental #{contractId} is overdue by {days} days",
+        "email_subject": "⚠️ OVERDUE RENTAL - Contract #{contractId}",
+        "email_heading": "Rental Overdue",
+        "email_body": "Action required: the rental is overdue by {days} days!"
+      },
+      "return_reminder": {
+        "title": "Return due in {days} {unit}",
+        "message": "Rental #{contractId} is due for return in {days} {unit}",
+        "email_subject": "⏰ Return Reminder - Contract #{contractId} ({days} {unit})",
+        "email_heading": "Return Reminder",
+        "email_body": "A rental is due for return in {days} {unit}:"
+      }
+    },
+    "car": {
+      "insurance": {
+        "very_soon": {
+          "title": "Insurance expires very soon!",
+          "level": "error"
+        },
+        "this_week": {
+          "title": "Insurance expiring this week",
+          "level": "error"
+        },
+        "this_month": {
+          "title": "Insurance expiring this month",
+          "level": "warning"
+        },
+        "message": "Insurance for {make} {model} expires in {days} days",
+        "action_label": "Update Insurance",
+        "email_subject": "{urgency}: Insurance expiring - {make} {model} ({days} days)",
+        "email_heading": "Insurance expiring soon",
+        "email_body": "The insurance of one of your vehicles expires in {days} days:",
+        "email_car_label": "Vehicle",
+        "email_expiry_label": "Expiry Date"
+      }
+    }
+  }
+}

@@ -11,7 +11,7 @@
   "select": { "language": "Choisir Langue" },
   "header": { "title": "Location de voitures", "logout": "Se déconnecter" },
   "account": {
-    "title": "Paramètres du compte",
+    "title": "Paramètres du Compte",
     "subtitle": "Gérez les paramètres et préférences de votre compte.",
     "tabs": {
       "profile": "Profil",

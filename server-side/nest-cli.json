@@ -3,8 +3,13 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "deleteOutDir": true,
-    "assets": [{ "include": "src/public/**/*", "outDir": "dist/src" }],
+    "assets": [
+      {
+        "include": "i18n/**/*",
+        "outDir": "dist/src",
+        "watchAssets": true
+      }
+    ],
     "watchAssets": true
   }
 }

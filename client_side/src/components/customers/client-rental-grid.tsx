@@ -121,8 +121,12 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
     },
     {
       headerName: t('client_rentals.fully_paid', 'Fully Paid'),
-      field: 'isFullyPaid',
       flex: 1,
+      valueGetter: (p) => {
+        const paid = Number(p.data?.totalPaid ?? 0);
+        const price = Number(p.data?.totalPrice ?? 0);
+        return price > 0 && paid >= price;
+      },
       cellRenderer: (p: any) =>
         p.value ? (
           <span className="text-green-500 font-bold">
@@ -131,6 +135,8 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
         ) : (
           <span className="text-red-500">{t('client_rentals.no', 'No')}</span>
         ),
+      filter: true,
+      sortable: true,
     },
     {
       headerName: t('client_rentals.status', 'Status'),

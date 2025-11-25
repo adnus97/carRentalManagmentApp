@@ -168,6 +168,7 @@
     "delete_title": "Delete Customer",
     "delete_desc": "Are you sure you want to delete {{name}}?",
     "cancel": "Cancel",
+    "no_documents": "No documents uploaded yet.",
     "deleting": "Deleting...",
     "overview": "Client Overview",
     "document": "Document",

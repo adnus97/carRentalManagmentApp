@@ -173,6 +173,19 @@ function Breadcrumbs() {
       ];
     }
 
+    // Account Settings section
+    if (path.startsWith('/account-settings')) {
+      return [
+        {
+          title: t('account.title', { ns: 'common' }), // Use this instead
+          href: '/account-settings',
+          isCurrentPage: !entityName,
+        },
+        ...(entityName
+          ? [{ title: entityName, href: entityHref, isCurrentPage: true }]
+          : []),
+      ];
+    }
     // Default fallback
     return [
       { title: t('breadcrumbs.dashboard'), href: '/', isCurrentPage: true },

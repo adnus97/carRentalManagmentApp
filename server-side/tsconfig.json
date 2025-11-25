@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "declaration": true,
+    "declaration": false,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
@@ -19,5 +19,12 @@
     "noFallthroughCasesInSwitch": false,
     "esModuleInterop": true,
     "types": ["@types/multer"]
-  }
+  },
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "test",
+    "jest.config.ts",
+    "jest.config.js"
+  ]
 }

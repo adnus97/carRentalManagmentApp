@@ -28,14 +28,18 @@ import {
   AcceptLanguageResolver,
   QueryResolver,
   HeaderResolver,
+  I18nJsonLoader,
 } from 'nestjs-i18n';
 @Module({
   imports: [
     I18nModule.forRoot({
       fallbackLanguage: 'en',
+      fallbacks: { 'en-*': 'en', 'fr-*': 'fr' },
+      loader: I18nJsonLoader,
       loaderOptions: {
-        path: path.join(process.cwd(), 'public', 'i18n'),
-        watch: process.env.NODE_ENV !== 'production',
+        // Dev: src/i18n, Prod: dist/src/i18n
+        path: path.join(__dirname, '/i18n/'),
+        watch: true,
       },
       resolvers: [
         { use: QueryResolver, options: ['lang', 'locale'] },

@@ -16,17 +16,9 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  ArrowLeft,
-  Trash,
-  Hammer,
-  IdCard,
-  Mail,
-  Eye,
-  Download,
-} from 'lucide-react';
+import { ArrowLeft, Trash, Hammer, IdCard, Mail } from 'lucide-react';
 import {
   Calendar,
   CheckCircle,
@@ -45,7 +37,6 @@ import { EditClientDialog } from '@/components/customers/edit-client-form';
 import { ClientRentalsGrid } from './client-rental-grid';
 import { ClientSpendingChart } from './client-spending-chart';
 import { format } from 'date-fns';
-import { Separator } from '../../components/ui/separator';
 import { useTranslation } from 'react-i18next';
 
 type DocCardProps = {
@@ -57,6 +48,14 @@ type DocCardProps = {
 
 function DocCard({ title, fileId, onDownload, onView }: DocCardProps) {
   const [failed, setFailed] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+    setImageLoaded(false);
+  }, [fileId]);
+
+  const imageUrl = getFileServeUrl(fileId);
 
   return (
     <div
@@ -67,7 +66,6 @@ function DocCard({ title, fileId, onDownload, onView }: DocCardProps) {
         'transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5',
       ].join(' ')}
     >
-      {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2">
         <span className="text-[10px] font-medium text-muted-foreground">
           {title}
@@ -97,7 +95,6 @@ function DocCard({ title, fileId, onDownload, onView }: DocCardProps) {
         </div>
       </div>
 
-      {/* Media area */}
       <button
         onClick={() => onView?.()}
         className="relative block w-full overflow-hidden"
@@ -106,14 +103,43 @@ function DocCard({ title, fileId, onDownload, onView }: DocCardProps) {
       >
         {!failed && (
           <img
-            src={getFileServeUrl(fileId)}
+            key={imageUrl}
+            src={imageUrl}
             alt={title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            onError={() => setFailed(true)}
+            className={[
+              'h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]',
+              !imageLoaded ? 'opacity-0' : 'opacity-100',
+            ].join(' ')}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => {
+              console.error(`Failed to load image for ${title}:`, imageUrl);
+              setFailed(true);
+            }}
+            loading="eager"
           />
         )}
 
-        {/* Fallback only when image failed */}
+        {!failed && !imageLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-950">
+            <div className="text-center">
+              <div className="mx-auto mb-2 h-12 w-12 animate-pulse rounded-full border border-dashed border-slate-400/40 p-3">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-full w-full opacity-70"
+                  fill="none"
+                >
+                  <path
+                    d="M4 17V7a3 3 0 013-3h7l6 6v7a3 3 0 01-3 3H7a3 3 0 01-3-3z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              </div>
+              <p className="text-xs opacity-70">Loading...</p>
+            </div>
+          </div>
+        )}
+
         {failed && (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 dark:from-slate-900 dark:to-slate-950">
             <div className="text-center">
@@ -137,7 +163,6 @@ function DocCard({ title, fileId, onDownload, onView }: DocCardProps) {
           </div>
         )}
 
-        {/* Hover overlay + eye always */}
         <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/35" />
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div
@@ -181,40 +206,80 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
-
-  // incremental show counts
   const [ratingsToShow, setRatingsToShow] = useState(3);
   const [blacklistToShow, setBlacklistToShow] = useState(3);
 
-  // ✅ Fetch customer
   const {
     data: customer,
     isLoading,
     isError,
+    error,
   } = useQuery<CustomerWithFiles>({
     queryKey: ['customerDetails', customerId],
-    queryFn: () => getCustomerWithFiles(customerId),
-    placeholderData: (previousData) => previousData,
+    queryFn: async () => {
+      console.log('🚀 Fetching customer with files for ID:', customerId);
+
+      // Always fetch basic customer to ensure we have file IDs
+      const basicCustomer = await getCustomerById(customerId);
+      console.log('📦 Basic customer data:', basicCustomer);
+
+      // Try to get the full customer with files
+      let result = await getCustomerWithFiles(customerId);
+      console.log('✅ API Response from /with-files:', result);
+
+      // Ensure file objects are populated from IDs if missing
+      if (!result.idCardFile && basicCustomer.idCardId) {
+        console.log('🔧 Manually adding idCardFile');
+        result.idCardFile = {
+          id: basicCustomer.idCardId,
+          name: 'ID Card',
+          url: getFileServeUrl(basicCustomer.idCardId),
+          type: 'image',
+          size: 0,
+        };
+      }
+
+      if (!result.driversLicenseFile && basicCustomer.driversLicenseId) {
+        console.log('🔧 Manually adding driversLicenseFile');
+        result.driversLicenseFile = {
+          id: basicCustomer.driversLicenseId,
+          name: 'Drivers License',
+          url: getFileServeUrl(basicCustomer.driversLicenseId),
+          type: 'image',
+          size: 0,
+        };
+      }
+
+      console.log('✅ Final result:', {
+        hasIdCard: !!result.idCardFile,
+        hasLicense: !!result.driversLicenseFile,
+        idCardFile: result.idCardFile,
+        driversLicenseFile: result.driversLicenseFile,
+      });
+
+      return result;
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false, // Prevent refetch when window regains focus
+    retry: 1,
   });
-  // ✅ Fetch ratings (all, then slice client-side)
+
   const { data: ratings } = useQuery({
     queryKey: ['customerRatings', customerId],
     queryFn: () => getCustomerRatings(customerId, 1, 100),
   });
 
-  // ✅ Fetch blacklist history
   const { data: blacklist } = useQuery({
     queryKey: ['blacklistHistory', customerId],
     queryFn: () => getBlacklist(1, 100),
   });
 
-  // ✅ Fetch rentals for chart
   const { data: rents } = useQuery({
     queryKey: ['customerRentsForChart', customerId],
     queryFn: () => getRentsByCustomer(customerId, 1, 100),
   });
 
-  // ✅ Spending history (use actual rent start date for X-axis)
   const spendingHistory =
     rents?.data?.map((r: any) => ({
       startDate: r.startDate,
@@ -222,94 +287,35 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
       totalPaid: r.totalPaid || 0,
     })) || [];
 
-  // ✅ Compute ratings summary from ratings query
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
 
-  const handleViewDocument = (fileId?: string, title?: string) => {
-    if (!fileId) {
-      toast({
-        type: 'error',
-        title: t(
-          'client_details.doc.not_available_title',
-          'Document not available',
-        ),
-        description: t(
-          'client_details.doc.not_available_desc',
-          '{{title}} has not been uploaded yet.',
-          { title: title || 'Document' },
-        ),
-      });
-      return;
+  useEffect(() => {
+    if (isError) {
+      console.error('❌ Query error:', error);
     }
+  }, [isError, error]);
 
-    try {
-      viewFile(fileId);
-      toast({
-        type: 'success',
-        title: t('client_details.doc.opening_title', 'Opening document'),
-        description: t(
-          'client_details.doc.opening_desc',
-          'Opening {{title}}...',
-          { title: title || 'document' },
-        ),
+  useEffect(() => {
+    if (customer) {
+      console.log('🔍 Customer data loaded:', {
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        hasIdCard: !!customer.idCardFile,
+        hasDriversLicense: !!customer.driversLicenseFile,
+        idCardData: customer.idCardFile,
+        driversLicenseData: customer.driversLicenseFile,
       });
-    } catch (error) {
-      toast({
-        type: 'error',
-        title: t('client_details.doc.error_title', 'Error loading file'),
-        description: t(
-          'client_details.doc.error_desc',
-          'Could not load {{title}}. Please try again.',
-          { title: title || 'document' },
-        ),
-      });
-    }
-  };
 
-  const handleDownloadDocument = (fileId?: string, title?: string) => {
-    if (!fileId) {
-      toast({
-        type: 'error',
-        title: t(
-          'client_details.doc.not_available_title',
-          'Document not available',
-        ),
-        description: t(
-          'client_details.doc.not_available_desc',
-          '{{title}} has not been uploaded yet.',
-          { title: title || 'Document' },
-        ),
-      });
-      return;
+      // Log when rendering
+      console.log(
+        '🖼️ About to render docs. IdCard:',
+        customer?.idCardFile,
+        'License:',
+        customer?.driversLicenseFile,
+      );
     }
-
-    try {
-      downloadFile(fileId, title);
-      toast({
-        type: 'success',
-        title: t('client_details.doc.downloading_title', 'Downloading...'),
-        description: t(
-          'client_details.doc.downloading_desc',
-          'Downloading {{title}}...',
-          { title: title || 'document' },
-        ),
-      });
-    } catch (error) {
-      toast({
-        type: 'error',
-        title: t(
-          'client_details.doc.error_download_title',
-          'Error downloading file',
-        ),
-        description: t(
-          'client_details.doc.error_download_desc',
-          'Could not download {{title}}. Please try again.',
-          { title: title || 'document' },
-        ),
-      });
-    }
-  };
+  }, [customer]);
 
   useEffect(() => {
     if (ratings?.data?.length) {
@@ -347,25 +353,8 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
       </p>
     );
 
-  // ✅ Status badge
-  const getStatusBadge = () => {
-    if (customer.isBlacklisted) {
-      return (
-        <Badge variant="fail">
-          {t('client_details.status.blacklisted', 'Blacklisted')}
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="success">
-        {t('client_details.status.active', 'Active')}
-      </Badge>
-    );
-  };
-
   return (
     <div className="w-full mx-auto px-3 sm:px-4 lg:px-6 space-y-8">
-      {/* Sticky Action Bar - remains the same */}
       <div
         className="z-40 bg-background py-4 flex flex-wrap gap-2 items-center justify-between top-0 border-b border-border"
         style={{ top: headerHeight }}
@@ -429,9 +418,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
         </div>
       </div>
 
-      {/* ✅ Overview + Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-        {/* Client Info */}
         <Card
           className={[
             'p-6 border border-border shadow-md rounded-lg',
@@ -442,7 +429,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             'dark:bg-gradient-to-b dark:from-gray-950 dark:to-gray-900',
           ].join(' ')}
         >
-          {/* Dark-mode glow orbs */}
           <div className="pointer-events-none absolute -right-15 -top-15 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
           <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
 
@@ -457,20 +443,18 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8 text-sm">
-            {/* Email */}
             <div className="flex items-start gap-2">
               <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-muted-foreground">
                   {t('form.labels.email', 'Email')}
                 </p>
-                <p className="font-medium break-all !text-[12px] ">
+                <p className="font-medium break-all !text-[12px]">
                   {customer?.email}
                 </p>
               </div>
             </div>
 
-            {/* Phone */}
             <div className="flex items-start gap-2">
               <Phone className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
@@ -481,7 +465,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               </div>
             </div>
 
-            {/* Document */}
             <div className="flex items-start gap-2">
               <IdCard className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
@@ -494,7 +477,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               </div>
             </div>
 
-            {/* Status */}
             <div className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
@@ -502,10 +484,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                   {t('client_details.status.label', 'Status')}
                 </p>
                 {customer?.isBlacklisted ? (
-                  <span
-                    className="inline-block px-2 py-1 text-xs font-semibold rounded"
-                    style={{ backgroundColor: '#EC6142', color: 'white' }}
-                  >
+                  <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
                     {t('client_details.status.blacklisted', 'Blacklisted')}
                   </span>
                 ) : (
@@ -516,7 +495,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               </div>
             </div>
 
-            {/* Created */}
             <div className="flex items-start gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
@@ -531,7 +509,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               </div>
             </div>
 
-            {/* Updated */}
             <div className="flex items-start gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
@@ -546,18 +523,22 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               </div>
             </div>
           </div>
-          <div className="w-full flex justify-center">
-            <Separator className="my-2 w-1/2" />
-          </div>
 
-          {(customer?.idCardFile || customer?.driversLicenseFile) && (
-            <div className="col-span-full pt-2">
-              <h4 className="text-sm font-semibold text-muted-foreground mb-3">
-                {t('form.sections.docs', 'Document Images')}
-              </h4>
+          {/* ALWAYS SHOW DOCUMENT SECTION */}
+          <div className="pt-4 mt-4 border-t border-border">
+            <h4 className="text-sm font-semibold text-muted-foreground mb-3">
+              {t('form.sections.docs', 'Document Images')}
+            </h4>
+
+            {!customer?.idCardFile && !customer?.driversLicenseFile ? (
+              <p className="text-sm text-muted-foreground italic">
+                {t('client_details.no_documents', 'No documents uploaded yet.')}
+              </p>
+            ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {customer?.idCardFile && (
                   <DocCard
+                    key={`id-${customer.idCardFile.id}`}
                     title={t('form.uploads.id_card', 'ID Card Image')}
                     fileId={customer.idCardFile.id}
                     onView={() => viewFile(customer.idCardFile!.id)}
@@ -571,6 +552,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                 )}
                 {customer?.driversLicenseFile && (
                   <DocCard
+                    key={`license-${customer.driversLicenseFile.id}`}
                     title={t(
                       'form.uploads.driver_license',
                       "Driver's License Image",
@@ -589,11 +571,10 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                   />
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </Card>
 
-        {/* Spending Chart */}
         <div className="lg:col-span-2 shadow-lg overflow-x-auto flex flex-col rounded-lg">
           <ClientSpendingChart rentalHistory={spendingHistory} />
         </div>
@@ -615,12 +596,10 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               </TabsTrigger>
             </TabsList>
 
-            {/* Rentals */}
             <TabsContent value="rentals" className="space-y-6">
               <ClientRentalsGrid customerId={customerId} />
             </TabsContent>
 
-            {/* Ratings */}
             <TabsContent value="ratings" className="space-y-6">
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold">
@@ -631,7 +610,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                 </Button>
               </div>
 
-              {/* Average */}
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg font-medium">
                   {averageRating.toFixed(1)}
@@ -649,12 +627,11 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                 </span>
               </div>
 
-              {/* Ratings List */}
               {ratings?.data?.length ? (
                 <>
                   <ul className="space-y-3 transition-all duration-300">
                     {ratings.data.slice(0, ratingsToShow).map((r: any) => (
-                      <li key={r.id} className="border rounded p-3 bg-gray-2 ">
+                      <li key={r.id} className="border rounded p-3 bg-gray-2">
                         <div className="flex items-center gap-2">
                           <span className="text-yellow-400">
                             {'★'.repeat(r.rating)}
@@ -698,7 +675,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
               )}
             </TabsContent>
 
-            {/* Blacklist History */}
             <TabsContent value="blacklist" className="space-y-6">
               <h2 className="text-lg font-semibold">
                 {t('client_details.tabs.blacklist', 'Blacklist History')}
@@ -754,7 +730,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation */}
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
@@ -781,14 +756,12 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
         variant="destructive"
       />
 
-      {/* Edit Dialog */}
       <EditClientDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         customer={customer}
       />
 
-      {/* Rate Dialog */}
       <RateCustomerDialog
         open={rateDialogOpen}
         onOpenChange={setRateDialogOpen}

@@ -5,6 +5,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { createRouteHandler } from 'uploadthing/express';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import cookieParser from 'cookie-parser';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const whitelist = [
   'http://localhost:5173',
@@ -27,6 +29,7 @@ async function bootstrap() {
       },
     }),
   );
+
   app.useGlobalFilters(new AllExceptionsFilter());
   app.use((req, res, next) => {
     console.log(`Request received: ${req.method} ${req.url}`);
