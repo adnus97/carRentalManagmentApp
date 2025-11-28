@@ -320,7 +320,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
 
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
-
+  const lang = localStorage.getItem('i18nextLng') || 'en';
   useEffect(() => {
     if (isError) {
       console.error('❌ Query error:', error);
@@ -483,7 +483,15 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                   {t('client_details.document', 'Document')}
                 </p>
                 <p className="font-medium">
-                  {customer?.documentId} ({customer?.documentType})
+                  {customer?.documentId} (
+                  {customer.documentType === 'id_card'
+                    ? lang === 'fr'
+                      ? 'CIN'
+                      : 'ID Card'
+                    : lang === 'fr'
+                      ? 'Passeport'
+                      : 'Passport'}
+                  )
                 </p>
               </div>
             </div>

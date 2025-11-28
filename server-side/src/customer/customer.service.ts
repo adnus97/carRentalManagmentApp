@@ -191,7 +191,7 @@ export class CustomerService {
       priority: 'LOW',
       title,
       message,
-      actionUrl: `/customers/${newCustomer.id}`,
+      actionUrl: `/customerDetails/${newCustomer.id}`,
       actionLabel,
       metadata: {
         customerId: newCustomer.id,
@@ -426,7 +426,7 @@ export class CustomerService {
         title,
         message,
         level: 'warning',
-        actionUrl: `/customers/${id}`,
+        actionUrl: `/customerDetails/${id}`,
         actionLabel,
         metadata: {
           customerId: id,
@@ -505,7 +505,7 @@ export class CustomerService {
         title,
         message,
         level: 'success',
-        actionUrl: `/customers/${id}`,
+        actionUrl: `/customerDetails/${id}`,
         actionLabel,
         metadata: {
           customerId: id,
@@ -619,7 +619,7 @@ export class CustomerService {
             title,
             message,
             level: low ? 'warning' : 'success',
-            actionUrl: `/customers/${id}`,
+            actionUrl: `/customerDetails/${id}`,
             actionLabel,
             metadata: {
               customerId: id,
