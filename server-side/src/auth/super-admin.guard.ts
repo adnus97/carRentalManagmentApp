@@ -48,8 +48,6 @@ export class SuperAdminGuard implements CanActivate {
       throw new ForbiddenException('User not found');
     }
 
-    console.log('🛡️ SuperAdminGuard - User:', user.email, 'Role:', user.role);
-
     // ✅ Check if super admin
     if (user.role !== 'super_admin') {
       throw new ForbiddenException({
