@@ -319,7 +319,15 @@ export function buildCleanContractHTML(view: ContractView) {
             <div class="card">
               <div class="row"><div class="label">Nom / Prénom</div><div class="inp">${f(view.customer?.firstName)} ${f(view.customer?.lastName)}</div></div>
               <div class="row"><div class="label">Téléphone</div><div class="inp">${f(view.customer?.phone)}</div></div>
-              <div class="row"><div class="label">CIN / Passeport</div><div class="inp">${f(view.customer?.cin || view.customer?.passport)}</div></div>
+             <div class="row"><div class="label">CIN / Passeport</div><div class="inp">${(() => {
+               const cin = view.customer?.cin;
+               const passport = view.customer?.passport;
+
+               if (cin && !cin.match(/^\.+$/)) return f(cin);
+               if (passport && !passport.match(/^\.+$/)) return f(passport);
+
+               return dots(15);
+             })()}</div></div>
               <div class="row"><div class="label">Permis N°</div><div class="inp">${f(view.customer?.driverLicense)}</div></div>
               <div class="row"><div class="label">Adresse</div><div class="inp">${f(view.customer?.address, 46)}</div></div>
             </div>

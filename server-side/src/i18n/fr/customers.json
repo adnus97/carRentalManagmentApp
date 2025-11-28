@@ -1,0 +1,51 @@
+{
+  "notifications": {
+    "registered": {
+      "title": "Nouveau client enregistré",
+      "message": "{firstName} {lastName} a été ajouté à votre base de clients",
+      "action_label": "Voir le client"
+    },
+
+    "blacklisted": {
+      "title": "Client sur liste noire",
+      "message": "{firstName} {lastName} a été mis sur liste noire : {reason}",
+      "action_label": "Voir le client"
+    },
+
+    "unblacklisted": {
+      "title": "Client retiré de la liste noire",
+      "message": "{firstName} {lastName} a été retiré de la liste noire",
+      "action_label": "Voir le client"
+    },
+
+    "rating_low": {
+      "title": "Mauvaise évaluation client",
+      "message": "{firstName} {lastName} a reçu une note de {rating} étoile(s)",
+      "action_label": "Voir le client"
+    },
+
+    "rating_high": {
+      "title": "Excellente évaluation client",
+      "message": "{firstName} {lastName} a reçu une note de {rating} étoile(s)",
+      "action_label": "Voir le client"
+    }
+  },
+
+  "errors": {
+    "user_required": "L’identifiant utilisateur est requis",
+    "org_not_found": "Aucune organisation trouvée pour cet utilisateur.",
+    "customer_exists": "Un client avec la pièce d’identité « {documentId} » existe déjà dans votre organisation.",
+    "customer_not_found": "Client introuvable",
+    "no_ratings": "Aucune évaluation trouvée pour ce client",
+    "fetch_with_files_failed": "Échec de la récupération du client avec ses fichiers",
+    "images_fetch_failed": "Échec de la récupération du fichier"
+  },
+
+  "success": {
+    "created": "Client créé avec succès",
+    "updated": "Client mis à jour avec succès",
+    "soft_deleted": "Client supprimé (soft delete)",
+    "restored": "Client restauré",
+    "unblacklisted": "Client retiré de la liste noire"
+  }
+}

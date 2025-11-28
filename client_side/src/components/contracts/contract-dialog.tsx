@@ -281,9 +281,6 @@ export function ContractDialog({
             <Button variant="ghost" size="sm" onClick={handleDownloadPDF}>
               {t('contract.actions.pdf', { ns: 'rent', defaultValue: 'PDF' })}
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleDownloadDOCX}>
-              {t('contract.actions.word', { ns: 'rent', defaultValue: 'Word' })}
-            </Button>
           </div>
         </div>
 

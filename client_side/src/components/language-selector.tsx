@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'; // <-- point this to your Select wrapper file
+import { updateMyLocale } from '@/api/users';
 
 type LangOption = {
   value: string;
@@ -49,9 +50,11 @@ export default function LanguageSelector({
   const onChange = async (lng: string) => {
     await i18n.changeLanguage(lng);
     localStorage.setItem('i18nextLng', lng);
-
-    // If you also want to inform your backend, store it or call an API here.
-    // Example header usage happens when you fetch (see earlier message).
+    try {
+      await updateMyLocale(lng); // persist to DB for background jobs/cron
+    } catch {
+      // optional: toast an error or ignore
+    }
   };
 
   return (

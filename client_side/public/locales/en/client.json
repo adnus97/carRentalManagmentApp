@@ -277,7 +277,7 @@
       "view": "View",
       "unblacklist": "Unblacklist",
       "delete": "Delete",
-      "delete_count": "Delete ({count})",
+      "delete_count": "Delete ({{count}})",
       "cancel": "Cancel",
       "deleting": "Deleting..."
     },

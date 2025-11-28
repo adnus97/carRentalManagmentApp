@@ -7,6 +7,7 @@ import {
   ModuleRegistry,
   NumberFilterModule,
   RowSelectionModule,
+  RowStyleModule,
   TextFilterModule,
 } from 'ag-grid-community';
 import { useMemo, useState, useEffect } from 'react';
@@ -64,6 +65,7 @@ ModuleRegistry.registerModules([
   TextFilterModule,
   NumberFilterModule,
   ClientSideRowModelModule,
+  RowStyleModule,
 ]);
 
 type RentRow = {
@@ -342,35 +344,51 @@ export const RentsGrid = () => {
     return <span className={s.className}>{s.label}</span>;
   };
 
-  const rowClassRules = useMemo(
-    () => ({
-      'green-row': (params: any) => {
-        const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+  const rowClassRules = useMemo(() => {
+    const n = (v: any) =>
+      typeof v === 'number' ? v : Number(String(v ?? '').replace(/,/g, ''));
+    const EPS = 0.0001;
+
+    const isOpenContractUnreturned = (d: any) => {
+      const { isOpenContract, returnedAt } = d || {};
+      if (!isOpenContract) return false;
+      if (!returnedAt) return true;
+      const ret = new Date(returnedAt);
+      return isNaN(ret.getTime()) || ret.getFullYear() === 9999;
+    };
+
+    return {
+      // GREEN: fully paid flag OR paid >= total (only when not an open-unreturned contract)
+      'green-row': (p: any) => {
+        const d = p.data || {};
+        if (isOpenContractUnreturned(d)) return false; // keep open-unreturned as not green
         return (
-          isFullyPaid === true ||
-          (isFullyPaid === false && Number(totalPaid) === Number(totalPrice))
+          d.isFullyPaid === true || n(d.totalPaid) + EPS >= n(d.totalPrice)
         );
       },
-      'red-row': (params: any) => {
-        const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+
+      // RED: open-unreturned OR (explicitly not fully paid AND paid < total)
+      'red-row': (p: any) => {
+        const d = p.data || {};
+        if (isOpenContractUnreturned(d)) return true; // force red until returned
         return (
-          isFullyPaid === false && Number(totalPaid) !== Number(totalPrice)
+          d.isFullyPaid === false && n(d.totalPaid) + EPS < n(d.totalPrice)
         );
       },
-      'yellow-row': (params: any) => {
-        const actualStatus = getActualStatus(params.data);
-        const { returnedAt } = params.data || {};
+
+      'yellow-row': (p: any) => {
+        const actualStatus = getActualStatus(p.data);
+        const { returnedAt } = p.data || {};
         return (
           actualStatus === 'active' &&
           returnedAt &&
           new Date(returnedAt) < new Date()
         );
       },
-      'purple-row': (params: any) =>
-        getActualStatus(params.data) === 'reserved',
-    }),
-    [],
-  );
+
+      'purple-row': (p: any) => getActualStatus(p.data) === 'reserved',
+    };
+  }, []);
 
   const rowData = useMemo(() => {
     return data?.data ? [...data.data] : [];
@@ -391,19 +409,46 @@ export const RentsGrid = () => {
       lockPinned: true,
       suppressMovable: true,
       cellClassRules: {
-        'left-border-green': (params) => {
-          const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+        'left-border-green': (p: any) => {
+          const n = (v: any) =>
+            typeof v === 'number'
+              ? v
+              : Number(String(v ?? '').replace(/,/g, ''));
+          const EPS = 0.0001;
+          const d = p.data || {};
+          const isOpenContractUnreturned = (() => {
+            const { isOpenContract, returnedAt } = d || {};
+            if (!isOpenContract) return false;
+            if (!returnedAt) return true;
+            const ret = new Date(returnedAt);
+            return isNaN(ret.getTime()) || ret.getFullYear() === 9999;
+          })();
+          if (isOpenContractUnreturned) return false;
           return (
-            isFullyPaid === true ||
-            (isFullyPaid === false && Number(totalPaid) === Number(totalPrice))
+            d.isFullyPaid === true || n(d.totalPaid) + EPS >= n(d.totalPrice)
           );
         },
-        'left-border-red': (params) => {
-          const { isFullyPaid, totalPaid, totalPrice } = params.data || {};
+
+        'left-border-red': (p: any) => {
+          const n = (v: any) =>
+            typeof v === 'number'
+              ? v
+              : Number(String(v ?? '').replace(/,/g, ''));
+          const EPS = 0.0001;
+          const d = p.data || {};
+          const isOpenContractUnreturned = (() => {
+            const { isOpenContract, returnedAt } = d || {};
+            if (!isOpenContract) return false;
+            if (!returnedAt) return true;
+            const ret = new Date(returnedAt);
+            return isNaN(ret.getTime()) || ret.getFullYear() === 9999;
+          })();
+          if (isOpenContractUnreturned) return true; // force red
           return (
-            isFullyPaid === false && Number(totalPaid) !== Number(totalPrice)
+            d.isFullyPaid === false && n(d.totalPaid) + EPS < n(d.totalPrice)
           );
         },
+
         'left-border-yellow': (params) => {
           const actualStatus = getActualStatus(params.data);
           const { returnedAt } = params.data || {};

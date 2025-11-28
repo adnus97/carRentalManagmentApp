@@ -184,6 +184,12 @@ export const ClientsGrid = () => {
         `${params.data?.documentId || ''} (${params.data?.documentType || ''})`,
     },
     {
+      field: 'driversLicense',
+      headerName: t('form.labels.driver_license', "Driver's License"),
+      width: 150,
+      flex: 1,
+    },
+    {
       field: 'rating',
       headerName: t('clients.columns.rating', 'Rating'),
       width: 120,
@@ -245,7 +251,10 @@ export const ClientsGrid = () => {
               setEditDialogOpen(true);
             }}
           >
-            <Hammer size={20} /> {t('clients.actions.edit', 'Edit')}
+            <Hammer size={20} />{' '}
+            <span className="hidden sm:inline">
+              {t('clients.actions.edit', 'Edit')}
+            </span>
           </Button>
         </div>
       ),
@@ -281,7 +290,7 @@ export const ClientsGrid = () => {
         </h2>
 
         {/* Blacklist Action Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 ">
           <BlacklistModal
             type="organization"
             trigger={
@@ -338,59 +347,82 @@ export const ClientsGrid = () => {
 
       {/* Selection Toolbar */}
       {selectedRows.length > 0 && (
-        <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-          <span className="text-sm font-medium">
-            {selectedRows.length} {t('clients.selection.customer', 'customer')}
-            {selectedRows.length > 1 ? 's' : ''}{' '}
-            {t('clients.selection.selected', 'selected')}
-          </span>
-          <Separator orientation="vertical" className="h-4" />
+        <div
+          className="mb-4 rounded-lg border
+      bg-gray-50 dark:bg-gray-800
+      p-3 sm:p-3
+      flex flex-col gap-3 
+      sm:flex-row sm:items-center sm:gap-2"
+        >
+          {/* Left cluster: count + divider + inline actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 ">
+            <span className="text-sm font-medium">
+              {selectedRows.length}{' '}
+              {t('clients.selection.customer', 'customer')}
+              {selectedRows.length > 1 ? 's' : ''}{' '}
+              {t('clients.selection.selected', 'selected')}
+            </span>
+          </div>
+          {/* Divider shows only when items are inline */}
+          <Separator orientation="horizontal" className="my-2 sm:hidden" />
+          <Separator orientation="vertical" className="hidden sm:block h-4" />
+          {/* Actions: stack full-width on mobile, inline on sm+ */}
+          <div className="mt-2 sm:mt-0 flex flex-col sm:flex-row gap-2 sm:gap-2 sm:w-auto">
+            <div className="flex gap-2">
+              {selectedRows.length === 1 && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      router.navigate({
+                        to: '/customerDetails/$id',
+                        params: { id: selectedRows[0].id },
+                      })
+                    }
+                    className="w-full sm:w-auto justify-center gap-2"
+                  >
+                    <Eye size={16} />
+                    {t('clients.actions.view', 'View')}
+                  </Button>
 
-          {selectedRows.length === 1 && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  router.navigate({
-                    to: '/customerDetails/$id',
-                    params: { id: selectedRows[0].id },
-                  })
-                }
-              >
-                <Eye size={16} /> {t('clients.actions.view', 'View')}
-              </Button>
-
-              {selectedRows[0].isBlacklisted ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => unblacklistMutation.mutate(selectedRows[0].id)}
-                  className="border-green-200 hover:border-green-300 text-green-700"
-                >
-                  <Prohibit size={16} />{' '}
-                  {t('clients.actions.unblacklist', 'Unblacklist')}
-                </Button>
-              ) : (
-                <BlacklistDialog customerId={selectedRows[0].id} />
+                  {selectedRows[0].isBlacklisted ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        unblacklistMutation.mutate(selectedRows[0].id)
+                      }
+                      className="w-full sm:w-auto justify-center gap-2 border-green-200 hover:border-green-300 text-green-700"
+                    >
+                      <Prohibit size={16} />
+                      {t('clients.actions.unblacklist', 'Unblacklist')}
+                    </Button>
+                  ) : (
+                    <div className="w-full sm:w-auto">
+                      {/* Ensure the dialog trigger is full width on mobile */}
+                      <BlacklistDialog customerId={selectedRows[0].id} />
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          )}
-
-          <Button
-            variant="secondary"
-            size="sm"
-            className="ml-auto flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash size={16} />{' '}
-            {t('clients.actions.delete_count', 'Delete ({count})', {
-              count: selectedRows.length,
-            })}
-          </Button>
+            </div>
+          </div>
+          {/* Delete aligned right on sm+, full width on mobile */}
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:ml-auto gap-2 sm:gap-0 w-full sm:w-auto">
+            <Button
+              variant="secondary"
+              className="ml-auto flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash size={20} />
+              {t('clients.actions.delete_count', 'Delete ({count})', {
+                count: selectedRows.length,
+              })}
+            </Button>
+          </div>
         </div>
       )}
-
       {/* Grid */}
       <div className="flex-1 overflow-hidden">
         {isLoading || isFetching ? (

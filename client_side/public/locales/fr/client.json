@@ -277,7 +277,7 @@
       "view": "Voir",
       "unblacklist": "Retirer de la liste noire",
       "delete": "Supprimer",
-      "delete_count": "Supprimer ({count})",
+      "delete_count": "Supprimer ({{count}})",
       "cancel": "Annuler",
       "deleting": "Suppression…"
     },

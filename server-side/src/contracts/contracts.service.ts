@@ -14,7 +14,7 @@ export class ContractsService {
 
   async getContractHTML(rentId: string): Promise<string> {
     const { data: c } = await this.rentsService.getRentContract(rentId);
-
+    console.log('Generating contract', c);
     let org: any = {};
     try {
       if (c.orgId) {
@@ -45,9 +45,10 @@ export class ContractsService {
         firstName: c.customerFirstName,
         lastName: c.customerLastName,
         phone: c.customerPhone,
+        address: c.customerAddress,
         cin: c.customerCIN,
         passport: c.customerPassport,
-        driverLicense: c.customerDriverLicense,
+        driverLicense: c.driverLicense,
       },
       car: {
         make: c.carMake,

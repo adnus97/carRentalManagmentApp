@@ -63,7 +63,7 @@ export class EnhancedCronService {
   // I18n fallbacks (e.g., 'fr-FR' -> 'fr') are configured in I18nModule.
   private async getLocale(userId: string): Promise<string> {
     const user = await this.getUserDetails(userId);
-    return user?.locale || 'fr';
+    return user?.locale || 'en';
   }
 
   // Translate helper with enforced namespace "common".

@@ -1,12 +1,13 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getCustomerById,
   getCustomerRatings,
   getBlacklist,
   getCustomerWithFiles,
   CustomerWithFiles,
+  unblacklistCustomer,
 } from '@/api/customers';
 import { getRentsByCustomer } from '@/api/customers';
 import { useLayoutContext } from '@/contexts/layout-context';
@@ -34,6 +35,7 @@ import { toast } from '@/components/ui/toast';
 
 import { RateCustomerDialog } from '@/components/customers/rate-customer-dialog';
 import { EditClientDialog } from '@/components/customers/edit-client-form';
+import { BlacklistDialog } from '@/components/customers/blacklist-dialog';
 import { ClientRentalsGrid } from './client-rental-grid';
 import { ClientSpendingChart } from './client-spending-chart';
 import { format } from 'date-fns';
@@ -202,6 +204,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
   const { setEntity } = useNavigationContext();
   const router = useRouter();
   const { t } = useTranslation('client');
+  const queryClient = useQueryClient();
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -219,15 +222,12 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
     queryFn: async () => {
       console.log('🚀 Fetching customer with files for ID:', customerId);
 
-      // Always fetch basic customer to ensure we have file IDs
       const basicCustomer = await getCustomerById(customerId);
       console.log('📦 Basic customer data:', basicCustomer);
 
-      // Try to get the full customer with files
       let result = await getCustomerWithFiles(customerId);
       console.log('✅ API Response from /with-files:', result);
 
-      // Ensure file objects are populated from IDs if missing
       if (!result.idCardFile && basicCustomer.idCardId) {
         console.log('🔧 Manually adding idCardFile');
         result.idCardFile = {
@@ -261,7 +261,7 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
     },
     staleTime: 5 * 60 * 1000,
     refetchOnMount: 'always',
-    refetchOnWindowFocus: false, // Prevent refetch when window regains focus
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 
@@ -278,6 +278,37 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
   const { data: rents } = useQuery({
     queryKey: ['customerRentsForChart', customerId],
     queryFn: () => getRentsByCustomer(customerId, 1, 100),
+  });
+
+  // ✅ Add unblacklist mutation
+  const unblacklistMutation = useMutation({
+    mutationFn: unblacklistCustomer,
+    onSuccess: () => {
+      // Invalidate both customer details and customers list
+      queryClient.invalidateQueries({
+        queryKey: ['customerDetails', customerId],
+      });
+      queryClient.invalidateQueries({ queryKey: ['customers'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['blacklistHistory'] });
+
+      toast({
+        type: 'success',
+        title: t('clients.success', 'Success!'),
+        description: t(
+          'clients.unblacklisted',
+          'Customer unblacklisted successfully.',
+        ),
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        type: 'error',
+        title: t('clients.error', 'Error'),
+        description:
+          error?.message ||
+          t('clients.unblacklist_failed', 'Failed to unblacklist customer'),
+      });
+    },
   });
 
   const spendingHistory =
@@ -307,7 +338,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
         driversLicenseData: customer.driversLicenseFile,
       });
 
-      // Log when rendering
       console.log(
         '🖼️ About to render docs. IdCard:',
         customer?.idCardFile,
@@ -372,40 +402,21 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             <Hammer size={16} /> {t('client_details.edit', 'Edit')}
           </Button>
 
+          {/* ✅ Updated Blacklist/Unblacklist buttons */}
           {customer.isBlacklisted ? (
             <Button
               variant="outline"
-              onClick={() => {
-                toast({
-                  type: 'info',
-                  title: t('client_details.unblacklist', 'Unblacklist'),
-                  description: t(
-                    'client_details.todo',
-                    'TODO: call unblacklist API',
-                  ),
-                });
-              }}
+              onClick={() => unblacklistMutation.mutate(customer.id)}
+              disabled={unblacklistMutation.isPending}
+              className="flex items-center gap-2 border-green-200 hover:border-green-300 hover:bg-accent-6 text-green-700"
             >
-              <ProhibitInset size={16} />{' '}
-              {t('client_details.unblacklist', 'Unblacklist')}
+              <ProhibitInset size={16} />
+              {unblacklistMutation.isPending
+                ? t('clients.actions.unblacklisting', 'Unblacklisting...')
+                : t('client_details.unblacklist', 'Unblacklist')}
             </Button>
           ) : (
-            <Button
-              variant="outline"
-              onClick={() => {
-                toast({
-                  type: 'info',
-                  title: t('client_details.blacklist', 'Blacklist'),
-                  description: t(
-                    'client_details.todo',
-                    'TODO: call blacklist API',
-                  ),
-                });
-              }}
-            >
-              <Prohibit size={16} />{' '}
-              {t('client_details.blacklist', 'Blacklist')}
-            </Button>
+            <BlacklistDialog customerId={customer.id} />
           )}
 
           <Button
@@ -524,7 +535,6 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
             </div>
           </div>
 
-          {/* ALWAYS SHOW DOCUMENT SECTION */}
           <div className="pt-4 mt-4 border-t border-border">
             <h4 className="text-sm font-semibold text-muted-foreground mb-3">
               {t('form.sections.docs', 'Document Images')}

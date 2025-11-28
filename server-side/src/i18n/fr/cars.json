@@ -1,0 +1,36 @@
+{
+  "notifications": {
+    "car_added": {
+      "title": "Nouveau véhicule ajouté",
+      "message": "{make} {model} ({plate}) a été ajouté à votre flotte",
+      "action_label": "Voir le véhicule"
+    },
+    "car_status_updated": {
+      "title": "Statut du véhicule mis à jour",
+      "message": "Le statut de {make} {model} est passé à {status}",
+      "action_label": "Voir le véhicule"
+    },
+    "tech_visit_soon": {
+      "title": "Visite technique bientôt échue",
+      "message": "La visite technique de {make} {model} expire dans {days} jours",
+      "action_label": "Voir le véhicule"
+    },
+    "maintenance_added": {
+      "title": "Maintenance ajoutée",
+      "message": "Maintenance enregistrée pour {make} {model} : {description}",
+      "action_label": "Voir le véhicule"
+    },
+    "target_created": {
+      "title": "Nouvel objectif défini",
+      "message": "Objectif mensuel créé pour {make} {model} : {rents} locations, {revenue} MAD de revenu",
+      "action_label": "Voir le véhicule"
+    }
+  },
+  "errors": {
+    "plate_taken": "Cette immatriculation est déjà enregistrée pour un autre véhicule. Veuillez en utiliser une différente.",
+    "duplicate_car": "Un véhicule avec ces informations existe déjà dans votre flotte. Veuillez vérifier vos saisies.",
+    "invalid_org_ref": "Référence d’organisation invalide. Veuillez contacter le support.",
+    "invalid_data": "Certaines informations sont invalides. Veuillez vérifier et réessayer.",
+    "missing_required": "Des informations requises sont manquantes. Merci de compléter tous les champs obligatoires."
+  }
+}

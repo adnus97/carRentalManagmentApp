@@ -19,6 +19,7 @@ export const users = pgTable('user', {
   subscriptionStartDate: timestamp(),
   subscriptionEndDate: timestamp(),
   subscriptionType: varchar({ length: 50 }).default('yearly'),
+  locale: varchar({ length: 10 }),
   createdAt: timestamp(),
   updatedAt: timestamp(),
 });

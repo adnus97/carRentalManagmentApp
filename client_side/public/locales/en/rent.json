@@ -190,7 +190,7 @@
     "days": "days",
     "deposit": "Deposit",
     "guarantee": "Guarantee",
-    "late_fee": "Late Fee",
+    "late_fee": "Remaining Balance",
     "total_paid": "Total Paid",
     "payment_status": "Payment Status",
     "fully_paid": "Fully paid",

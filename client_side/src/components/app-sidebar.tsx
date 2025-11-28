@@ -77,6 +77,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
           <SidebarGroup>
             <SidebarMenu>
+              <div className="mt-4 h-10 flex items-center justify-center">
+                <img src="/appLogo.svg" alt="App Logo" />
+              </div>
+              <Separator className="my-4" />
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild>

@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { cars, DatabaseService, organization } from 'src/db';
+import { cars, DatabaseService, organization, users } from 'src/db';
 import { eq, ne, and, sql, lte } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 import { CreateCarDto } from './dto/create-car.dto';
@@ -14,12 +14,14 @@ import { maintenanceLogs } from 'src/db/schema/maintenanceLogs';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
 import { CreateMonthlyTargetDto } from './dto/create-monthly-target.dto';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { I18nService } from 'nestjs-i18n';
 
 @Injectable()
 export class CarsService {
   constructor(
     private readonly dbService: DatabaseService,
     private readonly notificationsService: NotificationsService,
+    private readonly i18n: I18nService,
   ) {}
 
   /** Helper to ensure JSON-safe responses */
@@ -27,36 +29,59 @@ export class CarsService {
     return JSON.parse(JSON.stringify(data));
   }
 
+  // Resolve a user's persisted locale (fallback to 'en' if missing)
+  private async getUserLocale(userId: string): Promise<string> {
+    try {
+      if (!userId) return 'en';
+      const [u] = await this.dbService.db
+        .select({ locale: users.locale })
+        .from(users)
+        .where(eq(users.id, userId));
+      return u?.locale || 'en';
+    } catch {
+      return 'en';
+    }
+  }
+
+  // Translate with optional explicit language.
+  // If `lang` is omitted, Nest i18n will use the request-scoped language
+  // resolved via Query/Accept-Language as configured in I18nModule.
+  private tr(
+    key: string,
+    args?: Record<string, any>,
+    lang?: string,
+  ): Promise<string> {
+    return this.i18n.translate(key, { lang, args });
+  }
+
   /** Centralized DB error handler */
   private handleDbError(error: any): never {
+    // Postgres constraint / code notes:
+    //  - 23505: unique_violation
+    //  - 23503: foreign_key_violation
+    //  - 23514: check_violation
+    //  - 23502: not_null_violation
+
     if (
-      error.constraint === 'cars_plate_number_unique' ||
-      error.message.includes('plate_number')
+      error?.constraint === 'cars_plate_number_unique' ||
+      (typeof error?.message === 'string' &&
+        error.message.toLowerCase().includes('plate_number'))
     ) {
-      throw new BadRequestException(
-        'This plate number is already registered to another car. Please use a different plate number.',
-      );
+      throw new BadRequestException(this.tr('cars.errors.plate_taken'));
     }
-    if (error.code === '23505') {
-      throw new BadRequestException(
-        'A car with these details already exists in your fleet. Please check your input.',
-      );
+    if (error?.code === '23505') {
+      throw new BadRequestException(this.tr('cars.errors.duplicate_car'));
     }
-    if (error.code === '23503') {
-      throw new BadRequestException(
-        'Invalid organization reference. Please contact support.',
-      );
+    if (error?.code === '23503') {
+      throw new BadRequestException(this.tr('cars.errors.invalid_org_ref'));
     }
-    if (error.code === '23514') {
-      throw new BadRequestException(
-        'Some of the provided information is invalid. Please check your input and try again.',
-      );
+    if (error?.code === '23514') {
+      throw new BadRequestException(this.tr('cars.errors.invalid_data'));
     }
-    if (error.code === '23502') {
-      throw new BadRequestException(
-        'Required information is missing. Please fill in all required fields.',
-      );
+    if (error?.code === '23502') {
+      throw new BadRequestException(this.tr('cars.errors.missing_required'));
     }
+
     throw error;
   }
 
@@ -307,7 +332,6 @@ export class CarsService {
         totalPages: Math.ceil(Number(count) / pageSize),
       });
     } catch (error) {
-      console.log('errrrrrrrrrrrrrrrrrrror', error);
       this.handleDbError(error);
     }
   }
@@ -354,16 +378,37 @@ export class CarsService {
       await this.dbService.db.insert(cars).values(carData);
 
       // 🔔 Add notification
+      const lang = await this.getUserLocale(userId);
+      const title = await this.tr(
+        'cars.notifications.car_added.title',
+        {},
+        lang,
+      );
+      const message = await this.tr(
+        'cars.notifications.car_added.message',
+        {
+          make: carData.make,
+          model: carData.model,
+          plate: carData.plateNumber,
+        },
+        lang,
+      );
+      const actionLabel = await this.tr(
+        'cars.notifications.car_added.action_label',
+        {},
+        lang,
+      );
+
       await this.notificationsService.createNotification({
         userId,
         orgId,
         category: 'CAR',
         type: 'CAR_AVAILABLE',
         priority: 'LOW',
-        title: 'New Car Added',
-        message: `${carData.make} ${carData.model} (${carData.plateNumber}) has been added to your fleet`,
+        title,
+        message,
         actionUrl: `/cars/${id}`,
-        actionLabel: 'View Car',
+        actionLabel,
         metadata: {
           carId: id,
           make: carData.make,
@@ -380,16 +425,35 @@ export class CarsService {
       );
 
       if (daysUntilTechnicalVisiteExpiry <= 30) {
+        const title = await this.tr(
+          'cars.notifications.tech_visit_soon.title',
+          {},
+          lang,
+        );
+        const message = await this.tr(
+          'cars.notifications.tech_visit_soon.message',
+          {
+            make: carData.make,
+            model: carData.model,
+            days: daysUntilTechnicalVisiteExpiry,
+          },
+          lang,
+        );
+        const actionLabel = await this.tr(
+          'cars.notifications.tech_visit_soon.action_label',
+          {},
+          lang,
+        );
         await this.notificationsService.createNotification({
           userId,
           orgId,
           category: 'MAINTENANCE',
           type: 'CAR_MAINTENANCE_DUE',
           priority: daysUntilTechnicalVisiteExpiry <= 7 ? 'HIGH' : 'MEDIUM',
-          title: 'Technical Visit Due Soon',
-          message: `${carData.make} ${carData.model} technical visit expires in ${daysUntilTechnicalVisiteExpiry} days`,
+          title,
+          message,
           actionUrl: `/cars/${id}`,
-          actionLabel: 'View Car',
+          actionLabel,
           metadata: {
             carId: id,
             type: 'technical_visit',
@@ -464,21 +528,41 @@ export class CarsService {
         .where(eq(cars.id, id));
 
       // 🔔 Add notification for status changes
+      const lang = await this.getUserLocale(userId);
       if (updateData.status && userId) {
         const car = existingCar[0];
         const orgOwner = await this.getOrgOwner(car.orgId);
 
         if (orgOwner) {
+          const title = await this.tr(
+            'cars.notifications.car_status_updated.title',
+            {},
+            lang,
+          );
+          const message = await this.tr(
+            'cars.notifications.car_status_updated.message',
+            {
+              make: car.make,
+              model: car.model,
+              status: updateData.status,
+            },
+            lang,
+          );
+          const actionLabel = await this.tr(
+            'cars.notifications.car_status_updated.action_label',
+            {},
+            lang,
+          );
           await this.notificationsService.createNotification({
             userId: orgOwner.userId,
             orgId: car.orgId,
             category: 'CAR',
             type: 'CAR_AVAILABLE',
             priority: updateData.status === 'maintenance' ? 'MEDIUM' : 'LOW',
-            title: 'Car Status Updated',
-            message: `${car.make} ${car.model} status changed to ${updateData.status}`,
+            title,
+            message,
             actionUrl: `/cars/${id}`,
-            actionLabel: 'View Car',
+            actionLabel,
             metadata: {
               carId: id,
               oldStatus: car.status,
@@ -715,18 +799,39 @@ export class CarsService {
         revenueGoal: targetDto.revenueGoal,
       });
       // 🔔 Add notification
+      const lang = await this.getUserLocale(userId);
       const orgOwner = await this.getOrgOwner(orgId);
       if (orgOwner) {
+        const title = await this.tr(
+          'cars.notifications.target_created.title',
+          {},
+          lang,
+        );
+        const message = await this.tr(
+          'cars.notifications.target_created.message',
+          {
+            make: car.make,
+            model: car.model,
+            rents: targetDto.targetRents,
+            revenue: targetDto.revenueGoal,
+          },
+          lang,
+        );
+        const actionLabel = await this.tr(
+          'cars.notifications.target_created.action_label',
+          {},
+          lang,
+        );
         await this.notificationsService.createNotification({
           userId: orgOwner.userId,
           orgId,
           category: 'FINANCIAL',
           type: 'REVENUE_TARGET_MET',
           priority: 'LOW',
-          title: 'New Target Set',
-          message: `Monthly target created for ${car.make} ${car.model}: ${targetDto.targetRents} rentals, ${targetDto.revenueGoal}MAD revenue`,
+          title,
+          message,
           actionUrl: `/cars/${carId}`,
-          actionLabel: 'View Car',
+          actionLabel,
           metadata: {
             carId,
             targetId,
@@ -942,18 +1047,38 @@ export class CarsService {
       });
 
       // 🔔 Add notification
+      const lang = await this.getUserLocale(userId);
       const orgOwner = await this.getOrgOwner(orgId);
       if (orgOwner) {
+        const title = await this.tr(
+          'cars.notifications.maintenance_added.title',
+          {},
+          lang,
+        );
+        const message = await this.tr(
+          'cars.notifications.maintenance_added.message',
+          {
+            make: car.make,
+            model: car.model,
+            description: dto.description,
+          },
+          lang,
+        );
+        const actionLabel = await this.tr(
+          'cars.notifications.maintenance_added.action_label',
+          {},
+          lang,
+        );
         await this.notificationsService.createNotification({
           userId: orgOwner.userId,
           orgId,
           category: 'MAINTENANCE',
           type: 'CAR_MAINTENANCE_DUE',
           priority: dto.type === ('repair' as any) ? 'HIGH' : 'MEDIUM',
-          title: 'Maintenance Log Added',
-          message: `Maintenance recorded for ${car.make} ${car.model}: ${dto.description}`,
+          title,
+          message,
           actionUrl: `/cars/${carId}`,
-          actionLabel: 'View Car',
+          actionLabel,
           metadata: { carId, maintenanceId: id, maintenanceType: dto.type },
         });
       }

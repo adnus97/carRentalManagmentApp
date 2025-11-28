@@ -5,7 +5,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { cars, DatabaseService, organization, rents } from 'src/db';
+import { cars, DatabaseService, organization, rents, users } from 'src/db';
 import {
   customers,
   customerBlacklist,
@@ -20,19 +20,42 @@ import { RateCustomerDto } from './dto/rating.dto';
 import { createId } from '@paralleldrive/cuid2';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { FilesService } from 'src/files/files.service';
+import { I18nService } from 'nestjs-i18n';
 
 @Injectable()
 export class CustomerService {
   constructor(
     private readonly dbService: DatabaseService,
     private readonly notificationsService: NotificationsService,
-    private readonly filesService: FilesService, // Add this
+    private readonly filesService: FilesService,
+    private readonly i18n: I18nService,
   ) {}
+
+  private async getUserLocale(userId: string): Promise<string> {
+    try {
+      if (!userId) return 'en';
+      const [u] = await this.dbService.db
+        .select({ locale: users.locale })
+        .from(users)
+        .where(eq(users.id, userId));
+      return u?.locale || 'en';
+    } catch {
+      return 'en';
+    }
+  }
+
+  private tr(
+    key: string,
+    args?: Record<string, any>,
+    lang?: string,
+  ): Promise<string> {
+    return this.i18n.translate(key, { lang, args });
+  }
+
   async findOneWithFiles(id: string) {
     try {
       const customer = await this.findOne(id);
 
-      // Helper to get file data
       const getFileData = async (fileId?: string | null) => {
         if (!fileId) return null;
         try {
@@ -49,7 +72,6 @@ export class CustomerService {
 
       const populatedCustomer: any = { ...customer };
 
-      // Fetch file data for document images
       if (customer.idCardId) {
         const fileData = await getFileData(customer.idCardId);
         if (fileData) {
@@ -70,14 +92,16 @@ export class CustomerService {
         throw error;
       }
       throw new HttpException(
-        'Failed to fetch customer with files',
+        await this.tr('customers.errors.fetch_with_files_failed'),
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
+
   private safeReturn<T>(data: T): T {
     return JSON.parse(JSON.stringify(data));
   }
+
   private async getOrgOwner(orgId: string) {
     const [org] = await this.dbService.db
       .select({ userId: organization.userId })
@@ -86,9 +110,14 @@ export class CustomerService {
 
     return org;
   }
+
   /** ✅ Create customer */
   async create(userId: string, dto: CreateCustomerDto) {
-    if (!userId) throw new BadRequestException('User ID is required');
+    if (!userId) {
+      throw new BadRequestException(
+        await this.tr('customers.errors.user_required'),
+      );
+    }
 
     const userOrg = await this.dbService.db
       .select({ id: organization.id })
@@ -96,7 +125,9 @@ export class CustomerService {
       .where(eq(organization.userId, userId));
 
     if (!userOrg.length) {
-      throw new BadRequestException('No organization found for this user.');
+      throw new BadRequestException(
+        await this.tr('customers.errors.org_not_found'),
+      );
     }
 
     const orgId = userOrg[0].id;
@@ -113,7 +144,9 @@ export class CustomerService {
 
     if (existing.length > 0) {
       throw new BadRequestException(
-        `A customer with document ID "${dto.documentId}" already exists in your organization.`,
+        await this.tr('customers.errors.customer_exists', {
+          documentId: dto.documentId,
+        }),
       );
     }
 
@@ -131,27 +164,51 @@ export class CustomerService {
     };
 
     await this.dbService.db.insert(customers).values(newCustomer);
+
+    // ✅ Get user's locale and pass it to translations
+    const lang = await this.getUserLocale(userId);
+    const title = await this.tr(
+      'customers.notifications.registered.title',
+      {},
+      lang,
+    );
+    const message = await this.tr(
+      'customers.notifications.registered.message',
+      { firstName: dto.firstName, lastName: dto.lastName },
+      lang,
+    );
+    const actionLabel = await this.tr(
+      'customers.notifications.registered.action_label',
+      {},
+      lang,
+    );
+
     await this.notificationsService.createNotification({
       userId,
       orgId,
       category: 'CUSTOMER',
       type: 'CUSTOMER_REGISTERED',
       priority: 'LOW',
-      title: 'New Customer Registered',
-      message: `${dto.firstName} ${dto.lastName} has been added to your customer base`,
+      title,
+      message,
       actionUrl: `/customers/${newCustomer.id}`,
-      actionLabel: 'View Customer',
+      actionLabel,
       metadata: {
         customerId: newCustomer.id,
         customerName: `${dto.firstName} ${dto.lastName}`,
       },
     });
+
     return this.safeReturn(newCustomer);
   }
 
   /** ✅ Get all customers by org */
   async findAllCustomersByOrg(userId: string, page = 1, pageSize = 20) {
-    if (!userId) throw new BadRequestException('User ID is required');
+    if (!userId) {
+      throw new BadRequestException(
+        await this.tr('customers.errors.user_required'),
+      );
+    }
 
     const offset = (page - 1) * pageSize;
 
@@ -195,7 +252,11 @@ export class CustomerService {
       .from(customers)
       .where(and(eq(customers.id, id), eq(customers.isDeleted, false)));
 
-    if (!customer) throw new NotFoundException('Customer not found');
+    if (!customer) {
+      throw new NotFoundException(
+        await this.tr('customers.errors.customer_not_found'),
+      );
+    }
     return this.safeReturn(customer);
   }
 
@@ -206,7 +267,11 @@ export class CustomerService {
       .from(customers)
       .where(eq(customers.id, id));
 
-    if (!customer) throw new NotFoundException('Customer not found');
+    if (!customer) {
+      throw new NotFoundException(
+        await this.tr('customers.errors.customer_not_found'),
+      );
+    }
 
     if (dto.documentId && dto.documentId !== customer.documentId) {
       const existing = await this.dbService.db
@@ -221,7 +286,9 @@ export class CustomerService {
 
       if (existing.length > 0) {
         throw new BadRequestException(
-          `A customer with document ID "${dto.documentId}" already exists in your organization.`,
+          await this.tr('customers.errors.customer_exists', {
+            documentId: dto.documentId,
+          }),
         );
       }
     }
@@ -241,14 +308,21 @@ export class CustomerService {
       .from(customers)
       .where(eq(customers.id, id));
 
-    if (!customer) throw new NotFoundException('Customer not found');
+    if (!customer) {
+      throw new NotFoundException(
+        await this.tr('customers.errors.customer_not_found'),
+      );
+    }
 
     await this.dbService.db
       .update(customers)
       .set({ isDeleted: true, updatedAt: new Date() })
       .where(eq(customers.id, id));
 
-    return { success: true, message: 'Customer soft-deleted' };
+    return {
+      success: true,
+      message: await this.tr('customers.success.soft_deleted'),
+    };
   }
 
   /** ✅ Restore soft-deleted customer */
@@ -258,14 +332,21 @@ export class CustomerService {
       .from(customers)
       .where(eq(customers.id, id));
 
-    if (!customer) throw new NotFoundException('Customer not found');
+    if (!customer) {
+      throw new NotFoundException(
+        await this.tr('customers.errors.customer_not_found'),
+      );
+    }
 
     await this.dbService.db
       .update(customers)
       .set({ isDeleted: false, updatedAt: new Date() })
       .where(eq(customers.id, id));
 
-    return { success: true, message: 'Customer restored' };
+    return {
+      success: true,
+      message: await this.tr('customers.success.restored'),
+    };
   }
 
   /** ✅ Blacklist a customer (persist + history) */
@@ -275,7 +356,11 @@ export class CustomerService {
       .from(customers)
       .where(eq(customers.id, id));
 
-    if (!customer) throw new NotFoundException('Customer not found');
+    if (!customer) {
+      throw new NotFoundException(
+        await this.tr('customers.errors.customer_not_found'),
+      );
+    }
 
     // deactivate old blacklist entries
     await this.dbService.db
@@ -307,20 +392,42 @@ export class CustomerService {
         updatedAt: new Date(),
       })
       .where(eq(customers.id, id));
-    // 🔔 Enhanced notification
+
+    // ✅ Get owner locale and pass to translations
     const orgOwner = await this.getOrgOwner(customer.orgId);
     if (orgOwner) {
+      const lang = await this.getUserLocale(orgOwner.userId);
+      const title = await this.tr(
+        'customers.notifications.blacklisted.title',
+        {},
+        lang,
+      );
+      const message = await this.tr(
+        'customers.notifications.blacklisted.message',
+        {
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          reason: dto.reason,
+        },
+        lang,
+      );
+      const actionLabel = await this.tr(
+        'customers.notifications.blacklisted.action_label',
+        {},
+        lang,
+      );
+
       await this.notificationsService.createNotification({
         userId: orgOwner.userId,
         orgId: customer.orgId,
         category: 'CUSTOMER',
         type: 'CUSTOMER_BLACKLISTED',
         priority: 'HIGH',
-        title: 'Customer Blacklisted',
-        message: `${customer.firstName} ${customer.lastName} has been blacklisted: ${dto.reason}`,
+        title,
+        message,
         level: 'warning',
         actionUrl: `/customers/${id}`,
-        actionLabel: 'View Customer',
+        actionLabel,
         metadata: {
           customerId: id,
           customerName: `${customer.firstName} ${customer.lastName}`,
@@ -328,6 +435,7 @@ export class CustomerService {
         },
       });
     }
+
     return this.safeReturn(entry);
   }
 
@@ -338,7 +446,11 @@ export class CustomerService {
       .from(customers)
       .where(eq(customers.id, id));
 
-    if (!customer) throw new NotFoundException('Customer not found');
+    if (!customer) {
+      throw new NotFoundException(
+        await this.tr('customers.errors.customer_not_found'),
+      );
+    }
 
     // deactivate active blacklist entries
     await this.dbService.db
@@ -360,27 +472,52 @@ export class CustomerService {
         updatedAt: new Date(),
       })
       .where(eq(customers.id, id));
-    // 🔔 Add notification
+
+    // ✅ Get owner locale and pass to translations
     const orgOwner = await this.getOrgOwner(customer.orgId);
     if (orgOwner) {
+      const lang = await this.getUserLocale(orgOwner.userId);
+      const title = await this.tr(
+        'customers.notifications.unblacklisted.title',
+        {},
+        lang,
+      );
+      const message = await this.tr(
+        'customers.notifications.unblacklisted.message',
+        {
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+        },
+        lang,
+      );
+      const actionLabel = await this.tr(
+        'customers.notifications.unblacklisted.action_label',
+        {},
+        lang,
+      );
+
       await this.notificationsService.createNotification({
         userId: orgOwner.userId,
         orgId: customer.orgId,
         category: 'CUSTOMER',
         type: 'CUSTOMER_RATING_CHANGED',
         priority: 'MEDIUM',
-        title: 'Customer Unblacklisted',
-        message: `${customer.firstName} ${customer.lastName} has been removed from blacklist`,
+        title,
+        message,
         level: 'success',
         actionUrl: `/customers/${id}`,
-        actionLabel: 'View Customer',
+        actionLabel,
         metadata: {
           customerId: id,
           customerName: `${customer.firstName} ${customer.lastName}`,
         },
       });
     }
-    return { success: true, message: 'Customer unblacklisted' };
+
+    return {
+      success: true,
+      message: await this.tr('customers.success.unblacklisted'),
+    };
   }
 
   /** ✅ Get blacklist history with pagination */
@@ -424,7 +561,7 @@ export class CustomerService {
       .where(eq(customerRatings.customerId, id));
 
     if (!ratings.length) {
-      throw new NotFoundException('No ratings found for this customer');
+      throw new NotFoundException(await this.tr('customers.errors.no_ratings'));
     }
 
     const avg = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
@@ -437,7 +574,8 @@ export class CustomerService {
         updatedAt: new Date(),
       })
       .where(eq(customers.id, id));
-    // 🔔 Add notification for extreme ratings (very low or very high)
+
+    // ✅ Get owner locale and pass to translations
     if (dto.rating <= 2 || dto.rating >= 5) {
       const [customer] = await this.dbService.db
         .select()
@@ -447,20 +585,42 @@ export class CustomerService {
       if (customer) {
         const orgOwner = await this.getOrgOwner(customer.orgId);
         if (orgOwner) {
+          const lang = await this.getUserLocale(orgOwner.userId);
+          const low = dto.rating <= 2;
+          const titleKey = low
+            ? 'customers.notifications.rating_low.title'
+            : 'customers.notifications.rating_high.title';
+          const messageKey = low
+            ? 'customers.notifications.rating_low.message'
+            : 'customers.notifications.rating_high.message';
+
+          const title = await this.tr(titleKey, {}, lang);
+          const message = await this.tr(
+            messageKey,
+            {
+              firstName: customer.firstName,
+              lastName: customer.lastName,
+              rating: dto.rating,
+            },
+            lang,
+          );
+          const actionLabel = await this.tr(
+            'customers.notifications.registered.action_label',
+            {},
+            lang,
+          );
+
           await this.notificationsService.createNotification({
             userId: orgOwner.userId,
             orgId: customer.orgId,
             category: 'CUSTOMER',
             type: 'CUSTOMER_RATING_CHANGED',
-            priority: dto.rating <= 2 ? 'HIGH' : 'MEDIUM',
-            title:
-              dto.rating <= 2
-                ? 'Low Customer Rating'
-                : 'Excellent Customer Rating',
-            message: `${customer.firstName} ${customer.lastName} received a ${dto.rating}-star rating`,
-            level: dto.rating <= 2 ? 'warning' : 'success',
+            priority: low ? 'HIGH' : 'MEDIUM',
+            title,
+            message,
+            level: low ? 'warning' : 'success',
             actionUrl: `/customers/${id}`,
-            actionLabel: 'View Customer',
+            actionLabel,
             metadata: {
               customerId: id,
               customerName: `${customer.firstName} ${customer.lastName}`,
@@ -471,6 +631,7 @@ export class CustomerService {
         }
       }
     }
+
     return { average: avg, count: ratings.length };
   }
 
@@ -499,6 +660,7 @@ export class CustomerService {
       totalPages: Math.ceil(Number(count) / pageSize),
     });
   }
+
   async findByCustomer(customerId: string, page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
 
@@ -551,8 +713,13 @@ export class CustomerService {
       },
     };
   }
+
   async getBlacklistByOrg(userId: string, page = 1, pageSize = 20) {
-    if (!userId) throw new BadRequestException('User ID is required');
+    if (!userId) {
+      throw new BadRequestException(
+        await this.tr('customers.errors.user_required'),
+      );
+    }
 
     const offset = (page - 1) * pageSize;
 
@@ -567,17 +734,11 @@ export class CustomerService {
 
     const orgId = userOrg[0].id;
 
-    // Fixed: Join with customers and filter by organization
     const [{ count }] = await this.dbService.db
       .select({ count: sql<number>`count(*)` })
       .from(customerBlacklist)
       .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
-      .where(
-        and(
-          eq(customers.orgId, orgId),
-          eq(customers.isDeleted, false), // Exclude deleted customers
-        ),
-      );
+      .where(and(eq(customers.orgId, orgId), eq(customers.isDeleted, false)));
 
     const rows = await this.dbService.db
       .select({
@@ -593,12 +754,7 @@ export class CustomerService {
       })
       .from(customerBlacklist)
       .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
-      .where(
-        and(
-          eq(customers.orgId, orgId),
-          eq(customers.isDeleted, false), // Exclude deleted customers
-        ),
-      )
+      .where(and(eq(customers.orgId, orgId), eq(customers.isDeleted, false)))
       .orderBy(sql`${customerBlacklist.createdAt} DESC`)
       .offset(offset)
       .limit(pageSize);
@@ -620,7 +776,7 @@ export class CustomerService {
       .select({ count: sql<number>`count(*)` })
       .from(customerBlacklist)
       .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
-      .where(eq(customers.isDeleted, false)); // Exclude deleted customers
+      .where(eq(customers.isDeleted, false));
 
     const rows = await this.dbService.db
       .select({
@@ -638,7 +794,7 @@ export class CustomerService {
       .from(customerBlacklist)
       .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
       .leftJoin(organization, eq(customers.orgId, organization.id))
-      .where(eq(customers.isDeleted, false)) // Exclude deleted customers
+      .where(eq(customers.isDeleted, false))
       .orderBy(sql`${customerBlacklist.createdAt} DESC`)
       .offset(offset)
       .limit(pageSize);

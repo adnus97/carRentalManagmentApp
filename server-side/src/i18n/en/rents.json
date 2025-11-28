@@ -1,0 +1,90 @@
+{
+  "notifications": {
+    "created": {
+      "title": "New Rental Created",
+      "message": "{firstName} {lastName} rented {make} {model} - Contract #{contractId}",
+      "action_label": "View Rental"
+    },
+
+    "payment_received": {
+      "title": "Payment Received",
+      "message": "Payment of {amount} DHS received for rental #{contractId}",
+      "action_label": "View Rental"
+    },
+
+    "status_changed": {
+      "title": "Rental Status Changed",
+      "message": "Rental {contractId} status changed to {status}",
+      "action_label": "View Rental"
+    },
+
+    "completed": {
+      "title": "Rental Completed",
+      "message": "Rental #{contractId} has been completed",
+      "action_label": "View Rental"
+    },
+
+    "cancelled": {
+      "title": "Rental Cancelled",
+      "message": "Rental #{contractId} has been cancelled",
+      "action_label": "View Rental"
+    },
+
+    "damage_reported": {
+      "title": "Damage Reported",
+      "message": "Damage reported for rental {contractId}: {report}",
+      "action_label": "View Rental"
+    },
+
+    "damage_updated": {
+      "title": "Damage Report Updated",
+      "message": "Damage report updated for rental {contractId}: {report}",
+      "action_label": "View Rental"
+    },
+
+    "damage_cleared": {
+      "title": "Damage Report Cleared",
+      "message": "Damage report cleared for rental {contractId}",
+      "action_label": "View Rental"
+    }
+  },
+
+  "errors": {
+    "org_not_found": "Organization not found for this user",
+    "start_required": "Please provide a valid start date",
+    "end_required": "Please provide either a return date or expected end date",
+    "start_after_end": "Start date must be before the end date",
+    "start_too_old": "Start date cannot be more than one year in the past",
+    "car_not_found": "Selected car not found or is no longer available",
+    "car_wrong_org": "Selected car does not belong to your organization",
+    "customer_not_found": "Selected customer not found",
+    "customer_wrong_org": "Selected customer does not belong to your organization",
+    "car_unavailable": "This car is already rented during the selected time period. Please choose different dates or another car.",
+    "negative_total_price": "Total price cannot be negative",
+    "negative_deposit": "Deposit amount cannot be negative",
+    "negative_guarantee": "Guarantee amount cannot be negative",
+    "negative_paid": "Amount paid cannot be negative",
+    "paid_exceeds_total": "Amount paid cannot exceed the total price for fixed contracts",
+    "rent_not_found": "Rental contract not found",
+    "rent_not_found_or_deleted": "Rental contract not found or has already been deleted",
+    "cannot_delete_active": "Cannot delete this rental as it is currently active. Please complete or cancel it first.",
+    "delete_failed": "Unable to delete rental contract. Please try again or contact support.",
+    "create_failed": "Unable to create rental contract. Please try again or contact support.",
+    "update_failed": "Unable to update rental contract. Please try again or contact support.",
+    "invalid_iformation": "Some of the provided information is invalid. Please check your input.",
+    "missing_required_info": "Required information is missing. Please fill in all required fields",
+    "rental_already_exists": "A rental with these details already exists. Please check your input.",
+    "fetch_failed": "Unable to fetch contract details",
+    "availability_failed": "Unable to check car availability. Please try again.",
+    "images_update_failed": "Failed to update car images",
+    "images_fetch_failed": "Failed to retrieve rent with images"
+  },
+
+  "success": {
+    "created": "Rental contract created successfully",
+    "created_with_images": "Rent contract created successfully with {count} image(s)",
+    "updated": "Rental contract updated successfully",
+    "deleted": "Rental contract deleted successfully (status: {status})",
+    "images_updated": "Successfully updated with {count} image(s)"
+  }
+}

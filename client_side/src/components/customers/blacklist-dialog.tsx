@@ -43,7 +43,16 @@ export function BlacklistDialog({
     mutationFn: (data: { reason: string }) =>
       blacklistCustomer(customerId, { reason: data.reason }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'], exact: false });
+      queryClient.invalidateQueries({
+        queryKey: ['customerDetails', customerId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['customers'],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['blacklistHistory'],
+      });
       setIsOpen(false);
       reset();
       toast({

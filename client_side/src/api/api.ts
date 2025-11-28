@@ -1,47 +1,41 @@
 // api/api.ts
 import axios from 'axios';
 import config from '@/lib/config';
+import i18n from '@/i18n';
 
 const api = axios.create({
   baseURL: config.baseApiUrl,
-  withCredentials: true, // Include cookies for authentication
+  withCredentials: true,
 });
 
-// Request interceptor for auth
 api.interceptors.request.use(
   (config) => {
-    // Get token from localStorage or wherever you store it
     const token =
       typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) config.headers.Authorization = `Bearer ${token}`;
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // ✅ CRITICAL FIX: Only set JSON Content-Type for non-FormData requests
+    // Set content-type safely
     if (config.data instanceof FormData) {
-      // Don't set Content-Type - let axios set multipart/form-data with boundary
       delete config.headers['Content-Type'];
     } else if (!config.headers['Content-Type']) {
-      // Only set JSON as default if no Content-Type is already set
       config.headers['Content-Type'] = 'application/json';
     }
 
+    // Attach current language
+    const lng = (i18n?.resolvedLanguage || i18n?.language || 'en').split(
+      '-',
+    )[0];
+    config.headers['Accept-Language'] = lng;
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );
 
-// Response interceptor for error handling
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized - redirect to login
       if (typeof window !== 'undefined') {
         localStorage.removeItem('token');
         window.location.href = '/login';

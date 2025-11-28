@@ -1,0 +1,51 @@
+{
+  "notifications": {
+    "registered": {
+      "title": "New Customer Registered",
+      "message": "{firstName} {lastName} has been added to your customer base",
+      "action_label": "View Customer"
+    },
+
+    "blacklisted": {
+      "title": "Customer Blacklisted",
+      "message": "{firstName} {lastName} has been blacklisted: {reason}",
+      "action_label": "View Customer"
+    },
+
+    "unblacklisted": {
+      "title": "Customer Unblacklisted",
+      "message": "{firstName} {lastName} has been removed from blacklist",
+      "action_label": "View Customer"
+    },
+
+    "rating_low": {
+      "title": "Low Customer Rating",
+      "message": "{firstName} {lastName} received a {rating}-star rating",
+      "action_label": "View Customer"
+    },
+
+    "rating_high": {
+      "title": "Excellent Customer Rating",
+      "message": "{firstName} {lastName} received a {rating}-star rating",
+      "action_label": "View Customer"
+    }
+  },
+
+  "errors": {
+    "user_required": "User ID is required",
+    "org_not_found": "No organization found for this user.",
+    "customer_exists": "A customer with document ID « {documentId} » already exists in your organization.",
+    "customer_not_found": "Customer not found",
+    "no_ratings": "No ratings found for this customer",
+    "fetch_with_files_failed": "Failed to fetch customer with files",
+    "images_fetch_failed": "Failed to fetch file data"
+  },
+
+  "success": {
+    "created": "Customer created successfully",
+    "updated": "Customer updated successfully",
+    "soft_deleted": "Customer soft-deleted",
+    "restored": "Customer restored",
+    "unblacklisted": "Customer unblacklisted"
+  }
+}

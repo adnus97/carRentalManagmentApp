@@ -1,0 +1,36 @@
+{
+  "notifications": {
+    "car_added": {
+      "title": "New Car Added",
+      "message": "{make} {model} ({plate}) has been added to your fleet",
+      "action_label": "View Car"
+    },
+    "car_status_updated": {
+      "title": "Car Status Updated",
+      "message": "{make} {model} status changed to {status}",
+      "action_label": "View Car"
+    },
+    "tech_visit_soon": {
+      "title": "Technical Visit Due Soon",
+      "message": "{make} {model} technical visit expires in {days} days",
+      "action_label": "View Car"
+    },
+    "maintenance_added": {
+      "title": "Maintenance Log Added",
+      "message": "Maintenance recorded for {make} {model}: {description}",
+      "action_label": "View Car"
+    },
+    "target_created": {
+      "title": "New Target Set",
+      "message": "Monthly target created for {make} {model}: {rents} rentals, {revenue} MAD revenue",
+      "action_label": "View Car"
+    }
+  },
+  "errors": {
+    "plate_taken": "This plate number is already registered to another car. Please use a different plate number.",
+    "duplicate_car": "A car with these details already exists in your fleet. Please check your input.",
+    "invalid_org_ref": "Invalid organization reference. Please contact support.",
+    "invalid_data": "Some of the provided information is invalid. Please check your input and try again.",
+    "missing_required": "Required information is missing. Please fill in all required fields."
+  }
+}

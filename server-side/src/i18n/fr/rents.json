@@ -1,0 +1,90 @@
+{
+  "notifications": {
+    "created": {
+      "title": "Nouvelle location créée",
+      "message": "{firstName} {lastName} a loué {make} {model} - Contrat n°{contractId}",
+      "action_label": "Voir la location"
+    },
+
+    "payment_received": {
+      "title": "Paiement reçu",
+      "message": "Paiement de {amount} DHS reçu pour la location n°{contractId}",
+      "action_label": "Voir la location"
+    },
+
+    "status_changed": {
+      "title": "Statut de la location modifié",
+      "message": "La location {contractId} est passée au statut {status}",
+      "action_label": "Voir la location"
+    },
+
+    "completed": {
+      "title": "Location terminée",
+      "message": "La location n°{contractId} a été terminée",
+      "action_label": "Voir la location"
+    },
+
+    "cancelled": {
+      "title": "Location annulée",
+      "message": "La location n°{contractId} a été annulée",
+      "action_label": "Voir la location"
+    },
+
+    "damage_reported": {
+      "title": "Dégâts signalés",
+      "message": "Dégâts signalés pour la location {contractId} : {report}",
+      "action_label": "Voir la location"
+    },
+
+    "damage_updated": {
+      "title": "Rapport de dégâts mis à jour",
+      "message": "Rapport de dégâts mis à jour pour la location {contractId} : {report}",
+      "action_label": "Voir la location"
+    },
+
+    "damage_cleared": {
+      "title": "Rapport de dégâts supprimé",
+      "message": "Rapport de dégâts supprimé pour la location {contractId}",
+      "action_label": "Voir la location"
+    }
+  },
+
+  "errors": {
+    "org_not_found": "Aucune organisation trouvée pour cet utilisateur",
+    "start_required": "Veuillez fournir une date de début valide",
+    "end_required": "Veuillez fournir une date de retour ou une date de fin prévue",
+    "start_after_end": "La date de début doit être antérieure à la date de fin",
+    "start_too_old": "La date de début ne peut pas dépasser un an dans le passé",
+    "car_not_found": "Véhicule introuvable ou indisponible",
+    "car_wrong_org": "Le véhicule sélectionné n’appartient pas à votre organisation",
+    "customer_not_found": "Client introuvable",
+    "customer_wrong_org": "Le client sélectionné n’appartient pas à votre organisation",
+    "car_unavailable": "Ce véhicule est déjà loué sur la période sélectionnée. Choisissez d’autres dates ou un autre véhicule.",
+    "negative_total_price": "Le montant total ne peut pas être négatif",
+    "negative_deposit": "L’acompte ne peut pas être négatif",
+    "negative_guarantee": "La caution ne peut pas être négative",
+    "negative_paid": "Le montant payé ne peut pas être négatif",
+    "paid_exceeds_total": "Le montant payé ne peut pas dépasser le total pour les contrats fermés",
+    "rent_not_found": "Contrat de location introuvable",
+    "rent_not_found_or_deleted": "Contrat introuvable ou déjà supprimé",
+    "cannot_delete_active": "Impossible de supprimer une location active. Terminez‑la ou annulez‑la d’abord.",
+    "delete_failed": "Impossible de supprimer le contrat de location. Réessayez ou contactez le support.",
+    "create_failed": "Impossible de créer le contrat de location. Réessayez ou contactez le support.",
+    "update_failed": "Impossible de mettre à jour le contrat de location. Réessayez ou contactez le support.",
+    "invalid_iformation": "Certaines informations fournies sont invalides. Veuillez vérifier vos saisies.",
+    "rental_already_exists": "Une location avec ces détails existe déjà. Veuillez vérifier vos saisies.",
+    "missing_required_info": "Des informations requises sont manquantes. Merci de compléter tous les champs obligatoires",
+    "fetch_failed": "Impossible de récupérer les détails du contrat",
+    "availability_failed": "Impossible de vérifier la disponibilité du véhicule. Réessayez.",
+    "images_update_failed": "Échec de la mise à jour des images du véhicule",
+    "images_fetch_failed": "Échec de la récupération de la location avec images"
+  },
+
+  "success": {
+    "created": "Contrat de location créé avec succès",
+    "created_with_images": "Contrat créé avec succès avec {count} image(s)",
+    "updated": "Contrat de location mis à jour avec succès",
+    "deleted": "Contrat de location supprimé avec succès (statut : {status})",
+    "images_updated": "Mise à jour réussie avec {count} image(s)"
+  }
+}

@@ -16,6 +16,7 @@ import { NotificationsService } from 'src/notifications/notifications.service';
 import { FilesService } from 'src/files/files.service';
 import { CreateRentData, RentsRepository } from './rents.repository';
 import { Rent, RentWithDetails, CarImage } from '../types/rent.types';
+import { I18nService } from 'nestjs-i18n';
 
 function ensureDate(value: any): Date | undefined {
   if (!value) return undefined;
@@ -59,6 +60,7 @@ function daysBetweenUTC(startDate: Date, endDate: Date): number {
 
   return Math.max(1, diffInDays + 1); // +1 for inclusive counting
 }
+
 @Injectable()
 export class RentsService {
   private readonly logger = new Logger(RentsService.name);
@@ -67,6 +69,7 @@ export class RentsService {
     private readonly notificationsService: NotificationsService,
     private filesService: FilesService,
     private readonly rentsRepository: RentsRepository,
+    private readonly i18n: I18nService,
   ) {}
   private async generateRentId(orgId: string): Promise<{
     id: string;
@@ -140,6 +143,29 @@ export class RentsService {
     if (returnedAt && returnedAt <= now) return 'completed';
     if (startDate > now) return 'reserved';
     return 'active';
+  }
+
+  private async getUserLocale(userId: string): Promise<string> {
+    try {
+      if (!userId) return 'en';
+      const [u] = await this.dbService.db
+        .select({ locale: users.locale })
+        .from(users)
+        .where(eq(users.id, userId));
+      return u?.locale || 'en';
+    } catch {
+      return 'en';
+    }
+  }
+
+  // Translate with optional explicit language.
+  // If `lang` is omitted, i18n will use the request-scoped language.
+  private tr(
+    key: string,
+    args?: Record<string, any>,
+    lang?: string,
+  ): Promise<string> {
+    return this.i18n.translate(key, { lang, args });
   }
 
   private async isCarAvailableForRange(
@@ -302,7 +328,9 @@ export class RentsService {
         .where(eq(organization.userId, userId));
 
       if (!currentUserOrgId.length) {
-        throw new BadRequestException('Organization not found for this user');
+        throw new BadRequestException(
+          await this.tr('rents.errors.org_not_found'),
+        );
       }
 
       const orgId = currentUserOrgId[0].id;
@@ -314,20 +342,24 @@ export class RentsService {
       const returnedAt = ensureDate(createRentDto.returnedAt);
 
       if (!startDate) {
-        throw new BadRequestException('Please provide a valid start date');
+        throw new BadRequestException(
+          await this.tr('rents.errors.start_required'),
+        );
       }
 
       // Validate date logic
       const endDate = returnedAt || expectedEndDate;
       if (!endDate) {
         throw new BadRequestException(
-          'Please provide either a return date or expected end date',
+          await this.tr('rents.errors.end_required'),
         );
       }
 
       // Ensure start date is not after end date
       if (startDate >= endDate) {
-        throw new BadRequestException('Start date must be before the end date');
+        throw new BadRequestException(
+          await this.tr('rents.errors.start_after_end'),
+        );
       }
 
       // Validate that dates are not too far in the past (optional business rule)
@@ -336,7 +368,7 @@ export class RentsService {
 
       if (startDate < oneYearAgo) {
         throw new BadRequestException(
-          'Start date cannot be more than one year in the past',
+          await this.tr('rents.errors.start_too_old'),
         );
       }
 
@@ -350,13 +382,13 @@ export class RentsService {
 
       if (!carExists.length) {
         throw new BadRequestException(
-          'Selected car not found or is no longer available',
+          await this.tr('rents.errors.car_not_found'),
         );
       }
 
       if (carExists[0].orgId !== orgId) {
         throw new BadRequestException(
-          'Selected car does not belong to your organization',
+          await this.tr('rents.errors.car_wrong_org'),
         );
       }
 
@@ -367,12 +399,14 @@ export class RentsService {
         .where(eq(customers.id, createRentDto.customerId));
 
       if (!customerExists.length) {
-        throw new BadRequestException('Selected customer not found');
+        throw new BadRequestException(
+          await this.tr('rents.errors.customer_not_found'),
+        );
       }
 
       if (customerExists[0].orgId !== orgId) {
         throw new BadRequestException(
-          'Selected customer does not belong to your organization',
+          await this.tr('rents.errors.customer_wrong_org'),
         );
       }
 
@@ -385,7 +419,7 @@ export class RentsService {
 
       if (!available) {
         throw new BadRequestException(
-          'This car is already rented during the selected time period. Please choose different dates or another car.',
+          await this.tr('rents.errors.car_unavailable'),
         );
       }
 
@@ -394,25 +428,33 @@ export class RentsService {
         createRentDto.totalPrice !== undefined &&
         createRentDto.totalPrice < 0
       ) {
-        throw new BadRequestException('Total price cannot be negative');
+        throw new BadRequestException(
+          await this.tr('rents.errors.negative_total_price'),
+        );
       }
 
       if (createRentDto.deposit !== undefined && createRentDto.deposit < 0) {
-        throw new BadRequestException('Deposit amount cannot be negative');
+        throw new BadRequestException(
+          await this.tr('rents.errors.negative_deposit'),
+        );
       }
 
       if (
         createRentDto.guarantee !== undefined &&
         createRentDto.guarantee < 0
       ) {
-        throw new BadRequestException('Guarantee amount cannot be negative');
+        throw new BadRequestException(
+          await this.tr('rents.errors.negative_guarantee'),
+        );
       }
 
       if (
         createRentDto.totalPaid !== undefined &&
         createRentDto.totalPaid < 0
       ) {
-        throw new BadRequestException('Amount paid cannot be negative');
+        throw new BadRequestException(
+          await this.tr('rents.errors.negative_paid'),
+        );
       }
 
       // Validate that total paid doesn't exceed total price (if both are provided)
@@ -423,7 +465,7 @@ export class RentsService {
         createRentDto.totalPaid > createRentDto.totalPrice
       ) {
         throw new BadRequestException(
-          'Amount paid cannot exceed the total price for fixed contracts',
+          await this.tr('rents.errors.paid_exceeds_total'),
         );
       }
 
@@ -484,16 +526,39 @@ export class RentsService {
           .from(cars)
           .where(eq(cars.id, createRentDto.carId));
 
+        const ownerLang = await this.getUserLocale(orgOwner.userId);
+        const title = await this.tr(
+          'rents.notifications.created.title',
+          {},
+          ownerLang,
+        );
+        const message = await this.tr(
+          'rents.notifications.created.message',
+          {
+            firstName: customer?.firstName || '',
+            lastName: customer?.lastName || '',
+            make: car?.make || '',
+            model: car?.model || '',
+            contractId: rentContractId,
+          },
+          ownerLang,
+        );
+        const actionLabel = await this.tr(
+          'rents.notifications.created.action_label',
+          {},
+          ownerLang,
+        );
+
         await this.notificationsService.createNotification({
           userId: orgOwner.userId,
           orgId,
           category: 'RENTAL',
           type: 'RENT_STARTED',
           priority: 'MEDIUM',
-          title: 'New Rental Created',
-          message: `${customer?.firstName} ${customer?.lastName} rented ${car?.make} ${car?.model} - Contract #${rentContractId}`, // 🆕 Use rentContractId
+          title,
+          message,
           actionUrl: `/rents`,
-          actionLabel: 'View Rental',
+          actionLabel,
           metadata: {
             rentalId: id,
             rentContractId,
@@ -506,7 +571,7 @@ export class RentsService {
 
       return {
         success: true,
-        message: 'Rental contract created successfully',
+        message: await this.tr('rents.success.created'),
         data: { id, rentContractId, ...rentData },
       };
     } catch (error) {
@@ -518,31 +583,31 @@ export class RentsService {
       // Handle database constraint errors with user-friendly messages
       if (error.code === '23505') {
         throw new BadRequestException(
-          'A rental contract with these details already exists. Please check your input and try again.',
+          await this.tr('rents.errors.create_failed'),
         );
       }
 
       if (error.code === '23503') {
         throw new BadRequestException(
-          'The selected car or customer is no longer available. Please refresh and try again.',
+          await this.tr('rents.errors.car_not_found'),
         );
       }
 
       if (error.code === '23514') {
         throw new BadRequestException(
-          'Some of the provided information is invalid. Please check your input and try again.',
+          await this.tr('rents.errors.create_failed'),
         );
       }
 
       if (error.code === '23502') {
         throw new BadRequestException(
-          'Required information is missing. Please fill in all required fields.',
+          await this.tr('rents.errors.create_failed'),
         );
       }
 
       // Generic error for any other unexpected issues
       throw new BadRequestException(
-        'Unable to create rental contract. Please try again or contact support if the problem persists.',
+        await this.tr('rents.errors.create_failed'),
       );
     }
   }
@@ -755,7 +820,9 @@ export class RentsService {
         .where(and(eq(rents.id, id), eq(rents.isDeleted, false)));
 
       if (currentRent.length === 0) {
-        throw new BadRequestException('Rental contract not found');
+        throw new BadRequestException(
+          await this.tr('rents.errors.rent_not_found'),
+        );
       }
 
       const rent = currentRent[0];
@@ -864,7 +931,7 @@ export class RentsService {
           );
           if (!available) {
             throw new BadRequestException(
-              'This car is already rented during the selected time period. Please choose different dates.',
+              await this.tr('rents.errors.car_unavailable'),
             );
           }
         }
@@ -997,17 +1064,34 @@ export class RentsService {
           updateRentDto.totalPaid > (rent.totalPaid || 0)
         ) {
           const paymentAmount = updateRentDto.totalPaid - (rent.totalPaid || 0);
+          const ownerLang = await this.getUserLocale(orgOwner.userId);
+          const pTitle = await this.tr(
+            'rents.notifications.payment_received.title',
+            {},
+            ownerLang,
+          );
+          const pMessage = await this.tr(
+            'rents.notifications.payment_received.message',
+            { amount: paymentAmount, contractId: rent.rentContractId },
+            ownerLang,
+          );
+          const pLabel = await this.tr(
+            'rents.notifications.payment_received.action_label',
+            {},
+            ownerLang,
+          );
+
           await this.notificationsService.createNotification({
             userId: orgOwner.userId,
             orgId: rent.orgId,
             category: 'PAYMENT',
             type: 'PAYMENT_RECEIVED',
             priority: 'MEDIUM',
-            title: 'Payment Received',
-            message: `Payment of ${paymentAmount}DHS received for rental #${rent.rentContractId}`,
+            title: pTitle,
+            message: pMessage,
             level: 'success',
             actionUrl: `/rents`,
-            actionLabel: 'View Rental',
+            actionLabel: pLabel,
             metadata: {
               rentalId: id,
               paymentAmount,
@@ -1017,25 +1101,42 @@ export class RentsService {
         }
 
         // Status change
+
         if (updateRentDto.status && updateRentDto.status !== rent.status) {
           let notificationType = 'RENT_STARTED';
-          let title = 'Rental Status Changed';
-          let priority = 'MEDIUM';
-          let level = 'info';
+          let titleKey = 'rents.notifications.status_changed.title';
+          let messageKey = 'rents.notifications.status_changed.message';
+          let priority: 'LOW' | 'MEDIUM' | 'HIGH' = 'MEDIUM';
+          let level: 'info' | 'success' | 'warning' = 'info';
 
           switch (updateRentDto.status) {
             case 'completed':
               notificationType = 'RENT_COMPLETED';
-              title = 'Rental Completed';
+              titleKey = 'rents.notifications.completed.title';
+              messageKey = 'rents.notifications.completed.message';
               level = 'success';
               break;
             case 'canceled':
               notificationType = 'RENT_CANCELLED';
-              title = 'Rental Cancelled';
+              titleKey = 'rents.notifications.cancelled.title';
+              messageKey = 'rents.notifications.cancelled.message';
               level = 'warning';
               priority = 'HIGH';
               break;
           }
+
+          const ownerLang = await this.getUserLocale(orgOwner.userId);
+          const sTitle = await this.tr(titleKey, {}, ownerLang);
+          const sMessage = await this.tr(
+            messageKey,
+            { contractId: rent.rentContractId, status: updateRentDto.status },
+            ownerLang,
+          );
+          const sLabel = await this.tr(
+            'rents.notifications.status_changed.action_label',
+            {},
+            ownerLang,
+          );
 
           await this.notificationsService.createNotification({
             userId: orgOwner.userId,
@@ -1043,11 +1144,11 @@ export class RentsService {
             category: 'RENTAL',
             type: notificationType,
             priority,
-            title,
-            message: `Rental ${rent.rentContractId} status changed to ${updateRentDto.status}`,
+            title: sTitle,
+            message: sMessage,
             level,
             actionUrl: `/rents`,
-            actionLabel: 'View Rental',
+            actionLabel: sLabel,
             metadata: {
               rentalId: id,
               oldStatus: rent.status,
@@ -1061,34 +1162,50 @@ export class RentsService {
           updateRentDto.damageReport !== undefined &&
           updateRentDto.damageReport !== rent.damageReport
         ) {
-          let title: string | undefined;
-          let message: string | undefined;
+          let tKey: string | undefined;
+          let mKey: string | undefined;
           let priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' = 'HIGH';
 
           if (!rent.damageReport && updateRentDto.damageReport) {
-            title = 'Damage Reported';
-            message = `Damage reported for rental ${rent.rentContractId}: ${updateRentDto.damageReport}`;
+            tKey = 'rents.notifications.damage_reported.title';
+            mKey = 'rents.notifications.damage_reported.message';
           } else if (rent.damageReport && updateRentDto.damageReport) {
-            title = 'Damage Report Updated';
-            message = `Damage report updated for rental ${rent.rentContractId}: ${updateRentDto.damageReport}`;
+            tKey = 'rents.notifications.damage_updated.title';
+            mKey = 'rents.notifications.damage_updated.message';
           } else if (rent.damageReport && !updateRentDto.damageReport) {
-            title = 'Damage Report Cleared';
-            message = `Damage report cleared for rental ${rent.rentContractId}`;
+            tKey = 'rents.notifications.damage_cleared.title';
+            mKey = 'rents.notifications.damage_cleared.message';
             priority = 'MEDIUM';
           }
 
-          if (title && message) {
+          if (tKey && mKey) {
+            const ownerLang = await this.getUserLocale(orgOwner.userId);
+            const dTitle = await this.tr(tKey, {}, ownerLang);
+            const dMessage = await this.tr(
+              mKey,
+              {
+                contractId: rent.rentContractId,
+                report: updateRentDto.damageReport || '',
+              },
+              ownerLang,
+            );
+            const dLabel = await this.tr(
+              'rents.notifications.damage_reported.action_label',
+              {},
+              ownerLang,
+            );
+
             await this.notificationsService.createNotification({
               userId: orgOwner.userId,
               orgId: rent.orgId,
               category: 'CAR',
               type: 'CAR_DAMAGE_REPORTED',
               priority,
-              title,
-              message,
+              title: dTitle,
+              message: dMessage,
               level: 'warning',
               actionUrl: `/rents`,
-              actionLabel: 'View Rental',
+              actionLabel: dLabel,
               metadata: {
                 rentalId: id,
                 oldDamageReport: rent.damageReport || null,
@@ -1101,7 +1218,7 @@ export class RentsService {
 
       return {
         success: true,
-        message: 'Rental contract updated successfully',
+        message: await this.tr('rents.success.updated'),
         data: result,
       };
     } catch (error) {
@@ -1110,22 +1227,22 @@ export class RentsService {
       }
       if (error.code === '23505') {
         throw new BadRequestException(
-          'A rental with these details already exists. Please check your input.',
+          await this.tr('rents.errors.update_failed'),
         );
       }
       if (error.code === '23503') {
         throw new BadRequestException(
-          'The selected car or customer is no longer available.',
+          await this.tr('rents.errors.car_not_found'),
         );
       }
       if (error.code === '23514') {
         throw new BadRequestException(
-          'Some of the provided information is invalid. Please check your input.',
+          await this.tr('rents.errors.invalid_iformation'),
         );
       }
       if (error.code === '23502') {
         throw new BadRequestException(
-          'Required information is missing. Please fill in all required fields.',
+          await this.tr('rents.errors.missing_required_info'),
         );
       }
       throw new BadRequestException(
@@ -1136,7 +1253,9 @@ export class RentsService {
   async remove(id: string) {
     try {
       if (!id) {
-        throw new BadRequestException('Rental contract ID is required');
+        throw new BadRequestException(
+          await this.tr('rents.errors.rent_not_found'),
+        );
       }
 
       const existingRent = await this.dbService.db
@@ -1146,7 +1265,7 @@ export class RentsService {
 
       if (!existingRent.length) {
         throw new BadRequestException(
-          'Rental contract not found or has already been deleted.',
+          await this.tr('rents.errors.rent_not_found_or_deleted'),
         );
       }
 
@@ -1160,7 +1279,7 @@ export class RentsService {
 
       if (currentStatus === 'active') {
         throw new BadRequestException(
-          'Cannot delete this rental as it is currently active. Please complete or cancel it first.',
+          await this.tr('rents.errors.cannot_delete_active'),
         );
       }
 
@@ -1174,7 +1293,9 @@ export class RentsService {
 
       return {
         success: true,
-        message: `Rental contract deleted successfully (status: ${currentStatus})`,
+        message: await this.tr('rents.success.deleted', {
+          status: currentStatus,
+        }),
         data: result,
       };
     } catch (error) {
@@ -1464,16 +1585,38 @@ export class RentsService {
           .from(cars)
           .where(eq(cars.id, createRentDto.carId));
 
+        const ownerLang = await this.getUserLocale(orgOwner.userId);
+        const title = await this.tr(
+          'rents.notifications.created.title',
+          {},
+          ownerLang,
+        );
+        const message = await this.tr(
+          'rents.notifications.created.message',
+          {
+            firstName: customer?.firstName || '',
+            lastName: customer?.lastName || '',
+            make: car?.make || '',
+            model: car?.model || '',
+            contractId: rentContractId,
+          },
+          ownerLang,
+        );
+        const actionLabel = await this.tr(
+          'rents.notifications.created.action_label',
+          {},
+          ownerLang,
+        );
         await this.notificationsService.createNotification({
           userId: orgOwner.userId,
           orgId,
           category: 'RENTAL',
           type: 'RENT_STARTED',
           priority: 'MEDIUM',
-          title: 'New Rental Created',
-          message: `${customer?.firstName} ${customer?.lastName} rented ${car?.make} ${car?.model} - Contract #${rentContractId}`, // 🆕 Use rentContractId
+          title,
+          message,
           actionUrl: `/rents`,
-          actionLabel: 'View Rental',
+          actionLabel,
           metadata: {
             rentalId: id,
             rentContractId,
@@ -1511,7 +1654,9 @@ export class RentsService {
 
       return {
         success: true,
-        message: `Rent contract created successfully with ${carImagesCount} image(s)`,
+        message: await this.tr('rents.success.created_with_images', {
+          count: carImagesCount,
+        }),
         data: {
           ...createdRent,
           carImagesCount,
@@ -1610,8 +1755,10 @@ export class RentsService {
           customerLastName: customers.lastName,
           customerEmail: customers.email,
           customerPhone: customers.phone,
+          customerAddress: customers.address,
           customerDocId: customers.documentId,
           customerDocType: customers.documentType,
+          customerDriverLicense: customers.driversLicense,
           // Car details
           carMake: cars.make,
           carModel: cars.model,
@@ -1629,23 +1776,22 @@ export class RentsService {
         .where(eq(rents.id, rentId));
 
       if (!rentData) {
-        throw new NotFoundException('Rental contract not found');
+        throw new NotFoundException(
+          await this.tr('rents.errors.rent_not_found'),
+        );
       }
 
       // ✅ Normalize customer identity fields
       let customerCIN = '...............';
       let customerPassport = '...............';
-      let customerDriverLicense = '...............';
 
       switch (rentData.customerDocType?.toUpperCase()) {
         case 'ID_CARD':
-          customerCIN = rentData.customerDocId || '...............';
+          customerCIN = rentData.customerDocId + ' (CIN)' || '...............';
           break;
         case 'PASSPORT':
-          customerPassport = rentData.customerDocId || '...............';
-          break;
-        case 'DRIVER_LICENSE':
-          customerDriverLicense = rentData.customerDocId || '...............';
+          customerPassport =
+            rentData.customerDocId + ' (Passport)' || '...............';
           break;
       }
 
@@ -1653,16 +1799,20 @@ export class RentsService {
         success: true,
         data: {
           ...rentData,
-          customerCIN,
-          customerPassport,
-          customerDriverLicense,
+          customerCIN:
+            customerCIN !== '...............' ? customerCIN : undefined,
+          customerPassport:
+            customerPassport !== '...............'
+              ? customerPassport
+              : undefined,
+          driverLicense: rentData.customerDriverLicense || '...............',
         },
       };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new BadRequestException('Unable to fetch contract details');
+      throw new BadRequestException(await this.tr('rents.errors.fetch_failed'));
     }
   }
 
@@ -1740,7 +1890,9 @@ export class RentsService {
         throw error;
       }
 
-      throw new BadRequestException('Failed to retrieve rent with images');
+      throw new BadRequestException(
+        await this.tr('rents.errors.images_fetch_failed'),
+      );
     }
   }
 
@@ -1857,7 +2009,10 @@ export class RentsService {
 
       return {
         success: true,
-        message: `Successfully updated with ${successfulUploads} image(s)`,
+
+        message: await this.tr('rents.success.images_updated', {
+          count: successfulUploads,
+        }),
         data: {
           carImagesCount: successfulUploads,
           carImageIds: Object.values(imageUpdates).filter((id) => id !== null),
@@ -1871,7 +2026,9 @@ export class RentsService {
       ) {
         throw error;
       }
-      throw new BadRequestException('Failed to update car images');
+      throw new BadRequestException(
+        await this.tr('rents.errors.images_update_failed'),
+      );
     }
   }
   // 🆕 Get all rents with image info

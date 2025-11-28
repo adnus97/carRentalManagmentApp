@@ -30,6 +30,7 @@ import {
   HeaderResolver,
   I18nJsonLoader,
 } from 'nestjs-i18n';
+import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     I18nModule.forRoot({
@@ -71,6 +72,7 @@ import {
     EmailModule,
     SubscriptionModule,
     AdminModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
