@@ -239,7 +239,7 @@ export class SubscriptionCronService {
             </div>
           </div>
           <div class="footer">
-            <p>Car Rental Manager &copy; ${new Date().getFullYear()}</p>
+            <p>VelCar &copy; ${new Date().getFullYear()}</p>
           </div>
         </div>
       </body>
@@ -290,7 +290,7 @@ export class SubscriptionCronService {
             </div>
           </div>
           <div class="footer">
-            <p>Car Rental Manager &copy; ${new Date().getFullYear()}</p>
+            <p>VelCar &copy; ${new Date().getFullYear()}</p>
           </div>
         </div>
       </body>

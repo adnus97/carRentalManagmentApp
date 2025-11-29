@@ -407,7 +407,7 @@ export class CarsService {
         priority: 'LOW',
         title,
         message,
-        actionUrl: `/cars/${id}`,
+        actionUrl: `/carDetails/${id}`,
         actionLabel,
         metadata: {
           carId: id,
@@ -452,7 +452,7 @@ export class CarsService {
           priority: daysUntilTechnicalVisiteExpiry <= 7 ? 'HIGH' : 'MEDIUM',
           title,
           message,
-          actionUrl: `/cars/${id}`,
+          actionUrl: `/carDetails/${id}`,
           actionLabel,
           metadata: {
             carId: id,
@@ -561,7 +561,7 @@ export class CarsService {
             priority: updateData.status === 'maintenance' ? 'MEDIUM' : 'LOW',
             title,
             message,
-            actionUrl: `/cars/${id}`,
+            actionUrl: `/carDetails/${id}`,
             actionLabel,
             metadata: {
               carId: id,
@@ -830,7 +830,7 @@ export class CarsService {
           priority: 'LOW',
           title,
           message,
-          actionUrl: `/cars/${carId}`,
+          actionUrl: `/carDetails/${carId}`,
           actionLabel,
           metadata: {
             carId,
@@ -1077,7 +1077,7 @@ export class CarsService {
           priority: dto.type === ('repair' as any) ? 'HIGH' : 'MEDIUM',
           title,
           message,
-          actionUrl: `/cars/${carId}`,
+          actionUrl: `/carDetails/${carId}`,
           actionLabel,
           metadata: { carId, maintenanceId: id, maintenanceType: dto.type },
         });

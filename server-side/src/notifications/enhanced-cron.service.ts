@@ -773,7 +773,7 @@ export class EnhancedCronService {
             <li><strong>${carLabel}:</strong> ${car.make} ${car.model} (${car.year})</li>
             <li><strong>${expLabel}:</strong> ${car.insuranceExpiryDate?.toLocaleDateString?.() || ''}</li>
           </ul>
-          <a href="${process.env.BETTER_AUTH_URL}/cars/${car.id}" style="display:inline-block;padding:10px 20px;background:#667eea;color:white;text-decoration:none;border-radius:5px;">
+          <a href="${process.env.BETTER_AUTH_URL}/carDetails/${car.id}" style="display:inline-block;padding:10px 20px;background:#667eea;color:white;text-decoration:none;border-radius:5px;">
             ${await this.t(userId, 'notifications.car.insurance.action_label')}
           </a>
         `,
