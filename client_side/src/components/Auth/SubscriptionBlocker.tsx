@@ -78,7 +78,7 @@ export function SubscriptionBlocker() {
             <Button
               className="w-full"
               onClick={() =>
-                (window.location.href = `mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'support@example.com'}`)
+                (window.location.href = `mailto:${import.meta.env.VITE_SUPPORT_EMAIL || 'virexonpro@gmail.com'}`)
               }
             >
               {t('subscription.contact')}

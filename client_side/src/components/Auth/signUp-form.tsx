@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +24,7 @@ import { ModeToggle } from '../mode-toggle';
 import LanguageSelector from '../language-selector';
 import { useTranslation } from 'react-i18next';
 
-// Zod schema with i18n keys (so UI can do t(errors.field.message))
+// Zod schema with i18n keys
 const schema = z
   .object({
     name: z.string().min(2, 'signup.zod.name_min'),
@@ -54,8 +54,24 @@ export function SignupForm({
 }: React.ComponentPropsWithoutRef<'div'>) {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
-  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
+
+  // Use sessionStorage to persist verification state across re-renders
+  const [showVerificationMessage, setShowVerificationMessage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('showVerificationMessage') === 'true';
+    }
+    return false;
+  });
+
+  const [userEmail, setUserEmail] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('verificationEmail') || '';
+    }
+    return '';
+  });
+
+  const mountCount = useRef(0);
+  const lastStateChange = useRef<string>('');
 
   const {
     register,
@@ -66,7 +82,29 @@ export function SignupForm({
     resolver: zodResolver(schema),
   });
 
-  const { setUser } = useUser();
+  const { user, setUser } = useUser();
+
+  // Debug: Track component mounts and state changes
+  useEffect(() => {
+    mountCount.current += 1;
+    console.log(`🔄 Component render #${mountCount.current}`);
+    console.log('Current state:', { showVerificationMessage, userEmail });
+    console.log('User from context:', user);
+  }, [showVerificationMessage, userEmail, user]);
+
+  // Sync state to sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (showVerificationMessage) {
+        sessionStorage.setItem('showVerificationMessage', 'true');
+        sessionStorage.setItem('verificationEmail', userEmail);
+        console.log('💾 Saved verification state to sessionStorage');
+      } else {
+        sessionStorage.removeItem('showVerificationMessage');
+        sessionStorage.removeItem('verificationEmail');
+      }
+    }
+  }, [showVerificationMessage, userEmail]);
 
   const handleGoogleSignUp = async () => {
     try {
@@ -79,65 +117,120 @@ export function SignupForm({
         type: 'error',
         title: t('signup.failed_title', 'Signup Failed'),
         description:
-          error?.message || t('signup.failed_title', 'Signup Failed'),
+          error?.message || t('signup.failed_desc', 'Something went wrong'),
       });
     }
   };
 
   const onSubmit = async (data: FormFields) => {
-    try {
-      await authClient.signUp.email(
-        {
-          email: data.email,
-          password: data.password,
-          name: data.name,
-        },
-        {
-          onRequest: () => {},
-          onSuccess: () => {
-            setUserEmail(data.email);
-            setShowVerificationMessage(true);
-            reset();
+    console.log('=== SIGNUP FLOW START ===');
+    console.log('1. Form data:', { email: data.email, name: data.name });
+    console.log(
+      '2. Current showVerificationMessage state:',
+      showVerificationMessage,
+    );
 
-            toast({
-              type: 'success',
-              title: t('signup.created_title', 'Account Created'),
-              description: t(
-                'signup.created_desc',
-                'Check your email to verify your account.',
-              ),
-            });
-          },
-          onError: (ctx: any) => {
-            if (ctx?.error?.code === 'USER_ALREADY_EXISTS') {
-              toast({
-                type: 'error',
-                title: t('signup.failed_title', 'Signup Failed'),
-                description: ctx.error.message,
-              });
-            } else {
-              toast({
-                type: 'error',
-                title: t('signup.failed_title', 'Signup Failed'),
-                description:
-                  ctx?.error?.message ||
-                  t('signup.failed_title', 'Signup Failed'),
-              });
-            }
-          },
-        },
-      );
-    } catch (error: any) {
-      toast({
-        type: 'error',
-        title: t('signup.failed_title', 'Signup Failed'),
-        description:
-          error?.message || t('signup.failed_title', 'Signup Failed'),
+    try {
+      console.log('3. Calling authClient.signUp.email...');
+
+      const response = await authClient.signUp.email({
+        email: data.email,
+        password: data.password,
+        name: data.name,
       });
+
+      console.log('4. Response received:', response);
+      console.log('5. Response type:', typeof response);
+      console.log(
+        '6. Response keys:',
+        response ? Object.keys(response) : 'null',
+      );
+
+      // Check if signup was successful
+      if (response?.error) {
+        console.log('7. ERROR PATH - Response has error:', response.error);
+        toast({
+          type: 'error',
+          title: t('signup.failed_title', 'Signup Failed'),
+          description:
+            response.error.message ||
+            t('signup.failed_desc', 'Something went wrong'),
+        });
+        return;
+      }
+
+      // Success - show verification message
+      console.log('8. SUCCESS PATH - Setting email and showing verification');
+      console.log('9. Setting userEmail to:', data.email);
+      setUserEmail(data.email);
+
+      console.log('10. Setting showVerificationMessage to true');
+      lastStateChange.current = 'verification-set';
+      setShowVerificationMessage(true);
+
+      console.log('11. Resetting form');
+      reset();
+
+      console.log('12. Showing success toast');
+      toast({
+        type: 'success',
+        title: t('signup.created_title', 'Account Created'),
+        description: t(
+          'signup.created_desc',
+          'Check your email to verify your account.',
+        ),
+      });
+
+      console.log(
+        '13. After all state updates, showVerificationMessage should be true',
+      );
+
+      // CRITICAL: Prevent any navigation or session updates from resetting the form
+      // Wait a bit to ensure state is committed
+      setTimeout(() => {
+        console.log(
+          '14. After timeout, checking state:',
+          showVerificationMessage,
+        );
+      }, 100);
+    } catch (error: any) {
+      console.error('=== CAUGHT ERROR ===');
+      console.error('Error object:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error code:', error?.code);
+      console.error('Error message:', error?.message);
+      console.error('Full error:', JSON.stringify(error, null, 2));
+
+      // Handle specific error codes
+      if (error?.code === 'USER_ALREADY_EXISTS') {
+        console.log('User already exists error');
+        toast({
+          type: 'error',
+          title: t('signup.failed_title', 'Signup Failed'),
+          description: t(
+            'signup.user_exists',
+            'An account with this email already exists.',
+          ),
+        });
+      } else {
+        console.log('Generic error');
+        toast({
+          type: 'error',
+          title: t('signup.failed_title', 'Signup Failed'),
+          description:
+            error?.message || t('signup.failed_desc', 'Something went wrong'),
+        });
+      }
     }
+
+    console.log('=== SIGNUP FLOW END ===');
   };
 
+  // Verification message screen
   if (showVerificationMessage) {
+    console.log('=== RENDERING VERIFICATION SCREEN ===');
+    console.log('userEmail:', userEmail);
+
     return (
       <div
         className={cn('flex flex-col gap-6 relative min-h-screen', className)}
@@ -155,14 +248,20 @@ export function SignupForm({
               <CardTitle className="text-xl">
                 {t('signup.verify_title', 'Check Your Email')}
               </CardTitle>
-              <CardDescription>
-                {t('signup.verify_desc', { email: userEmail })}
+              <CardDescription className="space-y-2">
+                <div>
+                  {t(
+                    'signup.verify_desc_part1',
+                    'We have sent a verification link to:',
+                  )}
+                </div>
+                <div className="font-semibold text-foreground">{userEmail}</div>
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+              <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                 <svg
-                  className="w-8 h-8 text-blue-600"
+                  className="w-8 h-8 text-blue-600 dark:text-blue-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -179,20 +278,34 @@ export function SignupForm({
                 <p className="text-sm text-muted-foreground">
                   {t(
                     'signup.verify_hint',
-                    'Click the link to activate your account. Check your spam if you don’t see it.',
+                    "Click the link in the email to activate your account. Check your spam folder if you don't see it.",
                   )}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => setShowVerificationMessage(false)}
+                  onClick={() => {
+                    console.log('Resetting verification screen');
+                    setShowVerificationMessage(false);
+                    setUserEmail('');
+                    if (typeof window !== 'undefined') {
+                      sessionStorage.removeItem('showVerificationMessage');
+                      sessionStorage.removeItem('verificationEmail');
+                    }
+                  }}
                   className="flex-1"
                 >
                   {t('common.try_different_email', 'Try Different Email')}
                 </Button>
                 <Button
-                  onClick={() => navigate({ to: '/login' })}
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      sessionStorage.removeItem('showVerificationMessage');
+                      sessionStorage.removeItem('verificationEmail');
+                    }
+                    navigate({ to: '/login' });
+                  }}
                   className="flex-1"
                 >
                   {t('common.back_to_login', 'Back to Login')}
@@ -204,6 +317,10 @@ export function SignupForm({
       </div>
     );
   }
+
+  // Signup form
+  console.log('=== RENDERING SIGNUP FORM ===');
+  console.log('showVerificationMessage:', showVerificationMessage);
 
   return (
     <div className="flex min-h-screen flex-col w-full">
@@ -335,10 +452,21 @@ export function SignupForm({
                     </Button>
                   </div>
 
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        {t('common.or', 'Or')}
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="text-center text-sm">
                     {t('common.already_account', 'Already have an account?')}{' '}
                     <Link to="/login" className="underline underline-offset-4">
-                      {t('signup.signup_link', 'Sign up')}
+                      {t('signup.signup_link', 'Log In')}
                     </Link>
                   </div>
                 </div>

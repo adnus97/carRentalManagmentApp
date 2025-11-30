@@ -11,12 +11,8 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as VerifyEmailImport } from './routes/verify-email'
 import { Route as SubscriptionRequiredImport } from './routes/subscription-required'
-import { Route as SignupImport } from './routes/signup'
-import { Route as ResetPasswordImport } from './routes/reset-password'
 import { Route as OrganizationFormImport } from './routes/organizationForm'
-import { Route as LoginImport } from './routes/login'
 import { Route as AboutImport } from './routes/about'
 import { Route as LayoutImport } from './routes/_layout'
 import { Route as AuthImport } from './routes/_auth'
@@ -28,17 +24,15 @@ import { Route as LayoutOrganizationImport } from './routes/_layout.organization
 import { Route as LayoutDashboardImport } from './routes/_layout.dashboard'
 import { Route as LayoutClientsImport } from './routes/_layout.clients'
 import { Route as LayoutAccountSettingsImport } from './routes/_layout.account-settings'
+import { Route as AuthVerifyEmailImport } from './routes/_auth/verify-email'
+import { Route as AuthSignupImport } from './routes/_auth/signup'
+import { Route as AuthResetPasswordImport } from './routes/_auth/reset-password'
+import { Route as AuthLoginImport } from './routes/_auth/login'
 import { Route as LayoutCustomerDetailsIdImport } from './routes/_layout.customerDetails.$id'
 import { Route as LayoutCarDetailsIdImport } from './routes/_layout.carDetails.$id'
 import { Route as LayoutAdminDashboardImport } from './routes/_layout.admin.dashboard'
 
 // Create/Update Routes
-
-const VerifyEmailRoute = VerifyEmailImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
-  getParentRoute: () => rootRoute,
-} as any)
 
 const SubscriptionRequiredRoute = SubscriptionRequiredImport.update({
   id: '/subscription-required',
@@ -46,27 +40,9 @@ const SubscriptionRequiredRoute = SubscriptionRequiredImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const SignupRoute = SignupImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const ResetPasswordRoute = ResetPasswordImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRoute,
-} as any)
-
 const OrganizationFormRoute = OrganizationFormImport.update({
   id: '/organizationForm',
   path: '/organizationForm',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const LoginRoute = LoginImport.update({
-  id: '/login',
-  path: '/login',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -134,6 +110,30 @@ const LayoutAccountSettingsRoute = LayoutAccountSettingsImport.update({
   getParentRoute: () => LayoutRoute,
 } as any)
 
+const AuthVerifyEmailRoute = AuthVerifyEmailImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthSignupRoute = AuthSignupImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthResetPasswordRoute = AuthResetPasswordImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthLoginRoute = AuthLoginImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+
 const LayoutCustomerDetailsIdRoute = LayoutCustomerDetailsIdImport.update({
   id: '/customerDetails/$id',
   path: '/customerDetails/$id',
@@ -177,32 +177,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutImport
       parentRoute: typeof rootRoute
     }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginImport
-      parentRoute: typeof rootRoute
-    }
     '/organizationForm': {
       id: '/organizationForm'
       path: '/organizationForm'
       fullPath: '/organizationForm'
       preLoaderRoute: typeof OrganizationFormImport
-      parentRoute: typeof rootRoute
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordImport
-      parentRoute: typeof rootRoute
-    }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupImport
       parentRoute: typeof rootRoute
     }
     '/subscription-required': {
@@ -212,12 +191,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubscriptionRequiredImport
       parentRoute: typeof rootRoute
     }
-    '/verify-email': {
-      id: '/verify-email'
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginImport
+      parentRoute: typeof AuthImport
+    }
+    '/_auth/reset-password': {
+      id: '/_auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordImport
+      parentRoute: typeof AuthImport
+    }
+    '/_auth/signup': {
+      id: '/_auth/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof AuthSignupImport
+      parentRoute: typeof AuthImport
+    }
+    '/_auth/verify-email': {
+      id: '/_auth/verify-email'
       path: '/verify-email'
       fullPath: '/verify-email'
-      preLoaderRoute: typeof VerifyEmailImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof AuthVerifyEmailImport
+      parentRoute: typeof AuthImport
     }
     '/_layout/account-settings': {
       id: '/_layout/account-settings'
@@ -302,10 +302,18 @@ declare module '@tanstack/react-router' {
 // Create and export the route tree
 
 interface AuthRouteChildren {
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+  AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
   AuthIndexRoute: typeof AuthIndexRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
+  AuthLoginRoute: AuthLoginRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
+  AuthSignupRoute: AuthSignupRoute,
+  AuthVerifyEmailRoute: AuthVerifyEmailRoute,
   AuthIndexRoute: AuthIndexRoute,
 }
 
@@ -341,12 +349,12 @@ const LayoutRouteWithChildren =
 export interface FileRoutesByFullPath {
   '': typeof LayoutRouteWithChildren
   '/about': typeof AboutRoute
-  '/login': typeof LoginRoute
   '/organizationForm': typeof OrganizationFormRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/signup': typeof SignupRoute
   '/subscription-required': typeof SubscriptionRequiredRoute
-  '/verify-email': typeof VerifyEmailRoute
+  '/login': typeof AuthLoginRoute
+  '/reset-password': typeof AuthResetPasswordRoute
+  '/signup': typeof AuthSignupRoute
+  '/verify-email': typeof AuthVerifyEmailRoute
   '/account-settings': typeof LayoutAccountSettingsRoute
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
@@ -363,12 +371,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '': typeof LayoutRouteWithChildren
   '/about': typeof AboutRoute
-  '/login': typeof LoginRoute
   '/organizationForm': typeof OrganizationFormRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/signup': typeof SignupRoute
   '/subscription-required': typeof SubscriptionRequiredRoute
-  '/verify-email': typeof VerifyEmailRoute
+  '/login': typeof AuthLoginRoute
+  '/reset-password': typeof AuthResetPasswordRoute
+  '/signup': typeof AuthSignupRoute
+  '/verify-email': typeof AuthVerifyEmailRoute
   '/account-settings': typeof LayoutAccountSettingsRoute
   '/clients': typeof LayoutClientsRoute
   '/dashboard': typeof LayoutDashboardRoute
@@ -387,12 +395,12 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/about': typeof AboutRoute
-  '/login': typeof LoginRoute
   '/organizationForm': typeof OrganizationFormRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/signup': typeof SignupRoute
   '/subscription-required': typeof SubscriptionRequiredRoute
-  '/verify-email': typeof VerifyEmailRoute
+  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/reset-password': typeof AuthResetPasswordRoute
+  '/_auth/signup': typeof AuthSignupRoute
+  '/_auth/verify-email': typeof AuthVerifyEmailRoute
   '/_layout/account-settings': typeof LayoutAccountSettingsRoute
   '/_layout/clients': typeof LayoutClientsRoute
   '/_layout/dashboard': typeof LayoutDashboardRoute
@@ -411,11 +419,11 @@ export interface FileRouteTypes {
   fullPaths:
     | ''
     | '/about'
-    | '/login'
     | '/organizationForm'
+    | '/subscription-required'
+    | '/login'
     | '/reset-password'
     | '/signup'
-    | '/subscription-required'
     | '/verify-email'
     | '/account-settings'
     | '/clients'
@@ -432,11 +440,11 @@ export interface FileRouteTypes {
   to:
     | ''
     | '/about'
-    | '/login'
     | '/organizationForm'
+    | '/subscription-required'
+    | '/login'
     | '/reset-password'
     | '/signup'
-    | '/subscription-required'
     | '/verify-email'
     | '/account-settings'
     | '/clients'
@@ -454,12 +462,12 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/_layout'
     | '/about'
-    | '/login'
     | '/organizationForm'
-    | '/reset-password'
-    | '/signup'
     | '/subscription-required'
-    | '/verify-email'
+    | '/_auth/login'
+    | '/_auth/reset-password'
+    | '/_auth/signup'
+    | '/_auth/verify-email'
     | '/_layout/account-settings'
     | '/_layout/clients'
     | '/_layout/dashboard'
@@ -478,12 +486,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AboutRoute: typeof AboutRoute
-  LoginRoute: typeof LoginRoute
   OrganizationFormRoute: typeof OrganizationFormRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
-  SignupRoute: typeof SignupRoute
   SubscriptionRequiredRoute: typeof SubscriptionRequiredRoute
-  VerifyEmailRoute: typeof VerifyEmailRoute
   ContractsIdRoute: typeof ContractsIdRoute
 }
 
@@ -491,12 +495,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AboutRoute: AboutRoute,
-  LoginRoute: LoginRoute,
   OrganizationFormRoute: OrganizationFormRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
-  SignupRoute: SignupRoute,
   SubscriptionRequiredRoute: SubscriptionRequiredRoute,
-  VerifyEmailRoute: VerifyEmailRoute,
   ContractsIdRoute: ContractsIdRoute,
 }
 
@@ -513,18 +513,18 @@ export const routeTree = rootRoute
         "/_auth",
         "/_layout",
         "/about",
-        "/login",
         "/organizationForm",
-        "/reset-password",
-        "/signup",
         "/subscription-required",
-        "/verify-email",
         "/contracts/$id"
       ]
     },
     "/_auth": {
       "filePath": "_auth.tsx",
       "children": [
+        "/_auth/login",
+        "/_auth/reset-password",
+        "/_auth/signup",
+        "/_auth/verify-email",
         "/_auth/"
       ]
     },
@@ -545,23 +545,27 @@ export const routeTree = rootRoute
     "/about": {
       "filePath": "about.tsx"
     },
-    "/login": {
-      "filePath": "login.tsx"
-    },
     "/organizationForm": {
       "filePath": "organizationForm.tsx"
-    },
-    "/reset-password": {
-      "filePath": "reset-password.tsx"
-    },
-    "/signup": {
-      "filePath": "signup.tsx"
     },
     "/subscription-required": {
       "filePath": "subscription-required.tsx"
     },
-    "/verify-email": {
-      "filePath": "verify-email.tsx"
+    "/_auth/login": {
+      "filePath": "_auth/login.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/reset-password": {
+      "filePath": "_auth/reset-password.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/signup": {
+      "filePath": "_auth/signup.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/verify-email": {
+      "filePath": "_auth/verify-email.tsx",
+      "parent": "/_auth"
     },
     "/_layout/account-settings": {
       "filePath": "_layout.account-settings.tsx",
