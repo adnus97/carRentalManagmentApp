@@ -236,11 +236,6 @@ export function SignupForm({
         className={cn('flex flex-col gap-6 relative min-h-screen', className)}
         {...props}
       >
-        {/* Theme Toggle - Top Right */}
-        <div className="absolute top-4 right-4 z-10">
-          <ModeToggle />
-        </div>
-
         {/* Centered Content */}
         <div className="flex items-center justify-center min-h-screen p-4">
           <Card className="bg-gray-2 w-full max-w-md">

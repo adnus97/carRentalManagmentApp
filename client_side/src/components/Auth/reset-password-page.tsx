@@ -47,10 +47,10 @@ export function ResetPasswordPage() {
   const searchParams = new URLSearchParams(location.search);
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const token =
     searchParams.get('token') || window.location.pathname.split('/').pop();
-  const callbackURL = searchParams.get('callbackURL') || '/dashboard';
 
   const {
     register,
@@ -74,6 +74,7 @@ export function ResetPasswordPage() {
 
     setIsSubmitting(true);
     try {
+      // Reset the password
       await authClient.resetPassword(
         { newPassword: data.password },
         { query: { token } },
@@ -85,7 +86,30 @@ export function ResetPasswordPage() {
         description: t('reset.toast_success_desc'),
       });
 
-      setTimeout(() => navigate({ to: '/login' }), 2000);
+      // ✅ IMMEDIATE: Clear session BEFORE setting success state
+      try {
+        await authClient.signOut({ fetchOptions: { onSuccess: () => {} } });
+      } catch (e) {
+        // Ignore signout errors
+      }
+
+      // Clear ALL storage immediately
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Delete all cookies (in case auth is cookie-based)
+      document.cookie.split(';').forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, '')
+          .replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/');
+      });
+
+      setResetSuccess(true);
+
+      // Force full page reload to /login (clears all React state)
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
     } catch (error: any) {
       let errorMessage = t('reset.toast_failed_desc');
 
@@ -113,6 +137,37 @@ export function ResetPasswordPage() {
 
   if (!token) return null;
 
+  // Show success state while redirecting
+  if (resetSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-gray-2">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-4">
+              <svg
+                className="w-8 h-8 text-green-600 dark:text-green-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <CardTitle className="text-2xl">
+              {t('reset.success_title')}
+            </CardTitle>
+            <CardDescription>{t('reset.success_redirecting')}</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-gray-2">
@@ -132,6 +187,7 @@ export function ResetPasswordPage() {
                 type="password"
                 className={errors.password ? 'border-red-600' : ''}
                 {...register('password')}
+                disabled={isSubmitting}
               />
               {errors.password && (
                 <span className="text-red-600 text-xs">
@@ -150,6 +206,7 @@ export function ResetPasswordPage() {
                 type="password"
                 className={errors.confirmPassword ? 'border-red-600' : ''}
                 {...register('confirmPassword')}
+                disabled={isSubmitting}
               />
               {errors.confirmPassword && (
                 <span className="text-red-600 text-xs">
@@ -174,6 +231,7 @@ export function ResetPasswordPage() {
                 type="button"
                 onClick={() => navigate({ to: '/login' })}
                 className="text-sm text-muted-foreground hover:text-primary underline-offset-2 hover:underline"
+                disabled={isSubmitting}
               >
                 {t('reset.back_to_login')}
               </button>

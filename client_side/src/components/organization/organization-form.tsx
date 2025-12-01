@@ -23,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 const schema = z.object({
   name: z.string().min(2, 'org.form.errors.name_short'),
 
-  website: z.string().url().optional().or(z.literal('')),
+  website: z.string().optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
   address: z.string().optional().or(z.literal('')),
 });

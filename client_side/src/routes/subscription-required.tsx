@@ -1,5 +1,4 @@
-'use client';
-
+import React from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   Card,
@@ -12,10 +11,10 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { useUser } from '@/contexts/user-context';
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export const Route = createFileRoute('/subscription-required')({
+  // No beforeLoad - _layout handles super admin redirect
   component: SubscriptionRequired,
 });
 
@@ -23,13 +22,15 @@ function SubscriptionRequired() {
   const navigate = useNavigate();
   const { user, setUser, refreshUser } = useUser();
   const { t } = useTranslation('auth');
+  const [isActivating, setIsActivating] = React.useState(false);
 
-  // Redirect super admins immediately
-  useEffect(() => {
-    if (user?.role === 'super_admin') {
-      navigate({ to: '/admin/dashboard' });
+  // Auto-redirect if subscription becomes active
+  React.useEffect(() => {
+    if (user?.subscriptionStatus === 'active') {
+      console.log('✅ Subscription active, redirecting to dashboard');
+      navigate({ to: '/dashboard', replace: true });
     }
-  }, [user, navigate]);
+  }, [user?.subscriptionStatus, navigate]);
 
   const handleSignOut = async () => {
     await authClient.signOut();
@@ -39,17 +40,18 @@ function SubscriptionRequired() {
   };
 
   const handleRefresh = async () => {
-    await refreshUser();
+    setIsActivating(true);
+    try {
+      await refreshUser();
+      // After refresh, if still not active, show message
+      setTimeout(() => {
+        setIsActivating(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+      setIsActivating(false);
+    }
   };
-
-  // Don't show anything while redirecting super admin
-  if (user?.role === 'super_admin') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
-      </div>
-    );
-  }
 
   const supportEmail =
     import.meta.env.VITE_SUPPORT_EMAIL || 'support@yourapp.com';
@@ -77,6 +79,7 @@ function SubscriptionRequired() {
             >
               {t('subscription.contact')}
             </Button>
+
             <Button
               variant="outline"
               className="w-full"
@@ -84,11 +87,6 @@ function SubscriptionRequired() {
             >
               {t('subscription.signout')}
             </Button>
-
-            {/* Optional refresh button */}
-            {/* <Button variant="ghost" className="w-full" onClick={handleRefresh}>
-              {t('common.submit')}
-            </Button> */}
           </div>
         </CardContent>
       </Card>

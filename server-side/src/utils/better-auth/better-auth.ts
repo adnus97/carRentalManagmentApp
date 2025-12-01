@@ -180,7 +180,7 @@ export const BETTER_AUTH = {
             'Verify Your Email Address',
             `
       <div style="padding: 40px; text-align: center;">
-        <h2>Welcome to CarRent Pro!</h2>
+        <h2>Welcome to VelCar!</h2>
         <p>Thank you for signing up! Please click the link below to verify your email address:</p>
         <a href="${frontendUrl}" style="background: #667eea; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; display: inline-block;">
           Verify Email
