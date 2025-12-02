@@ -37,7 +37,7 @@ export function LoginForm({
   const { t, i18n } = useTranslation('auth');
   const navigate = useNavigate({ from: '/login' });
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
   const { refreshUser } = useUser();
 
   const schema = useMemo(() => buildSchema(t), [i18n.language, t]);
@@ -78,23 +78,6 @@ export function LoginForm({
         },
       },
     );
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    try {
-      await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: '/dashboard',
-      });
-    } catch (error: any) {
-      toast({
-        type: 'error',
-        title: t('login.google_failed_title'),
-        description: error?.message || t('login.google_failed_title'),
-      });
-      setIsGoogleLoading(false);
-    }
   };
 
   return (

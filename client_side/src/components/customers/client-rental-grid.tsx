@@ -30,7 +30,7 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
   const pageSize = 11;
 
   // ✅ Query 1: Customer info
-  const { data: customer, isLoading: loadingCustomer } = useQuery({
+  const { isLoading: loadingCustomer } = useQuery({
     queryKey: ['customer', customerId],
     queryFn: () => getCustomerById(customerId),
   });

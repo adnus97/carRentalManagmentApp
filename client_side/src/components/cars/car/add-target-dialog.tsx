@@ -29,7 +29,7 @@ export default function AddTargetDialog({
   targets: TargetRow[];
 }) {
   const { t, i18n } = useTranslation('cars');
-  const lang = i18n.language || 'en';
+
   const currency = t('currency', 'DHS');
 
   const [isOpen, setIsOpen] = useState(false);

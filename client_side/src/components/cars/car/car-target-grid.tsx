@@ -17,7 +17,7 @@ import {
 import { getCarTargets, getActiveTargetCard } from '@/api/cars';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AgGridReactProps } from 'ag-grid-react';
+
 import {
   ClientSideRowModelModule,
   ModuleRegistry,
@@ -28,8 +28,6 @@ import {
 import { Loader } from '@/components/loader';
 import { useTranslation } from 'react-i18next';
 
-type CarDataGridProps<T> = AgGridReactProps<T>;
-
 ModuleRegistry.registerModules([
   TextFilterModule,
   PinnedRowModule,
@@ -39,7 +37,6 @@ ModuleRegistry.registerModules([
 
 export default function CarTargetsGrid({
   carId,
-  targets, // kept for compatibility
 }: {
   carId: string;
   targets: TargetRow[];

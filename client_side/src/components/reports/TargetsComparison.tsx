@@ -128,7 +128,6 @@ export function TargetsComparison({ data }: { data: Target[] }) {
       >
         <div className="flex w-max" style={{ gap }}>
           {data.map((tgt, i) => {
-            const status = getStatus(tgt.endDate);
             const daysRemaining = Math.max(
               0,
               Math.ceil(

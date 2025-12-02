@@ -1,13 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  getContractHTML,
-  downloadContractPDF,
-  downloadContractDOCX,
-} from '@/api/contracts';
+import { getContractHTML, downloadContractPDF } from '@/api/contracts';
 import { toast } from '@/components/ui/toast';
 import { useTranslation } from 'react-i18next';
 
@@ -166,40 +162,6 @@ export function ContractDialog({
         t('contract.download.pdf_failed_desc', {
           ns: 'rent',
           defaultValue: 'Failed to download PDF',
-        });
-      toast({
-        type: 'error',
-        title: t('contract.download.failed_title', {
-          ns: 'rent',
-          defaultValue: 'Download Failed',
-        }),
-        description: msg,
-      });
-    }
-  };
-
-  const handleDownloadDOCX = async () => {
-    if (!contractId) return;
-    try {
-      await downloadContractDOCX(contractId);
-      toast({
-        type: 'success',
-        title: t('contract.download.started_title', {
-          ns: 'rent',
-          defaultValue: 'Download Started',
-        }),
-        description: t('contract.download.docx_started', {
-          ns: 'rent',
-          defaultValue: 'Word document is being downloaded.',
-        }),
-      });
-    } catch (e: any) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        t('contract.download.docx_failed_desc', {
-          ns: 'rent',
-          defaultValue: 'Failed to download Word file',
         });
       toast({
         type: 'error',

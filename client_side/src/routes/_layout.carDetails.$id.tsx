@@ -1,11 +1,8 @@
 // src/routes/_layout.dashboard.cars.$id.tsx
-import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCarDetails, updateCar, deleteCar } from '@/api/cars';
-import { Button } from '@/components/ui/button';
-import { successToast, errorToast } from '@/components/ui/toast';
+import { createFileRoute } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { getCarDetails } from '@/api/cars';
 import CarDetailsPage from '@/components/cars/car-details-page';
-import { ArrowLeft } from '@phosphor-icons/react';
 import { Loader } from '@/components/loader';
 
 export const Route = createFileRoute('/_layout/carDetails/$id')({
@@ -14,8 +11,6 @@ export const Route = createFileRoute('/_layout/carDetails/$id')({
 
 function RouteComponent() {
   const { id } = Route.useParams();
-  const router = useRouter();
-  const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['carDetails', id],
@@ -35,8 +30,6 @@ function RouteComponent() {
         Error loading car details.
       </p>
     );
-
-  const { car } = data;
 
   return (
     <div>

@@ -70,7 +70,6 @@ export const ClientsGrid = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] =
     useState<CustomerWithFiles | null>(null);
-  const [isLoadingCustomer, setIsLoadingCustomer] = useState(false);
 
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -124,27 +123,6 @@ export const ClientsGrid = () => {
       console.error(err);
     }
     setShowDeleteDialog(false);
-  };
-
-  const handleEditCustomer = async (customer: Customer) => {
-    setIsLoadingCustomer(true);
-    try {
-      const customerWithFiles = await getCustomerWithFiles(customer.id);
-      setSelectedCustomer(customerWithFiles);
-      setEditDialogOpen(true);
-    } catch (error) {
-      console.error('Failed to load customer with files:', error);
-      toast({
-        type: 'error',
-        title: t('clients.error', 'Error'),
-        description: t(
-          'clients.load_edit_failed',
-          'Failed to load customer details for editing',
-        ),
-      });
-    } finally {
-      setIsLoadingCustomer(false);
-    }
   };
 
   const colDefs: ColDef<Customer>[] = [

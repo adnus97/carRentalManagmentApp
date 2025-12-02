@@ -12,20 +12,16 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import {
   Shield,
   ShieldWarning,
   MagnifyingGlass,
   Calendar,
-  User,
   Phone,
   PaperPlaneTilt,
   FileText,
   Building,
   Warning,
-  Users,
-  X,
 } from '@phosphor-icons/react';
 import { format } from 'date-fns';
 import {

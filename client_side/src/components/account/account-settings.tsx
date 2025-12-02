@@ -39,7 +39,6 @@ import {
 import type { User } from '../../types/user';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useNavigationContext } from '@/contexts/navigation-context';
 
 const updateProfileSchema = z.object({
   name: z.string().min(2, 'account.validators.name_min'),

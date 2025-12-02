@@ -1,6 +1,6 @@
 'use client';
 
-import { createFileRoute, useRouter } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getCustomerById } from '@/api/customers';
 import { Loader } from '@/components/loader';
@@ -12,7 +12,6 @@ export const Route = createFileRoute('/_layout/customerDetails/$id')({
 
 function RouteComponent() {
   const { id } = Route.useParams(); // ✅ correct way
-  const router = useRouter();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['customerDetails', id],

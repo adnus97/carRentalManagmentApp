@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { X, Upload, Camera, AlertCircle, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

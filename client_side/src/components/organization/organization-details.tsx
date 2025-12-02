@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/toast';
 import { UpdateOrganizationForm } from './update-organization-form';
-import { getOrganizationByUser, Organization } from '@/api/organization';
+import { getOrganizationByUser } from '@/api/organization';
 import { getFileServeUrl, viewFile, downloadFile } from '@/api/files';
 import {
   FileText,
@@ -19,7 +19,7 @@ import {
   Building2,
   AlertCircle,
 } from 'lucide-react';
-import { useUser } from '@/contexts/user-context';
+
 import { useTranslation } from 'react-i18next';
 
 type DocType = 'pdf' | 'image';
@@ -39,7 +39,6 @@ const ImageFallback = ({ name }: { name: string }) => (
 export function OrganizationDetails() {
   const { t } = useTranslation('organization');
   const [editMode, setEditMode] = useState(false);
-  const { user } = useUser();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['organization', 'user'],

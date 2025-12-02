@@ -14,9 +14,7 @@ import { useLayoutContext } from '@/contexts/layout-context';
 import { useNavigationContext } from '@/contexts/navigation-context';
 import { useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Trash, Hammer, IdCard, Mail } from 'lucide-react';
@@ -24,7 +22,6 @@ import {
   Calendar,
   CheckCircle,
   Phone,
-  Prohibit,
   ProhibitInset,
   User,
 } from '@phosphor-icons/react';

@@ -20,9 +20,8 @@ export const Route = createFileRoute('/subscription-required')({
 
 function SubscriptionRequired() {
   const navigate = useNavigate();
-  const { user, setUser, refreshUser } = useUser();
+  const { user, setUser } = useUser();
   const { t } = useTranslation('auth');
-  const [isActivating, setIsActivating] = React.useState(false);
 
   // Auto-redirect if subscription becomes active
   React.useEffect(() => {
@@ -39,22 +38,7 @@ function SubscriptionRequired() {
     navigate({ to: '/login' });
   };
 
-  const handleRefresh = async () => {
-    setIsActivating(true);
-    try {
-      await refreshUser();
-      // After refresh, if still not active, show message
-      setTimeout(() => {
-        setIsActivating(false);
-      }, 1000);
-    } catch (error) {
-      console.error('Refresh failed:', error);
-      setIsActivating(false);
-    }
-  };
-
-  const supportEmail =
-    import.meta.env.VITE_SUPPORT_EMAIL || 'support@yourapp.com';
+  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

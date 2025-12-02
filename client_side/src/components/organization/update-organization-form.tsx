@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,7 @@ import { Loader } from '@/components/loader';
 import { UploadComponent } from '@/components/image-uploader';
 import { FileUploader } from '@/components/file-uploader';
 
-import { File, getFileServeUrl } from '../../api/files';
+import { getFileServeUrl } from '../../api/files';
 import {
   Organization,
   updateOrganization,

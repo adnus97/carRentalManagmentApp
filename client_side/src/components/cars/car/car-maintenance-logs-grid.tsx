@@ -295,16 +295,6 @@ export default function CarMaintenanceLogsGrid({ carId }: { carId: string }) {
 
   const totalPages = data?.totalPages || 1;
 
-  const getPageNumbers = () => {
-    const pages: number[] = [];
-    for (let p = 1; p <= totalPages; p++) {
-      if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
-        pages.push(p);
-      }
-    }
-    return pages;
-  };
-
   // Full dataset filtered by type (for the CHART)
   const fullFiltered =
     filterType === 'all'

@@ -3,7 +3,6 @@ import {
   Bell,
   Warning,
   CheckCircle,
-  Clock,
   Car,
   User,
   CreditCard,

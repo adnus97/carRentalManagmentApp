@@ -3,7 +3,7 @@ import { OrganizationDetails } from '@/components/organization/organization-deta
 import { getOrganizationByUser } from '@/api/organization';
 
 export const Route = createFileRoute('/_layout/organization')({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async () => {
     // Check if user has organization
     try {
       const organizations = await getOrganizationByUser();

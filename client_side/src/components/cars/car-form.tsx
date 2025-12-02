@@ -178,7 +178,7 @@ export function DialogDemo({
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-    watch,
+
     reset,
     getValues,
   } = useForm<formFields>({

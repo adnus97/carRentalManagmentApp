@@ -1,6 +1,5 @@
 // src/components/admin/admin-dashboard.tsx
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import {
   useInfiniteQuery,
   useQuery,
@@ -18,14 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Users,
-  DollarSign,
-  AlertCircle,
-  Check,
-  Search,
-  Loader2,
-} from 'lucide-react';
+import { Users, AlertCircle, Check, Search, Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
 import { Loader } from '@/components/loader';
 import {
@@ -39,7 +31,6 @@ export function AdminDashboard() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Stats query

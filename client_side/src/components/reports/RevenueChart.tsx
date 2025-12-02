@@ -19,11 +19,7 @@ type RevenueChartProps = {
   interval: 'day' | 'week' | 'month';
 };
 
-export function RevenueChart({
-  trends,
-  prevTrends = [],
-  interval,
-}: RevenueChartProps) {
+export function RevenueChart({ trends, interval }: RevenueChartProps) {
   const { t } = useTranslation('reports');
 
   const chartConfig: ChartConfig = {
@@ -158,7 +154,6 @@ export function RevenueChart({
             const { active, payload, label } = props as any;
             if (!active || !payload?.length) return null;
             const row = payload[0].payload as TrendPoint;
-            const prev = prevTrends.find((d) => d.date === row.date);
 
             const labelStr =
               typeof label === 'string' ? label : (label?.toString() ?? '');

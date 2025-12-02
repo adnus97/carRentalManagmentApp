@@ -1,6 +1,3 @@
-'use client';
-
-import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,32 +15,32 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader } from '@/components/loader';
-import { useUser } from '@/contexts/user-context';
+import { useState } from 'react';
 import { toast } from '../ui/toast';
 import { ModeToggle } from '../mode-toggle';
-import LanguageSelector from '../language-selector';
-import { useTranslation } from 'react-i18next';
 
-// Zod schema with i18n keys
 const schema = z
   .object({
-    name: z.string().min(2, 'signup.zod.name_min'),
+    name: z.string().min(2),
     password: z
       .string()
-      .min(8, 'signup.zod.password_min')
-      .regex(/[A-Z]/, 'signup.zod.password_upper')
-      .regex(/[a-z]/, 'signup.zod.password_lower')
-      .regex(/[0-9]/, 'signup.zod.password_number')
-      .regex(/[@$!%*?&]/, 'signup.zod.password_special'),
+      .min(8, 'Password must be at least 8 characters long')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number')
+      .regex(
+        /[@$!%*?&]/,
+        'Password must contain at least one special character',
+      ),
     email: z
       .string()
-      .email('signup.zod.email_invalid')
-      .nonempty('signup.zod.email_required'),
+      .email('Invalid email address')
+      .nonempty('Email is required'),
     passwordVerification: z.string(),
   })
   .refine((data) => data.password === data.passwordVerification, {
     path: ['passwordVerification'],
-    message: 'signup.zod.passwords_mismatch',
+    message: 'Passwords do not match',
   });
 
 type FormFields = z.infer<typeof schema>;
@@ -52,26 +49,9 @@ export function SignupForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
-  const { t } = useTranslation('auth');
   const navigate = useNavigate();
-
-  // Use sessionStorage to persist verification state across re-renders
-  const [showVerificationMessage, setShowVerificationMessage] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('showVerificationMessage') === 'true';
-    }
-    return false;
-  });
-
-  const [userEmail, setUserEmail] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('verificationEmail') || '';
-    }
-    return '';
-  });
-
-  const mountCount = useRef(0);
-  const lastStateChange = useRef<string>('');
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const {
     register,
@@ -82,181 +62,78 @@ export function SignupForm({
     resolver: zodResolver(schema),
   });
 
-  const { user, setUser } = useUser();
-
-  // Debug: Track component mounts and state changes
-  useEffect(() => {
-    mountCount.current += 1;
-    console.log(`🔄 Component render #${mountCount.current}`);
-    console.log('Current state:', { showVerificationMessage, userEmail });
-    console.log('User from context:', user);
-  }, [showVerificationMessage, userEmail, user]);
-
-  // Sync state to sessionStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (showVerificationMessage) {
-        sessionStorage.setItem('showVerificationMessage', 'true');
-        sessionStorage.setItem('verificationEmail', userEmail);
-        console.log('💾 Saved verification state to sessionStorage');
-      } else {
-        sessionStorage.removeItem('showVerificationMessage');
-        sessionStorage.removeItem('verificationEmail');
-      }
-    }
-  }, [showVerificationMessage, userEmail]);
-
-  const handleGoogleSignUp = async () => {
+  const onSubmit = async (data: FormFields) => {
     try {
-      await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: '/organizationForm',
-      });
+      const response = await authClient.signUp.email(
+        {
+          email: data.email,
+          password: data.password,
+          name: data.name,
+        },
+        {
+          onRequest: () => {},
+          onSuccess: () => {
+            setUserEmail(data.email);
+            setShowVerificationMessage(true);
+            reset();
+
+            toast({
+              type: 'success',
+              title: 'Account Created',
+              description: 'Please check your email to verify your account.',
+            });
+          },
+          onError: (ctx: any) => {
+            if (ctx.error.code === 'USER_ALREADY_EXISTS') {
+              toast({
+                type: 'error',
+                title: 'Error',
+                description: ctx.error.message,
+              });
+            } else {
+              toast({
+                type: 'error',
+                title: 'Signup Failed',
+                description: ctx.error.message || 'Failed to create account',
+              });
+            }
+          },
+        },
+      );
+      return response;
     } catch (error: any) {
       toast({
         type: 'error',
-        title: t('signup.failed_title', 'Signup Failed'),
-        description:
-          error?.message || t('signup.failed_desc', 'Something went wrong'),
+        title: 'Error',
+        description: error?.message || 'An unexpected error occurred',
       });
     }
   };
 
-  const onSubmit = async (data: FormFields) => {
-    console.log('=== SIGNUP FLOW START ===');
-    console.log('1. Form data:', { email: data.email, name: data.name });
-    console.log(
-      '2. Current showVerificationMessage state:',
-      showVerificationMessage,
-    );
-
-    try {
-      console.log('3. Calling authClient.signUp.email...');
-
-      const response = await authClient.signUp.email({
-        email: data.email,
-        password: data.password,
-        name: data.name,
-      });
-
-      console.log('4. Response received:', response);
-      console.log('5. Response type:', typeof response);
-      console.log(
-        '6. Response keys:',
-        response ? Object.keys(response) : 'null',
-      );
-
-      // Check if signup was successful
-      if (response?.error) {
-        console.log('7. ERROR PATH - Response has error:', response.error);
-        toast({
-          type: 'error',
-          title: t('signup.failed_title', 'Signup Failed'),
-          description:
-            response.error.message ||
-            t('signup.failed_desc', 'Something went wrong'),
-        });
-        return;
-      }
-
-      // Success - show verification message
-      console.log('8. SUCCESS PATH - Setting email and showing verification');
-      console.log('9. Setting userEmail to:', data.email);
-      setUserEmail(data.email);
-
-      console.log('10. Setting showVerificationMessage to true');
-      lastStateChange.current = 'verification-set';
-      setShowVerificationMessage(true);
-
-      console.log('11. Resetting form');
-      reset();
-
-      console.log('12. Showing success toast');
-      toast({
-        type: 'success',
-        title: t('signup.created_title', 'Account Created'),
-        description: t(
-          'signup.created_desc',
-          'Check your email to verify your account.',
-        ),
-      });
-
-      console.log(
-        '13. After all state updates, showVerificationMessage should be true',
-      );
-
-      // CRITICAL: Prevent any navigation or session updates from resetting the form
-      // Wait a bit to ensure state is committed
-      setTimeout(() => {
-        console.log(
-          '14. After timeout, checking state:',
-          showVerificationMessage,
-        );
-      }, 100);
-    } catch (error: any) {
-      console.error('=== CAUGHT ERROR ===');
-      console.error('Error object:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error code:', error?.code);
-      console.error('Error message:', error?.message);
-      console.error('Full error:', JSON.stringify(error, null, 2));
-
-      // Handle specific error codes
-      if (error?.code === 'USER_ALREADY_EXISTS') {
-        console.log('User already exists error');
-        toast({
-          type: 'error',
-          title: t('signup.failed_title', 'Signup Failed'),
-          description: t(
-            'signup.user_exists',
-            'An account with this email already exists.',
-          ),
-        });
-      } else {
-        console.log('Generic error');
-        toast({
-          type: 'error',
-          title: t('signup.failed_title', 'Signup Failed'),
-          description:
-            error?.message || t('signup.failed_desc', 'Something went wrong'),
-        });
-      }
-    }
-
-    console.log('=== SIGNUP FLOW END ===');
-  };
-
-  // Verification message screen
   if (showVerificationMessage) {
-    console.log('=== RENDERING VERIFICATION SCREEN ===');
-    console.log('userEmail:', userEmail);
-
     return (
       <div
         className={cn('flex flex-col gap-6 relative min-h-screen', className)}
         {...props}
       >
+        {/* Theme Toggle - Top Right */}
+        <div className="absolute top-4 right-4 z-10">
+          <ModeToggle />
+        </div>
+
         {/* Centered Content */}
         <div className="flex items-center justify-center min-h-screen p-4">
           <Card className="bg-gray-2 w-full max-w-md">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">
-                {t('signup.verify_title', 'Check Your Email')}
-              </CardTitle>
-              <CardDescription className="space-y-2">
-                <div>
-                  {t(
-                    'signup.verify_desc_part1',
-                    'We have sent a verification link to:',
-                  )}
-                </div>
-                <div className="font-semibold text-foreground">{userEmail}</div>
+              <CardTitle className="text-xl">Check Your Email</CardTitle>
+              <CardDescription>
+                We've sent a verification link to {userEmail}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                 <svg
-                  className="w-8 h-8 text-blue-600 dark:text-blue-400"
+                  className="w-8 h-8 text-blue-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -271,39 +148,26 @@ export function SignupForm({
               </div>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  {t(
-                    'signup.verify_hint',
-                    "Click the link in the email to activate your account. Check your spam folder if you don't see it.",
-                  )}
+                  Click the verification link in your email to activate your
+                  account.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Didn't receive the email? Check your spam folder.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    console.log('Resetting verification screen');
-                    setShowVerificationMessage(false);
-                    setUserEmail('');
-                    if (typeof window !== 'undefined') {
-                      sessionStorage.removeItem('showVerificationMessage');
-                      sessionStorage.removeItem('verificationEmail');
-                    }
-                  }}
+                  onClick={() => setShowVerificationMessage(false)}
                   className="flex-1"
                 >
-                  {t('common.try_different_email', 'Try Different Email')}
+                  Try Different Email
                 </Button>
                 <Button
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      sessionStorage.removeItem('showVerificationMessage');
-                      sessionStorage.removeItem('verificationEmail');
-                    }
-                    navigate({ to: '/login' });
-                  }}
+                  onClick={() => navigate({ to: '/login' })}
                   className="flex-1"
                 >
-                  {t('common.back_to_login', 'Back to Login')}
+                  Back to Login
                 </Button>
               </div>
             </CardContent>
@@ -313,16 +177,13 @@ export function SignupForm({
     );
   }
 
-  // Signup form
-  console.log('=== RENDERING SIGNUP FORM ===');
-  console.log('showVerificationMessage:', showVerificationMessage);
-
   return (
-    <div className="flex min-h-screen flex-col w-full">
-      <div className="flex w-full items-center justify-between gap-4 px-4 py-3">
-        <div>
-          <LanguageSelector />
-        </div>
+    <div
+      className={cn('relative w-full min-h-screen flex flex-col', className)}
+      {...props}
+    >
+      {/* Theme Toggle - Absolute Top Right */}
+      <div className="absolute top-4 right-4 z-10">
         <ModeToggle />
       </div>
 
@@ -331,11 +192,9 @@ export function SignupForm({
         <div className="w-full max-w-md space-y-4">
           <Card className="bg-gray-2">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">
-                {t('signup.title', 'Sign Up')}
-              </CardTitle>
+              <CardTitle className="text-xl">Sign Up</CardTitle>
               <CardDescription>
-                {t('signup.subtitle', 'Create your account to get started.')}
+                Sign up to have an easy life as a car renting agency owner.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -344,32 +203,28 @@ export function SignupForm({
                   <div className="grid gap-6">
                     <div className="grid gap-2">
                       <Label htmlFor="name" className="text-justify">
-                        {t('common.name', 'Name')}{' '}
-                        <span className="text-red-700">*</span>
+                        Name <span className="text-red-700">*</span>
                       </Label>
                       <Input
                         id="name"
-                        type="text"
+                        type="name"
                         className={
                           errors.name
                             ? 'border-red-600 focus:outline-none focus:ring-0 focus:ring-offset-0'
                             : ''
                         }
-                        {...register('name', {
-                          required: 'signup.zod.name_min',
-                        })}
+                        {...register('name', { required: 'Name required' })}
                       />
                       {errors.name && (
                         <span className="text-red-600 text-sm">
-                          {t(errors.name.message as any)}
+                          {errors.name.message}
                         </span>
                       )}
                     </div>
 
                     <div className="grid gap-2">
                       <Label htmlFor="email" className="text-justify">
-                        {t('common.email', 'Email')}{' '}
-                        <span className="text-red-700">*</span>
+                        Email <span className="text-red-700">*</span>
                       </Label>
                       <Input
                         id="email"
@@ -382,15 +237,14 @@ export function SignupForm({
                       />
                       {errors.email && (
                         <span className="text-red-600 text-sm">
-                          {t(errors.email.message as any)}
+                          {errors.email.message}
                         </span>
                       )}
                     </div>
 
                     <div className="grid gap-2">
                       <Label htmlFor="password">
-                        {t('common.password', 'Password')}{' '}
-                        <span className="text-red-700">*</span>
+                        Password <span className="text-red-700">*</span>
                       </Label>
                       <Input
                         id="password"
@@ -402,14 +256,14 @@ export function SignupForm({
                       />
                       {errors.password && (
                         <span className="text-red-600 text-sm">
-                          {t(errors.password.message as any)}
+                          {errors.password.message}
                         </span>
                       )}
                     </div>
 
                     <div className="grid gap-2">
                       <Label htmlFor="passwordVerification">
-                        {t('common.confirm_password', 'Confirm Password')}{' '}
+                        Password Verification{' '}
                         <span className="text-red-700">*</span>
                       </Label>
                       <Input
@@ -424,7 +278,7 @@ export function SignupForm({
                       />
                       {errors.passwordVerification && (
                         <span className="text-red-600 text-sm">
-                          {t(errors.passwordVerification.message as any)}
+                          {errors.passwordVerification.message}
                         </span>
                       )}
                     </div>
@@ -437,37 +291,29 @@ export function SignupForm({
                       {isSubmitting ? (
                         <>
                           <Loader />
-                          <span>
-                            {t('signup.button_loading', 'Creating...')}
-                          </span>
+                          <span>Loading...</span>
                         </>
                       ) : (
-                        t('signup.button', 'Sign Up')
+                        'Sign Up'
                       )}
                     </Button>
                   </div>
 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        {t('common.or', 'Or')}
-                      </span>
-                    </div>
-                  </div>
-
                   <div className="text-center text-sm">
-                    {t('common.already_account', 'Already have an account?')}{' '}
+                    Already have an account?{' '}
                     <Link to="/login" className="underline underline-offset-4">
-                      {t('signup.signup_link', 'Log In')}
+                      Login
                     </Link>
                   </div>
                 </div>
               </form>
             </CardContent>
           </Card>
+
+          <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary">
+            By clicking continue, you agree to our{' '}
+            <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+          </div>
         </div>
       </div>
     </div>

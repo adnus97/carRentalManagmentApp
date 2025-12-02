@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Loader, Upload, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Loader } from 'lucide-react';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,7 +27,6 @@ import {
 } from '@/components/ui/select';
 import { useTranslation } from 'react-i18next';
 import { File as ApiFile } from '@/api/files';
-import { api } from '@/api/api';
 import { FileUploaderStyled } from './file-uploader-styled';
 
 const schema = z.object({

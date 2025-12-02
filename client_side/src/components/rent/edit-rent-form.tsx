@@ -25,7 +25,6 @@ import {
   updateRentImages,
 } from '@/api/rents';
 import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '../ui/separator';
 import { CarImageUpload } from './car-image-upload';
 import {
   Car,
@@ -340,7 +339,7 @@ export function EditRentFormDialog({
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
     setValue,
     watch,
@@ -379,11 +378,6 @@ export function EditRentFormDialog({
   const canEditImages = useMemo(
     () => getImagePermissions(currentStatus),
     [currentStatus],
-  );
-
-  const currentStatusCfg = useMemo(
-    () => statusConfig(t)[currentStatus],
-    [currentStatus, t],
   );
 
   const handleImagesChange = useCallback((images: File[]) => {

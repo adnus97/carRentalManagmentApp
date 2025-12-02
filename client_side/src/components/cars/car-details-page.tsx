@@ -34,7 +34,7 @@ import { useTranslation } from 'react-i18next';
 
 export default function CarDetailsPage({ carId }: { carId: string }) {
   const { headerHeight } = useLayoutContext();
-  const { theme } = useTheme();
+
   const router = useRouter();
   const { setEntity } = useNavigationContext();
   const { t } = useTranslation(['cars', 'common']);

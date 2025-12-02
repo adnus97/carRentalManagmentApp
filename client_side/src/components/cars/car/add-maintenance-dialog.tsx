@@ -29,26 +29,16 @@ import { FormDatePicker } from '@/components/form-date-picker';
 import { useTranslation } from 'react-i18next';
 
 export default function AddMaintenanceDialog({ carId }: { carId: string }) {
-  const { t, i18n } = useTranslation('cars');
-  const lang = i18n.language || 'en';
-  const currency = t('currency', 'DHS');
+  const { t } = useTranslation('cars');
 
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch car details (to check rental status if needed)
-  const { data: carDetails, isLoading: carLoading } = useQuery({
+  const { isLoading: carLoading } = useQuery({
     queryKey: ['carDetails', carId],
     queryFn: () => getCarDetails(carId),
   });
-
-  const rentalHistory = carDetails?.rentalHistory || [];
-  const activeRent = rentalHistory.find(
-    (r: any) =>
-      r.status === 'active' &&
-      (!r.returnedAt || new Date(r.returnedAt) > new Date()),
-  );
-  const isRented = Boolean(activeRent);
 
   // i18n-aware schema
   const maintenanceSchema = useMemo(

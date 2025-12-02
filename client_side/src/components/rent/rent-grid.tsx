@@ -148,7 +148,6 @@ export const RentsGrid = () => {
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const [contractOpen, setContractOpen] = useState(false);
   const [contractId, setContractId] = useState<string | null>(null);
-  const containerStyle = useMemo(() => ({ width: '100%', height: '100%' }), []);
   const gridStyle = useMemo(() => ({ height: '100%', width: '100%' }), []);
   const queryClient = useQueryClient();
 
@@ -281,10 +280,6 @@ export const RentsGrid = () => {
   };
 
   // currency
-  const currencyFormatter = (params: any) =>
-    params.value
-      ? `${Number(params.value).toLocaleString('en-US')} ${t('currency', 'DHS')}`
-      : '';
 
   const formatDateToDDMMYYYY = (params: any) => {
     if (!params.value) return '';

@@ -10,7 +10,6 @@ import { ThemeProvider } from './components/theme/theme-provider';
 
 //import { Toaster } from './components/ui/toaster';
 import { Toaster } from 'sonner';
-import { ModeToggle } from './components/mode-toggle';
 
 import i18n from './i18n';
 

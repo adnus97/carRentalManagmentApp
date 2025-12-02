@@ -48,8 +48,7 @@ export function FileUploaderStyled({
   description,
   disabled = false,
 }: Props) {
-  const { t, i18n } = useTranslation('client');
-  const lang = i18n.language || 'en';
+  const { t } = useTranslation('client');
 
   const [uploadedFile, setUploadedFile] = useState<ApiFile | null>(null);
   const { uploadFile, uploading, progress, error, reset } = useR2Upload();

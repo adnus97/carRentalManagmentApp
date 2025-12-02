@@ -13,9 +13,7 @@ import { useNavigate } from '@tanstack/react-router';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '../ui/dropdown-menu';
 import {
   Select,
