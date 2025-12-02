@@ -18,7 +18,6 @@ import {
   unblacklistCustomer,
   Customer,
   CustomerWithFiles,
-  getCustomerWithFiles,
 } from '@/api/customers';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {

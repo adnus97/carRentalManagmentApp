@@ -2,7 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getCarDetails } from '@/api/cars';
-import { useTheme } from '../theme/theme-provider';
 import { useLayoutContext } from '../../contexts/layout-context';
 import { useRouter } from '@tanstack/react-router';
 

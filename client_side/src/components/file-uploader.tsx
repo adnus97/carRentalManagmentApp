@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { FileText, X, Eye, Loader2, AlertCircle, Upload } from 'lucide-react';
 import { toast } from './ui/toast';

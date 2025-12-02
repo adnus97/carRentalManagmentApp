@@ -28,7 +28,7 @@ export default function AddTargetDialog({
   carId: string;
   targets: TargetRow[];
 }) {
-  const { t, i18n } = useTranslation('cars');
+  const { t } = useTranslation('cars');
 
   const currency = t('currency', 'DHS');
 

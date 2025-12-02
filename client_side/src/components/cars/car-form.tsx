@@ -62,10 +62,7 @@ const schema = z.object({
 });
 type formFields = z.infer<typeof schema>;
 
-export function DialogDemo({
-  className,
-  ...props
-}: React.ComponentProps<'div'>) {
+export function DialogDemo({}: React.ComponentProps<'div'>) {
   const { t } = useTranslation(['cars', 'common']);
 
   const [isOpen, setIsOpen] = useState(false);
