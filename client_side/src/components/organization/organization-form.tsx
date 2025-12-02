@@ -19,6 +19,7 @@ import { FileUploader } from '@/components/file-uploader';
 import { createOrganization, CreateOrganizationDto } from '@/api/organization';
 import { Building2, Save, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 
 const schema = z.object({
   name: z.string().min(2, 'org.form.errors.name_short'),
@@ -261,6 +262,15 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
               />
             </CardContent>
           </Card>
+          <div className="flex justify-end">
+            {' '}
+            <Link
+              to="/login"
+              className="underline underline-offset-4 font-semibold text-primary"
+            >
+              {t('signup.signup_link', 'Log In')}
+            </Link>
+          </div>
         </div>
 
         {/* Right: Legal Documents */}
