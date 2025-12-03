@@ -1,5 +1,6 @@
 {
   "name": "server-side",
+  "type": "commonjs",
   "version": "0.0.1",
   "description": "",
   "author": "",
