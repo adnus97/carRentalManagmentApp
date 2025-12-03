@@ -1,12 +1,11 @@
 // better-auth.ts
 import { DatabaseService } from '../../db';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { betterAuth, type Auth } from 'better-auth';
+
 import { schema } from '../../db';
 import { ExecutionContext } from '@nestjs/common';
 import { EmailService } from '../../email/email.service';
 
-export type BetterAuthService = Auth;
+export type BetterAuthService = any;
 export const AUTH_SERVICE = 'AUTH_SERVICE';
 
 export function getRequestResponseFromContext(context: ExecutionContext) {
@@ -18,9 +17,10 @@ export function getRequestResponseFromContext(context: ExecutionContext) {
 
 export const BETTER_AUTH = {
   provide: AUTH_SERVICE,
-  useFactory: (database: DatabaseService, emailService: EmailService) => {
+  useFactory: async (database: DatabaseService, emailService: EmailService) => {
     database.onModuleInit();
-
+    const { betterAuth } = await import('better-auth');
+    const { drizzleAdapter } = await import('better-auth/adapters/drizzle');
     const send = async (to: string, subject: string, html: string) => {
       await emailService.sendEmail({
         recipients: [to],
