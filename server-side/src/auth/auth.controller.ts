@@ -10,7 +10,6 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { BetterAuthService } from 'src/utils/better-auth/better-auth.service';
-import { toNodeHandler } from 'better-auth/node';
 import { DatabaseService } from 'src/db/database.service';
 import { users } from 'src/db/schema/users';
 import { eq } from 'drizzle-orm';
@@ -26,6 +25,7 @@ export class AuthController {
   @All('*')
   async handleAuth(@Req() req: Request, @Res() res: Response) {
     try {
+      const { toNodeHandler } = await import('better-auth/node');
       const authHandler = toNodeHandler(this.betterAuthService.auth);
       return await authHandler(req, res);
     } catch (error) {
