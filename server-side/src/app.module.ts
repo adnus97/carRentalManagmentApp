@@ -31,6 +31,12 @@ import {
   I18nJsonLoader,
 } from 'nestjs-i18n';
 import { UsersModule } from './users/users.module';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 @Module({
   imports: [
     I18nModule.forRoot({

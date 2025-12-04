@@ -1,5 +1,6 @@
 {
   "name": "server-side",
+  "type": "module",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -9,16 +10,21 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "nest start --watch",
+    "start:dev": "nodemon",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node --import ./scripts/register.js ./dist/src/main.js run",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "create:super-admin": "ts-node src/scripts/create-super-admin.ts"
+    "create:super-admin": "ts-node src/scripts/create-super-admin.ts",
+    "db:pull": "drizzle-kit pull",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio --port 4983 --verbose"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.884.0",
