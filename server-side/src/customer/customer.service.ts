@@ -4,6 +4,7 @@ import {
   BadRequestException,
   HttpException,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { cars, DatabaseService, organization, rents, users } from 'src/db';
 import {
@@ -25,11 +26,22 @@ import { I18nService } from 'nestjs-i18n';
 @Injectable()
 export class CustomerService {
   constructor(
-    private readonly dbService: DatabaseService,
-    private readonly notificationsService: NotificationsService,
-    private readonly filesService: FilesService,
-    private readonly i18n: I18nService,
-  ) {}
+    @Inject(DatabaseService) private readonly dbService: DatabaseService, // ✅ Add @Inject()
+    @Inject(NotificationsService)
+    private readonly notificationsService: NotificationsService, // ✅ Add @Inject()
+    @Inject(FilesService) private readonly filesService: FilesService, // ✅ Add @Inject()
+    @Inject(I18nService) private readonly i18n: I18nService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 CustomerService constructor called');
+    console.log('🔧 DatabaseService injected:', !!this.dbService);
+    console.log('🔧 DatabaseService.db exists:', !!this.dbService?.db);
+    console.log(
+      '🔧 NotificationsService injected:',
+      !!this.notificationsService,
+    );
+    console.log('🔧 FilesService injected:', !!this.filesService);
+    console.log('🔧 I18nService injected:', !!this.i18n);
+  }
 
   private async getUserLocale(userId: string): Promise<string> {
     try {

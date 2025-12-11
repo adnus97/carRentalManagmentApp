@@ -36,6 +36,24 @@ interface Props {
   onSuccess?: (orgId: string) => void;
 }
 
+const handleLoginClick = (e: React.MouseEvent) => {
+  e.preventDefault();
+
+  // Clear session and local storage
+  sessionStorage.clear();
+  localStorage.clear();
+
+  // Remove the better-auth session token cookie specifically
+  document.cookie =
+    'better-auth.session_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;';
+  document.cookie =
+    'better-auth.session_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=localhost;';
+  document.cookie =
+    'better-auth.session_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.localhost;';
+
+  // Navigate to login page
+  window.location.href = '/login';
+};
 export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
   const { t } = useTranslation('organization');
   const [isUploading, setIsUploading] = useState(false);
@@ -264,12 +282,12 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
           </Card>
           <div className="flex justify-end">
             {' '}
-            <Link
-              to="/login"
-              className="underline underline-offset-4 font-semibold text-primary"
+            <button
+              onClick={handleLoginClick}
+              className="underline underline-offset-4 font-semibold text-primary bg-transparent border-none cursor-pointer"
             >
               {t('signup.signup_link', 'Log In')}
-            </Link>
+            </button>
           </div>
         </div>
 

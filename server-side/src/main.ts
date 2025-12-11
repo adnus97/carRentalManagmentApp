@@ -7,6 +7,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import cookieParser from 'cookie-parser';
 import * as fs from 'fs';
 import * as path from 'path';
+import { DatabaseService } from './db';
 
 const whitelist = [
   'http://localhost:5173',

@@ -1,5 +1,10 @@
 // src/admin/admin.service.ts
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { DatabaseService } from 'src/db';
 import { users } from 'src/db/schema/users';
 import { organization } from 'src/db/schema/organization';
@@ -13,9 +18,15 @@ export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
   constructor(
-    private readonly dbService: DatabaseService,
-    private readonly subscriptionService: SubscriptionService,
-  ) {}
+    @Inject(DatabaseService) private readonly dbService: DatabaseService, // Add @Inject()
+    @Inject(SubscriptionService)
+    private readonly subscriptionService: SubscriptionService, // Add @Inject()
+  ) {
+    console.log('🔧 AdminService constructor called');
+    console.log('🔧 DatabaseService injected:', !!this.dbService);
+    console.log('🔧 DatabaseService.db exists:', !!this.dbService?.db);
+    console.log('🔧 SubscriptionService injected:', !!this.subscriptionService);
+  }
 
   /**
    * Get all users with filters

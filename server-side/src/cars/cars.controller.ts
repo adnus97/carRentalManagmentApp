@@ -9,6 +9,7 @@ import {
   Put,
   Query,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
@@ -21,7 +22,12 @@ import { CreateOilChangeDto } from './dto/create-oil-change.dto';
 @Auth()
 @Controller('cars')
 export class CarsController {
-  constructor(private readonly carsService: CarsService) {}
+  constructor(
+    @Inject(CarsService) private readonly carsService: CarsService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 CarsController constructor called');
+    console.log('🔧 CarsService injected:', !!this.carsService);
+  }
 
   /** Helper to ensure JSON-safe responses */
   private safeReturn<T>(data: T): T {

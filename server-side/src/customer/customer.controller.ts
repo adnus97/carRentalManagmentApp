@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   Query,
+  Inject,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
@@ -20,8 +21,12 @@ import { BaseController } from 'src/common/base.controller';
 @Auth()
 @Controller('customers')
 export class CustomerController extends BaseController {
-  constructor(private readonly customerService: CustomerService) {
+  constructor(
+    @Inject(CustomerService) private readonly customerService: CustomerService, // ✅ Add @Inject()
+  ) {
     super();
+    console.log('🔧 CustomerController constructor called');
+    console.log('🔧 CustomerService injected:', !!this.customerService);
   }
 
   /* Create a new customer (orgId resolved from userId) */

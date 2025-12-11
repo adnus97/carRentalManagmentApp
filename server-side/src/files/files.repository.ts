@@ -1,5 +1,5 @@
 // src/files/files.repository.ts
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../db';
 import { files } from '../db/schema/files';
 import { eq, and, desc } from 'drizzle-orm';
@@ -20,7 +20,13 @@ export interface CreateFileData {
 
 @Injectable()
 export class FilesRepository {
-  constructor(private dbService: DatabaseService) {}
+  constructor(
+    @Inject(DatabaseService) private dbService: DatabaseService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 FilesRepository constructor called');
+    console.log('🔧 DatabaseService injected:', !!this.dbService);
+    console.log('🔧 DatabaseService.db exists:', !!this.dbService?.db);
+  }
 
   async create(data: CreateFileData): Promise<FileRow> {
     const result = await this.dbService.db

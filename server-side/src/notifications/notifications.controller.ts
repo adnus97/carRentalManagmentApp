@@ -10,6 +10,7 @@ import {
   ValidationPipe,
   Post,
   Put,
+  Inject,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
@@ -20,7 +21,10 @@ import { UpdateNotificationPreferencesDto } from './dto/update-notification-pref
 @Auth() // ✅ protect all routes with AuthGuard
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    @Inject(NotificationsService)
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /** Helper to ensure JSON-safe responses */
   @Get()

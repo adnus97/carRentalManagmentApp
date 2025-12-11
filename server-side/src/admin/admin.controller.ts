@@ -1,119 +1,40 @@
-// src/admin/admin.controller.ts
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
-  Param,
-  Body,
-  Query,
-} from '@nestjs/common';
-import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
-import { SuperAdmin } from 'src/auth/super-admin.guard';
-import { AdminService } from './admin.service';
-import { SubscriptionService } from '../subscription/subscription.service';
-import { request } from 'express';
+// // src/admin/admin.controller.ts - ULTRA MINIMAL (no service injection)
+// import { Controller, Get } from '@nestjs/common';
+// import { Auth } from 'src/auth/auth.guard';
+// import { SuperAdmin } from 'src/auth/super-admin.guard';
 
-@Auth()
-@SuperAdmin() // ✅ Only super admins can access these routes
-@Controller('admin')
-export class AdminController {
-  constructor(
-    private readonly adminService: AdminService,
-    private readonly subscriptionService: SubscriptionService,
-  ) {}
+// @Auth()
+// @SuperAdmin()
+// @Controller('admin')
+// export class AdminController {
+//   constructor() {
+//     console.log('🔧 AdminController constructor called - NO DEPENDENCIES');
+//   }
 
-  /**
-   * Get all users with pagination and filters
-   * GET /admin/users?page=1&limit=20&status=active
-   */
-  @Get('users')
-  async getAllUsers(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 20,
-    @Query('status') status?: string,
-    @Query('search') search?: string,
-  ) {
-    return this.adminService.getAllUsers(page, limit, status, search);
-  }
+//   @Get('test')
+//   test() {
+//     console.log('🧪 Admin test endpoint hit!');
+//     return { message: 'Admin controller works!', timestamp: new Date() };
+//   }
 
-  /**
-   * Get user details
-   * GET /admin/users/:userId
-   */
-  @Get('users/:userId')
-  async getUserDetails(@Param('userId') userId: string) {
-    return this.adminService.getUserDetails(userId);
-  }
+//   @Get('stats')
+//   getDashboardStats() {
+//     console.log('📊 Admin stats endpoint hit!');
+//     return {
+//       users: { totalUsers: 5, activeSubscriptions: 3 },
+//       subscriptions: { expiringSoon: 1 },
+//       revenue: { totalRevenue: 4500 },
+//     };
+//   }
 
-  /**
-   * Activate user subscription
-   * POST /admin/users/:userId/activate
-   */
-  @Post('users/:userId/activate')
-  async activateSubscription(
-    @Param('userId') userId: string,
-    @Body('years') years: number = 1,
-    @CurrentUser() admin: CustomUser,
-  ) {
-    return this.subscriptionService.activateSubscription(userId, years);
-  }
-
-  /**
-   * Deactivate user subscription
-   * POST /admin/users/:userId/deactivate
-   */
-  @Post('users/:userId/deactivate')
-  async deactivateSubscription(@Param('userId') userId: string) {
-    return this.subscriptionService.deactivateSubscription(userId);
-  }
-
-  /**
-   * Get user subscription status
-   * GET /admin/users/:userId/subscription
-   */
-  @Get('users/:userId/subscription')
-  async getUserSubscription(@Param('userId') userId: string) {
-    return this.subscriptionService.getSubscriptionStatus(userId);
-  }
-
-  /**
-   * Get users with expiring subscriptions
-   * GET /admin/users/expiring?days=30
-   */
-  @Get('users-expiring')
-  async getExpiringSubscriptions(@Query('days') days: number = 30) {
-    return this.adminService.getExpiringSubscriptions(days);
-  }
-
-  /**
-   * Get dashboard statistics
-   * GET /admin/stats
-   */
-  @Get('stats')
-  async getDashboardStats() {
-    return this.adminService.getDashboardStats();
-  }
-
-  /**
-   * Update user role (promote to super admin)
-   * PATCH /admin/users/:userId/role
-   */
-  @Patch('users/:userId/role')
-  async updateUserRole(
-    @Param('userId') userId: string,
-    @Body('role') role: 'user' | 'super_admin',
-  ) {
-    return this.adminService.updateUserRole(userId, role);
-  }
-
-  /**
-   * Delete user account (soft delete)
-   * DELETE /admin/users/:userId
-   */
-  @Delete('users/:userId')
-  async deleteUser(@Param('userId') userId: string) {
-    return this.adminService.deleteUser(userId);
-  }
-}
+//   @Get('users')
+//   getAllUsers() {
+//     console.log('👥 Admin users endpoint hit!');
+//     return {
+//       data: [{ id: '1', name: 'Test User', email: 'test@example.com' }],
+//       total: 1,
+//       page: 1,
+//       limit: 10,
+//     };
+//   }
+// }

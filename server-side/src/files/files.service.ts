@@ -1,5 +1,11 @@
 // src/files/files.service.ts
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { FilesRepository } from './files.repository';
 import { R2Service } from '../r2/r2.service';
 import { CustomUser } from '../auth/auth.guard';
@@ -49,9 +55,13 @@ export class FilesService {
   private readonly uploadAttempts = new Map<string, number>();
 
   constructor(
-    private readonly filesRepository: FilesRepository,
-    private readonly r2Service: R2Service,
-  ) {}
+    @Inject(FilesRepository) private readonly filesRepository: FilesRepository, // ✅ Add @Inject()
+    @Inject(R2Service) private readonly r2Service: R2Service, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 FilesService constructor called');
+    console.log('🔧 FilesRepository injected:', !!this.filesRepository);
+    console.log('🔧 R2Service injected:', !!this.r2Service);
+  }
 
   async uploadFile(
     file: Express.Multer.File,

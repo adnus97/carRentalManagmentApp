@@ -7,6 +7,7 @@ import {
   Res,
   HttpException,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { BetterAuthService } from 'src/utils/better-auth/better-auth.service';
@@ -17,6 +18,7 @@ import { eq } from 'drizzle-orm';
 @Controller('auth')
 export class AuthController {
   constructor(
+    @Inject(BetterAuthService)
     private betterAuthService: BetterAuthService,
     private databaseService: DatabaseService,
   ) {}

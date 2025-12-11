@@ -1,5 +1,5 @@
 // src/contracts/contracts.controller.ts
-import { Controller, Get, Param, Res } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ContractsService } from './contracts.service';
 import { Auth } from 'src/auth/auth.guard';
@@ -7,7 +7,13 @@ import { Auth } from 'src/auth/auth.guard';
 @Auth()
 @Controller('contracts')
 export class ContractsController {
-  constructor(private readonly contractsService: ContractsService) {}
+  constructor(
+    @Inject(ContractsService)
+    private readonly contractsService: ContractsService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 ContractsController constructor called');
+    console.log('🔧 ContractsService injected:', !!this.contractsService);
+  }
 
   @Get(':id')
   async getContractHTML(@Param('id') id: string) {

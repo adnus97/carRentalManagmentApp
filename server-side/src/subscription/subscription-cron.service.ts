@@ -1,5 +1,5 @@
 // src/subscription/subscription-cron.service.ts
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { SubscriptionService } from './subscription.service';
 import { DatabaseService } from 'src/db';
@@ -13,10 +13,12 @@ export class SubscriptionCronService {
   private readonly logger = new Logger(SubscriptionCronService.name);
 
   constructor(
-    private readonly subscriptionService: SubscriptionService,
-    private readonly dbService: DatabaseService,
-    private readonly emailService: EmailService,
-    private readonly notificationsService: NotificationsService,
+    @Inject(SubscriptionService)
+    private readonly subscriptionService: SubscriptionService, // Add @Inject()
+    @Inject(DatabaseService) private readonly dbService: DatabaseService, // Add @Inject()
+    @Inject(EmailService) private readonly emailService: EmailService, // Add @Inject()
+    @Inject(NotificationsService)
+    private readonly notificationsService: NotificationsService, // Add @Inject()
   ) {}
 
   // Runs daily at 2 AM

@@ -1,5 +1,5 @@
 // src/organization/organization.repository.ts
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DatabaseService, files } from '../db';
 import { organization } from '../db/schema/organization';
 import { eq } from 'drizzle-orm';
@@ -27,7 +27,13 @@ export interface UpdateOrganization extends Partial<CreateOrganization> {}
 
 @Injectable()
 export class OrganizationRepository {
-  constructor(private dbService: DatabaseService) {}
+  constructor(
+    @Inject(DatabaseService) private dbService: DatabaseService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 OrganizationRepository constructor called');
+    console.log('🔧 DatabaseService injected:', !!this.dbService);
+    console.log('🔧 DatabaseService.db exists:', !!this.dbService?.db);
+  }
 
   async create(data: CreateOrganization) {
     const id = uuidv4();

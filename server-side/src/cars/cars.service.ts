@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,10 +20,20 @@ import { I18nService } from 'nestjs-i18n';
 @Injectable()
 export class CarsService {
   constructor(
-    private readonly dbService: DatabaseService,
-    private readonly notificationsService: NotificationsService,
-    private readonly i18n: I18nService,
-  ) {}
+    @Inject(DatabaseService) private readonly dbService: DatabaseService, // ✅ Add @Inject()
+    @Inject(NotificationsService)
+    private readonly notificationsService: NotificationsService, // ✅ Add @Inject()
+    @Inject(I18nService) private readonly i18n: I18nService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 CarsService constructor called');
+    console.log('🔧 DatabaseService injected:', !!this.dbService);
+    console.log('🔧 DatabaseService.db exists:', !!this.dbService?.db);
+    console.log(
+      '🔧 NotificationsService injected:',
+      !!this.notificationsService,
+    );
+    console.log('🔧 I18nService injected:', !!this.i18n);
+  }
 
   /** Helper to ensure JSON-safe responses */
   private safeReturn<T>(data: T): T {

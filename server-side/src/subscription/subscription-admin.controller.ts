@@ -8,6 +8,7 @@ import {
   Query,
   ParseIntPipe,
   DefaultValuePipe,
+  Inject,
 } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { Auth } from 'src/auth/auth.guard';
@@ -17,11 +18,18 @@ import { SuperAdmin } from 'src/auth/super-admin.guard';
 @SuperAdmin()
 @Controller('admin')
 export class SubscriptionAdminController {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    @Inject(SubscriptionService)
+    private readonly subscriptionService: SubscriptionService,
+  ) {
+    console.log('🔧 SubscriptionAdminController constructor called');
+    console.log('🔧 SubscriptionService injected:', !!this.subscriptionService);
+  }
 
   // Dashboard stats
   @Get('stats')
   async getDashboardStats() {
+    console.log('📊 SubscriptionAdmin stats endpoint hit');
     return this.subscriptionService.getDashboardStats();
   }
 

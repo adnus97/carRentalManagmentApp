@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import { DatabaseService } from 'src/db';
 import { rents } from 'src/db/schema/rents';
 import { cars } from 'src/db/schema/cars';
@@ -93,7 +93,13 @@ async function computeMonthlyLeaseTotal(
 }
 @Injectable()
 export class ReportsService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    @Inject(DatabaseService) private readonly db: DatabaseService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 ReportsService constructor called');
+    console.log('🔧 DatabaseService injected:', !!this.db);
+    console.log('🔧 DatabaseService.db exists:', !!this.db?.db);
+  }
 
   private async getOrgId(userId: string): Promise<string> {
     const org = await this.db.db

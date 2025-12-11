@@ -4,6 +4,7 @@ import {
   Injectable,
   ForbiddenException,
   UseGuards,
+  Inject,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DatabaseService, schema } from '../db';
@@ -14,10 +15,14 @@ import { getRequestResponseFromContext } from '../utils/better-auth';
 @Injectable()
 export class SuperAdminGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
-    private readonly database: DatabaseService,
-  ) {}
-
+    @Inject(Reflector) private readonly reflector: Reflector, // ✅ Add @Inject()
+    @Inject(DatabaseService) private readonly database: DatabaseService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 SuperAdminGuard constructor called');
+    console.log('🔧 Reflector injected:', !!this.reflector);
+    console.log('🔧 DatabaseService injected:', !!this.database);
+    console.log('🔧 DatabaseService.db exists:', !!this.database?.db);
+  }
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const { req } = getRequestResponseFromContext(context);
 

@@ -1,5 +1,10 @@
 // src/subscription/subscription.service.ts
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  Inject,
+} from '@nestjs/common';
 import { DatabaseService } from 'src/db';
 import { users } from 'src/db/schema/users';
 import { eq, lte, and, sql, like, or } from 'drizzle-orm';
@@ -13,10 +18,20 @@ export class SubscriptionService {
   private readonly logger = new Logger(SubscriptionService.name);
 
   constructor(
-    private readonly dbService: DatabaseService,
-    private readonly emailService: EmailService,
-    private readonly notificationsService: NotificationsService,
-  ) {}
+    @Inject(DatabaseService) private readonly dbService: DatabaseService, // Add @Inject()
+    @Inject(EmailService) private readonly emailService: EmailService, // Add @Inject()
+    @Inject(NotificationsService)
+    private readonly notificationsService: NotificationsService, // Add @Inject()
+  ) {
+    console.log('🔧 SubscriptionService constructor called');
+    console.log('🔧 DatabaseService injected:', !!this.dbService);
+    console.log('🔧 DatabaseService.db exists:', !!this.dbService?.db);
+    console.log('🔧 EmailService injected:', !!this.emailService);
+    console.log(
+      '🔧 NotificationsService injected:',
+      !!this.notificationsService,
+    );
+  }
 
   // ==================== USER MANAGEMENT ====================
 

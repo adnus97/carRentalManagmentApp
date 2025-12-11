@@ -22,7 +22,7 @@ import { EmailModule } from './email/email.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import path, { join } from 'path';
 import { SubscriptionModule } from './subscription/subscription.module';
-import { AdminModule } from './admin/admin.module';
+//import { AdminModule } from './admin/admin.module';
 import {
   I18nModule,
   AcceptLanguageResolver,
@@ -69,18 +69,21 @@ const __dirname = dirname(__filename);
     CustomerModule,
     RentsModule,
     NotificationsModule,
-    ScheduleModule.forRoot(), // For cron jobs
-    NotificationsModule,
     ContractsModule,
     ReportsModule,
     R2Module,
     FilesModule,
     EmailModule,
     SubscriptionModule,
-    AdminModule,
+    //AdminModule,
     UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  constructor() {
+    console.log('🟢 AppModule constructor called');
+    console.log('🟢 All modules should be loading...');
+  }
+}

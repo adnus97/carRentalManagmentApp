@@ -15,6 +15,7 @@ import {
   UseInterceptors,
   Delete,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { FilesService } from './files.service';
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
@@ -25,8 +26,12 @@ import { Request, Response } from 'express'; // Add Request import
 @Controller('files')
 export class FilesController {
   private readonly logger = new Logger(FilesController.name);
-  constructor(private readonly fileService: FilesService) {}
-
+  constructor(
+    @Inject(FilesService) private readonly fileService: FilesService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 FilesController constructor called');
+    console.log('🔧 FilesService injected:', !!this.fileService);
+  }
   @UseInterceptors(FileInterceptor('file'))
   @Post()
   async uploadFile(

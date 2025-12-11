@@ -1,5 +1,5 @@
 // src/rents/rents.repository.ts
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DatabaseService } from '../db';
 import { rents } from '../db/schema/rents';
 import { files } from '../db/schema/files';
@@ -37,7 +37,13 @@ export interface CreateRentData {
 
 @Injectable()
 export class RentsRepository {
-  constructor(private dbService: DatabaseService) {}
+  constructor(
+    @Inject(DatabaseService) private readonly dbService: DatabaseService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 RentsRepository constructor called');
+    console.log('🔧 DatabaseService injected:', !!this.dbService);
+    console.log('🔧 DatabaseService.db exists:', !!this.dbService?.db);
+  }
 
   async create(data: CreateRentData) {
     const result = await this.dbService.db

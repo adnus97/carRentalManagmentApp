@@ -3,9 +3,10 @@ import { OrganizationService } from './organization.service';
 import { OrganizationController } from './organization.controller';
 import { OrganizationRepository } from './organization.repository';
 import { FilesModule } from 'src/files/files.module'; // Import FilesModule
+import { DatabaseModule } from 'src/db';
 
 @Module({
-  imports: [FilesModule], // Add FilesModule to imports
+  imports: [FilesModule, DatabaseModule], // Add FilesModule to imports
   controllers: [OrganizationController],
   providers: [OrganizationService, OrganizationRepository],
   exports: [OrganizationService, OrganizationRepository],

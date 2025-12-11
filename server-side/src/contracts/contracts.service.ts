@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { RentsService } from '../rents/rents.service';
 import { OrganizationService } from 'src/organization/organization.service';
 import { buildCleanContractHTML, ContractView } from './contract-template';
@@ -8,9 +8,14 @@ import puppeteer from 'puppeteer';
 @Injectable()
 export class ContractsService {
   constructor(
-    private readonly rentsService: RentsService,
-    private readonly organizationService: OrganizationService,
-  ) {}
+    @Inject(RentsService) private readonly rentsService: RentsService, // ✅ Add @Inject()
+    @Inject(OrganizationService)
+    private readonly organizationService: OrganizationService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 ContractsService constructor called');
+    console.log('🔧 RentsService injected:', !!this.rentsService);
+    console.log('🔧 OrganizationService injected:', !!this.organizationService);
+  }
 
   async getContractHTML(rentId: string): Promise<string> {
     const { data: c } = await this.rentsService.getRentContract(rentId);

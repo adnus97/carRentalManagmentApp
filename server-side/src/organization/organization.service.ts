@@ -17,9 +17,10 @@ import { DatabaseService } from 'src/db';
 export class OrganizationService {
   private readonly logger = new Logger(OrganizationService.name);
   constructor(
+    @Inject(OrganizationRepository)
     private organizationRepository: OrganizationRepository,
-    private filesService: FilesService,
-    private dbService: DatabaseService,
+    @Inject(FilesService) private filesService: FilesService,
+    @Inject(DatabaseService) private readonly dbService: DatabaseService,
   ) {}
 
   async create(user: CustomUser, body: CreateOrganizationDto) {
@@ -106,7 +107,6 @@ export class OrganizationService {
       );
       return organizations || [];
     } catch (error) {
-      console.log(error);
       throw new HttpException(
         'Failed to fetch user organizations',
         HttpStatus.INTERNAL_SERVER_ERROR,

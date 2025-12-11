@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -65,12 +66,24 @@ function daysBetweenUTC(startDate: Date, endDate: Date): number {
 export class RentsService {
   private readonly logger = new Logger(RentsService.name);
   constructor(
-    private readonly dbService: DatabaseService,
-    private readonly notificationsService: NotificationsService,
-    private filesService: FilesService,
-    private readonly rentsRepository: RentsRepository,
-    private readonly i18n: I18nService,
-  ) {}
+    @Inject(DatabaseService) private readonly dbService: DatabaseService, // ✅ Add @Inject()
+    @Inject(NotificationsService)
+    private readonly notificationsService: NotificationsService, // ✅ Add @Inject()
+    @Inject(FilesService) private filesService: FilesService, // ✅ Add @Inject()
+    @Inject(RentsRepository) private readonly rentsRepository: RentsRepository, // ✅ Add @Inject()
+    @Inject(I18nService) private readonly i18n: I18nService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 RentsService constructor called');
+    console.log('🔧 DatabaseService injected:', !!this.dbService);
+    console.log('🔧 DatabaseService.db exists:', !!this.dbService?.db);
+    console.log(
+      '🔧 NotificationsService injected:',
+      !!this.notificationsService,
+    );
+    console.log('🔧 FilesService injected:', !!this.filesService);
+    console.log('🔧 RentsRepository injected:', !!this.rentsRepository);
+    console.log('🔧 I18nService injected:', !!this.i18n);
+  }
   private async generateRentId(orgId: string): Promise<{
     id: string;
     rentContractId: string;

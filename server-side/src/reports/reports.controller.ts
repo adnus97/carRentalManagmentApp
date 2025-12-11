@@ -1,4 +1,10 @@
-import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  BadRequestException,
+  Inject,
+} from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
 
@@ -20,7 +26,12 @@ type Interval = 'day' | 'week' | 'month';
 @Auth()
 @Controller('reports')
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(
+    @Inject(ReportsService) private readonly reportsService: ReportsService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 ReportsController constructor called');
+    console.log('🔧 ReportsService injected:', !!this.reportsService);
+  }
 
   /**
    * GET /reports/summary

@@ -6,11 +6,13 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
 import { ContractsModule } from 'src/contracts/contracts.module';
 import { FilesModule } from 'src/files/files.module';
 import { RentsRepository } from './rents.repository';
+import { DatabaseModule } from 'src/db';
 
 @Module({
   controllers: [RentsController],
   providers: [RentsService, RentsRepository],
   imports: [
+    DatabaseModule,
     NotificationsModule,
     forwardRef(() => ContractsModule),
     FilesModule,

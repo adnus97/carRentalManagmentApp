@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { customers, DatabaseService, users } from '../db';
 import { createId } from '@paralleldrive/cuid2';
@@ -26,7 +27,9 @@ import { UpdateNotificationPreferencesDto } from './dto/update-notification-pref
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly dbService: DatabaseService) {}
+  constructor(
+    @Inject(DatabaseService) private readonly dbService: DatabaseService, // Add @Inject()
+  ) {}
 
   /**
    * Create a new notification

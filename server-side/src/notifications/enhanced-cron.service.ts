@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DatabaseService } from '../db';
 import { NotificationsService } from './notifications.service';
@@ -19,7 +19,7 @@ export class EnhancedCronService {
   private readonly logger = new Logger(EnhancedCronService.name);
 
   constructor(
-    private readonly dbService: DatabaseService,
+    @Inject(DatabaseService) private readonly dbService: DatabaseService,
     private readonly notificationsService: NotificationsService,
     private readonly emailService: EmailService,
     private readonly i18n: I18nService,

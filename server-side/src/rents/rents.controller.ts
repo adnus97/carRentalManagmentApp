@@ -17,6 +17,7 @@ import {
   BadRequestException,
   UploadedFiles,
   Req,
+  Inject,
 } from '@nestjs/common';
 import { RentsService } from './rents.service';
 import { CreateRentDto } from './dto/create-rent.dto';
@@ -35,9 +36,14 @@ function ensureDate(val: any) {
 @Controller('rents')
 export class RentsController {
   constructor(
-    private readonly rentsService: RentsService,
-    private readonly contractsService: ContractsService,
-  ) {}
+    @Inject(RentsService) private readonly rentsService: RentsService, // ✅ Add @Inject()
+    @Inject(ContractsService)
+    private readonly contractsService: ContractsService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 RentsController constructor called');
+    console.log('🔧 RentsService injected:', !!this.rentsService);
+    console.log('🔧 ContractsService injected:', !!this.contractsService);
+  }
   @Post()
   @UseInterceptors(
     FilesInterceptor('carImages', 4, {

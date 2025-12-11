@@ -9,6 +9,7 @@ import {
   Delete,
   HttpException,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -18,8 +19,13 @@ import { Auth, CurrentUser, CustomUser } from 'src/auth/auth.guard';
 @Auth()
 @Controller('organizations')
 export class OrganizationController {
-  constructor(private readonly organizationService: OrganizationService) {}
-
+  constructor(
+    @Inject(OrganizationService)
+    private readonly organizationService: OrganizationService, // ✅ Add @Inject()
+  ) {
+    console.log('🔧 OrganizationController constructor called');
+    console.log('🔧 OrganizationService injected:', !!this.organizationService);
+  }
   @Post()
   create(@CurrentUser() user: CustomUser, @Body() body: CreateOrganizationDto) {
     try {
