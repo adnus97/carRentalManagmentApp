@@ -167,8 +167,30 @@ export const BETTER_AUTH = {
       session: {
         expiresIn: 60 * 60 * 24 * 7, // 7 days
         updateAge: 60 * 60 * 24, // 1 day
+        cookieCache: {
+          enabled: true,
+          maxAge: 60 * 60 * 24 * 7,
+        },
       },
-
+      advanced: {
+        cookiePrefix: 'velcar',
+        useSecureCookies: true, // MUST be true in production (HTTPS)
+        crossSubdomainCookies: {
+          enabled: true, // Enable if using api.velcar.app and velcar.app
+        },
+      },
+      cookies: {
+        sessionToken: {
+          name: 'velcar.session_token',
+          options: {
+            httpOnly: true,
+            sameSite: 'lax', // Changed from "strict"
+            secure: true, // HTTPS only
+            path: '/',
+            domain: '.velcar.app', // Allow cookies across subdomains
+          },
+        },
+      },
       emailVerification: {
         sendOnSignUp: true,
         autoSignInAfterVerification: true,
