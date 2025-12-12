@@ -782,20 +782,21 @@ export const RentsGrid = () => {
       className="ag-theme-alpine-dark flex flex-col"
       style={{ width: '100%', height: 'calc(100vh - 100px)' }}
     >
-      <h2 className="text-xl mb-1 font-bold">
+      <h2 className="text-xl mb-4 font-bold">
         {t('grid.title', 'Rent Contracts Dashboard')}
       </h2>
-      <p className="text-xs text-gray-500 mb-4">
-        {t('grid.last_updated', 'Last updated')}:{' '}
-        {lastUpdated.toLocaleTimeString()}
-      </p>
-
-      <div className="flex justify-between mb-4 items-center">
-        <div className="flex space-x-4 items-center mb-2">
-          <p>{t('grid.manage_hint', 'Manage your rent contracts below:')}</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm">
+            {t('grid.manage_hint', 'Manage your rent contracts below:')}
+          </p>
+          <p className="text-xs text-gray-500">
+            {t('grid.last_updated', 'Last updated')}:{' '}
+            {lastUpdated.toLocaleTimeString()}
+          </p>
         </div>
 
-        <div className="flex gap-4 text-xs items-center">
+        <div className="flex flex-wrap gap-3 sm:gap-4 text-xs items-center">
           <div className="flex items-center gap-1">
             <span
               className="w-3 h-3 rounded-full"

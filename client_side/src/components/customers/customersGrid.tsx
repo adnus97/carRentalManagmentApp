@@ -261,13 +261,13 @@ export const ClientsGrid = () => {
       style={{ width: '100%', height: 'calc(100vh - 100px)' }}
     >
       {/* Header Section */}
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
         <h2 className="text-xl font-bold">
           {t('clients.header.title', 'Clients Dashboard')}
         </h2>
 
         {/* Blacklist Action Buttons */}
-        <div className="flex items-center gap-3 ">
+        <div className="flex items-center gap-3 flex-wrap">
           <BlacklistModal
             type="organization"
             trigger={
@@ -277,7 +277,12 @@ export const ClientsGrid = () => {
                 className="flex items-center gap-2 border-orange-200 hover:border-orange-300 hover:bg-orange-50 text-orange-700"
               >
                 <Shield size={16} />
-                {t('blacklist.trigger.org', 'My Blacklist')}
+                <span className="hidden sm:inline">
+                  {t('blacklist.trigger.org', 'My Blacklist')}
+                </span>
+                <span className="sm:hidden">
+                  {t('blacklist.trigger.org_short', 'My')}
+                </span>
               </Button>
             }
           />
@@ -290,7 +295,12 @@ export const ClientsGrid = () => {
                 className="flex items-center gap-2 border-red-200 hover:border-red-300 hover:bg-red-50 text-red-700"
               >
                 <ShieldWarning size={16} />
-                {t('blacklist.trigger.global', 'Global Blacklist')}
+                <span className="hidden sm:inline">
+                  {t('blacklist.trigger.global', 'Global Blacklist')}
+                </span>
+                <span className="sm:hidden">
+                  {t('blacklist.trigger.global_short', 'Global')}
+                </span>
               </Button>
             }
           />
@@ -298,28 +308,34 @@ export const ClientsGrid = () => {
       </div>
 
       {/* Stats Bar */}
-      <div className="flex items-center gap-4 mb-4 text-sm text-gray-600">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4 text-sm text-gray-600">
         <span>{t('clients.manage_hint', 'Manage your clients below:')}</span>
-        <Separator orientation="vertical" className="h-4" />
-        <div className="flex items-center gap-2">
-          <span>
-            {t('clients.total', 'Total')}:{' '}
-            <Badge variant="outline">{totalCount}</Badge>
-          </span>
+        <Separator orientation="horizontal" className="sm:hidden" />
+        <Separator orientation="vertical" className="hidden sm:block h-4" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span>
+              {t('clients.total', 'Total')}:{' '}
+              <Badge variant="outline">{totalCount}</Badge>
+            </span>
+          </div>
+          {blacklistedCount > 0 && (
+            <>
+              <Separator
+                orientation="vertical"
+                className="hidden sm:block h-4"
+              />
+              <div className="flex items-center gap-2">
+                <span>
+                  {t('clients.blacklisted', 'Blacklisted')}:{' '}
+                  <Badge variant="destructive" className="bg-[#EC6142]">
+                    {blacklistedCount}
+                  </Badge>
+                </span>
+              </div>
+            </>
+          )}
         </div>
-        {blacklistedCount > 0 && (
-          <>
-            <Separator orientation="vertical" className="h-4" />
-            <div className="flex items-center gap-2">
-              <span>
-                {t('clients.blacklisted', 'Blacklisted')}:{' '}
-                <Badge variant="destructive" className="bg-[#EC6142]">
-                  {blacklistedCount}
-                </Badge>
-              </span>
-            </div>
-          </>
-        )}
       </div>
 
       {/* Selection Toolbar */}

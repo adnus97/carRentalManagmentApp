@@ -1,22 +1,23 @@
+// main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { BadRequestException, Logger } from '@nestjs/common';
-import { ValidationPipe } from '@nestjs/common';
-import { createRouteHandler } from 'uploadthing/express';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { BadRequestException, Logger, ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
-import * as fs from 'fs';
-import * as path from 'path';
-import { DatabaseService } from './db';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 const whitelist = [
   'http://localhost:5173',
   'http://localhost:3000',
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-];
+  'https://velcar.app',
+  'https://www.velcar.app',
+  process.env.FRONTEND_URL ?? '', // allow override
+].filter(Boolean);
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
   app.use(cookieParser());
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -24,7 +25,7 @@ async function bootstrap() {
       exceptionFactory: (errors) => {
         const messages = errors.map(
           (err) =>
-            `${err.property} - ${Object.values(err.constraints).join(', ')}`,
+            `${err.property} - ${Object.values(err.constraints ?? {}).join(', ')}`,
         );
         return new BadRequestException(messages);
       },
@@ -37,16 +38,17 @@ async function bootstrap() {
     next();
   });
   app.setGlobalPrefix('api/v1');
+
+  // CORS
   app.enableCors({
-    credentials: true,
-    origin: function (origin, callback) {
-      if (!origin || whitelist.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+    origin: (origin, callback) => {
+      // allow non-browser requests with no Origin header (health checks, curl)
+      if (!origin) return callback(null, true);
+      if (whitelist.includes(origin)) return callback(null, true);
+      return callback(new Error(`Not allowed by CORS: ${origin}`), false);
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    credentials: true, // only if you use cookies/authorization headers
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
       'Authorization',
@@ -55,12 +57,12 @@ async function bootstrap() {
       'Origin',
       'Cookie',
     ],
+    // optional: cache preflight
+    maxAge: 600,
   });
 
-  const port = process.env.PORT ?? 3000;
+  const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
-  Logger.log(
-    `🚀 Application is running on: http://localhost:${port.toString()}/api/v1,`,
-  );
+  Logger.log(`🚀 Running: http://localhost:${port}/api/v1`);
 }
 bootstrap();
