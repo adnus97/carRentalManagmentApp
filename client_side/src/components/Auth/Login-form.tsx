@@ -82,7 +82,7 @@ export function LoginForm({
 
   return (
     <div className="flex min-h-screen flex-col w-full pt-[env(safe-area-inset-top)]">
-      <div className="flex w-full items-center justify-between px-4 py-3">
+      <div className="flex-none flex w-full items-center justify-between px-4 py-3 z-10">
         <div className="flex items-center gap-2 ">
           <LanguageSelector />
         </div>
