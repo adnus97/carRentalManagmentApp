@@ -47,7 +47,9 @@ export const BETTER_AUTH = {
       trustedOrigins: [
         'http://localhost:5173',
         'http://localhost:3000',
-        process.env.FRONTEND_URL,
+        'https://velcar.app',
+        'https://www.velcar.app',
+        process.env.FRONTEND_URL, // should be https://velcar.app
       ].filter(Boolean),
 
       emailAndPassword: {
