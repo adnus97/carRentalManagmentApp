@@ -303,11 +303,14 @@ export function SignupForm({
 
   return (
     <div className="flex min-h-screen flex-col w-full">
-      <div className="flex w-full items-center justify-between gap-4 px-4 py-3">
-        <div>
+      <div className="flex w-full items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <LanguageSelector />
         </div>
-        <ModeToggle />
+
+        <div className="flex items-center flex-shrink-0">
+          <ModeToggle />
+        </div>
       </div>
 
       {/* Centered Signup Form */}
