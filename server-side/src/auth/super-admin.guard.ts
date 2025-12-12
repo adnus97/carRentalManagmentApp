@@ -1,3 +1,4 @@
+// src/auth/guards/super-admin.guard.ts
 import {
   CanActivate,
   ExecutionContext,
@@ -8,27 +9,41 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DatabaseService, schema } from '../db';
-import { parseCookies } from 'better-auth/cookies';
 import { eq } from 'drizzle-orm';
 import { getRequestResponseFromContext } from '../utils/better-auth';
+
+// Simple cookie parser function (same as AuthGuard)
+function parseCookieString(cookieString: string): Map<string, string> {
+  const cookies = new Map<string, string>();
+  if (!cookieString) return cookies;
+
+  cookieString.split(';').forEach((cookie) => {
+    const [name, ...rest] = cookie.trim().split('=');
+    if (name && rest.length > 0) {
+      cookies.set(name.trim(), rest.join('=').trim());
+    }
+  });
+
+  return cookies;
+}
 
 @Injectable()
 export class SuperAdminGuard implements CanActivate {
   constructor(
-    @Inject(Reflector) private readonly reflector: Reflector, // ✅ Add @Inject()
-    @Inject(DatabaseService) private readonly database: DatabaseService, // ✅ Add @Inject()
-  ) {
-    console.log('🔧 SuperAdminGuard constructor called');
-    console.log('🔧 Reflector injected:', !!this.reflector);
-    console.log('🔧 DatabaseService injected:', !!this.database);
-    console.log('🔧 DatabaseService.db exists:', !!this.database?.db);
-  }
+    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(DatabaseService) private readonly database: DatabaseService,
+  ) {}
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const { req } = getRequestResponseFromContext(context);
 
-    // ✅ Parse session token from cookies
-    const parseCookie = parseCookies(req.headers.cookie ?? '');
-    const sessionToken = parseCookie.get('better-auth.session_token');
+    // ✅ Parse cookies properly
+    const cookies = parseCookieString(req.headers.cookie || '');
+
+    // Try both cookie names (production uses __Secure- prefix)
+    const sessionToken =
+      cookies.get('__Secure-better-auth.session_token') ||
+      cookies.get('better-auth.session_token');
 
     if (!sessionToken) {
       throw new ForbiddenException('Authentication required');

@@ -71,7 +71,9 @@ export class AuthGuard implements CanActivate {
       }
 
       const cookies = parseCookieString(req.headers.cookie || '');
-      const sessionToken = cookies.get('better-auth.session_token');
+      const sessionToken =
+        cookies.get('__Secure-better-auth.session_token') || // Try secure version first
+        cookies.get('better-auth.session_token'); // Fallback to non-secure (localhost)
 
       if (!sessionToken) {
         return false;
