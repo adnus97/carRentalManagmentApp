@@ -302,13 +302,13 @@ export function SignupForm({
   console.log('showVerificationMessage:', showVerificationMessage);
 
   return (
-    <div className="flex min-h-screen flex-col w-full">
+    <div className="flex min-h-screen flex-col w-full pt-[env(safe-area-inset-top)]">
       <div className="flex w-full items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 ">
           <LanguageSelector />
         </div>
 
-        <div className="flex items-center flex-shrink-0">
+        <div className="flex items-center">
           <ModeToggle />
         </div>
       </div>
