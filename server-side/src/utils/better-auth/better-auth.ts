@@ -173,7 +173,8 @@ export const BETTER_AUTH = {
         expiresIn: 60 * 60 * 24, // 24 hours
         sendVerificationEmail: async ({ user, url, token }) => {
           // Fix: Use proper template string syntax
-          const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
+          const tokenParam = encodeURIComponent(token);
+          const frontendUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${tokenParam}`;
 
           await send(
             user.email,

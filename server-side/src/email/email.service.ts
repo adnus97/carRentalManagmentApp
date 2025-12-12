@@ -17,6 +17,11 @@ export class EmailService {
       process.env.RESEND_FROM ||
       process.env.FROM_EMAIL ||
       'no-reply@velcar.app';
+
+    this.logger.log(`Resend From is: "${this.from}"`);
+    this.logger.log(
+      `Env RESEND_FROM="${process.env.RESEND_FROM}", FROM_EMAIL="${process.env.FROM_EMAIL}"`,
+    );
   }
 
   async sendEmail(dto: sendEmailDto) {
