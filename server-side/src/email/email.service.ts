@@ -1,43 +1,48 @@
-// email.service.ts
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { sendEmailDto } from './dto/email.dto';
 
 @Injectable()
 export class EmailService {
-  private transporter: nodemailer.Transporter;
   private readonly logger = new Logger(EmailService.name);
+  private readonly resend: Resend;
+  private readonly from: string;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST!,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: Number(process.env.SMTP_PORT || 587) === 465 ? true : false,
-      auth: {
-        user: process.env.SMTP_USER!,
-        pass: process.env.SMTP_PASS!,
-      },
-      // You can keep or remove this depending on your environment trust
-      // tls: { rejectUnauthorized: false },
-    });
+    if (!process.env.RESEND_API_KEY) {
+      this.logger.warn('RESEND_API_KEY is not set');
+    }
+    this.resend = new Resend(process.env.RESEND_API_KEY);
+    this.from =
+      process.env.RESEND_FROM ||
+      process.env.FROM_EMAIL ||
+      'no-reply@velcar.app';
   }
 
   async sendEmail(dto: sendEmailDto) {
     const { recipients, subject, html, text } = dto;
 
-    const options: nodemailer.SendMailOptions = {
-      from: process.env.FROM_EMAIL || process.env.SMTP_USER,
-      to: recipients,
-      subject,
-      html,
-      text,
-    };
+    // Normalize recipients to array
+    const to = Array.isArray(recipients) ? recipients : [recipients];
 
     try {
-      await this.transporter.sendMail(options);
+      const { data, error } = await this.resend.emails.send({
+        from: this.from,
+        to,
+        subject,
+        html,
+        text,
+      });
+
+      if (error) {
+        this.logger.error('Resend send error', error);
+        throw new Error(error.message || 'Failed to send email');
+      }
+
       this.logger.log(
-        `Email sent to ${Array.isArray(recipients) ? recipients.join(', ') : recipients}`,
+        `Email sent to ${to.join(', ')} (id: ${data?.id ?? 'unknown'})`,
       );
+      return data;
     } catch (error) {
       this.logger.error('Error sending email', error as any);
       throw error;
