@@ -79,7 +79,14 @@ export class FilesController {
       this.logger.log(`File uploaded successfully: ${result.id}`);
       return result;
     } catch (error) {
-      this.logger.error('File upload error:', error);
+      this.logger.error('File upload error (controller):', error);
+
+      // 🔴 TEMP: show real error in response
+      const msg =
+        error?.message ||
+        error?.response?.data?.message ||
+        'File upload failed (unknown error).';
+      throw new HttpException(msg, HttpStatus.INTERNAL_SERVER_ERROR);
 
       if (error instanceof HttpException) {
         throw error;

@@ -60,7 +60,7 @@ export class R2Service {
         }),
       );
     } catch (e: any) {
-      // 🔴 This shows the true reason uploads fail in production
+      // 🔴 LOG THE REAL R2 ERROR
       console.error('R2 put error:', {
         name: e?.name,
         message: e?.message,
@@ -70,24 +70,24 @@ export class R2Service {
         cfId: e?.$metadata?.cfId,
         stack: e?.stack,
       });
-      throw new Error(`Failed to put object \`${key}\``);
+
+      // 🔴 THROW A DIAGNOSTIC ERROR (SEE IT IN RESPONSE/TEXT)
+      throw new Error(
+        `R2 put failed: ${e?.name || 'Unknown'} - ${e?.message || ''} (status: ${
+          e?.$metadata?.httpStatusCode ?? 'n/a'
+        })`,
+      );
     }
   }
 
-  async get(key: string): Promise<{
-    body?: Readable;
-    metadata?: GetObjectMetadata;
-  }> {
+  async get(
+    key: string,
+  ): Promise<{ body?: Readable; metadata?: GetObjectMetadata }> {
     try {
       const obj = await this.client.send(
-        new GetObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-        }),
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
       );
-
       if (!obj.Body) return {};
-
       return {
         body: obj.Body as Readable,
         metadata: {
@@ -120,10 +120,7 @@ export class R2Service {
   async delete(key: string): Promise<void> {
     try {
       await this.client.send(
-        new DeleteObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-        }),
+        new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
       );
     } catch (e) {
       throw new Error(`Failed to delete object \`${key}\``);
@@ -137,7 +134,6 @@ export interface PutObjectMetadata {
   checksumCRC32?: string;
   ContentDisposition?: string;
 }
-
 export interface GetObjectMetadata {
   contentType: string;
   contentLength: number;
