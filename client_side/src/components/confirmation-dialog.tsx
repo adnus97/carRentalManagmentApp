@@ -51,7 +51,7 @@ export function ConfirmationDialog({
 
   // Handle clicks outside dialog
   React.useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: Event) => {
       if (
         open &&
         !isLoading &&
@@ -63,14 +63,13 @@ export function ConfirmationDialog({
     };
 
     if (open) {
-      // Add a small delay to prevent immediate closing
       setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 100);
+        document.addEventListener('click', handleClickOutside);
+      }, 150);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside);
     };
   }, [open, isLoading, onOpenChange]);
 

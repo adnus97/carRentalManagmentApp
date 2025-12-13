@@ -240,7 +240,7 @@ export function DialogDemo({}: React.ComponentProps<'div'>) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[600px] pt-8 max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-[600px] pt-8 max-h-[90vh] overflow-y-auto">
         <DialogTitle className="pb-1 hidden sm:block">
           {t('form.title', 'Add a new Car')}
         </DialogTitle>
