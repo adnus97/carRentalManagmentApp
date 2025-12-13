@@ -1,4 +1,3 @@
-// src/r2/r2.service.ts
 import { Injectable } from '@nestjs/common';
 import {
   DeleteObjectCommand,
@@ -38,7 +37,6 @@ export class R2Service {
       endpoint,
       credentials: { accessKeyId, secretAccessKey },
     });
-
     this.bucket = bucket;
     this.publicUrl = publicUrl.replace(/\/$/, '');
   }
@@ -48,49 +46,53 @@ export class R2Service {
     body: Buffer,
     metadata: PutObjectMetadata = {},
   ): Promise<void> {
+    const blob = body;
+
+    // metadata = await autoMetadata(blob, metadata);
+
     try {
       await this.client.send(
         new PutObjectCommand({
           Bucket: this.bucket,
           Key: key,
-          Body: body,
+          Body: blob,
+
+          // metadata
           ContentDisposition: metadata.ContentDisposition,
           ContentType: metadata.contentType,
           ContentLength: metadata.contentLength,
         }),
       );
-    } catch (e: any) {
-      // 🔴 LOG THE REAL R2 ERROR
-      console.error('R2 put error:', {
-        name: e?.name,
-        message: e?.message,
-        statusCode: e?.$metadata?.httpStatusCode,
-        requestId: e?.$metadata?.requestId,
-        extendedRequestId: e?.$metadata?.extendedRequestId,
-        cfId: e?.$metadata?.cfId,
-        stack: e?.stack,
-      });
 
-      // 🔴 THROW A DIAGNOSTIC ERROR (SEE IT IN RESPONSE/TEXT)
-      throw new Error(
-        `R2 put failed: ${e?.name || 'Unknown'} - ${e?.message || ''} (status: ${
-          e?.$metadata?.httpStatusCode ?? 'n/a'
-        })`,
-      );
+      //this.logger.verbose(`Object \`${key}\` put`);
+    } catch (e) {
+      throw new Error(`Failed to put object \`${key}\``);
     }
   }
 
-  async get(
-    key: string,
-  ): Promise<{ body?: Readable; metadata?: GetObjectMetadata }> {
+  async get(key: string): Promise<{
+    body?: Readable;
+    metadata?: GetObjectMetadata;
+  }> {
     try {
       const obj = await this.client.send(
-        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
       );
-      if (!obj.Body) return {};
+
+      if (!obj.Body) {
+        //this.logger.verbose(`Object \`${key}\` not found`);
+        return {};
+      }
+
+      //this.logger.verbose(`Read object \`${key}\``);
       return {
-        body: obj.Body as Readable,
+        // @ts-expect-errors ignore browser response type `Blob`
+        body: obj.Body,
         metadata: {
+          // always set when putting object
           contentType: obj.ContentType!,
           contentLength: obj.ContentLength!,
           lastModified: obj.LastModified!,
@@ -98,8 +100,13 @@ export class R2Service {
         },
       };
     } catch (e) {
-      if (e instanceof NoSuchKey) return {};
-      throw new Error(`Failed to read object \`${key}\``);
+      // 404
+      if (e instanceof NoSuchKey) {
+        //this.logger.verbose(`Object \`${key}\` not found`);
+        return {};
+      } else {
+        throw new Error(`Failed to read object \`${key}\``);
+      }
     }
   }
 
@@ -107,33 +114,52 @@ export class R2Service {
     try {
       const url = await getSignedUrl(
         this.client,
-        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
-        { expiresIn },
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+        {
+          expiresIn,
+        },
       );
-      return url || '';
+
+      if (!url) {
+        //this.logger.verbose(`Object \`${key}\` not found`);
+        return '';
+      }
+
+      return url;
     } catch (e) {
-      if (e instanceof NoSuchKey) return '';
-      throw new Error(`Failed to read object \`${key}\``);
+      // 404
+      if (e instanceof NoSuchKey) {
+        // this.logger.verbose(`Object \`${key}\` not found`);
+        return '';
+      } else {
+        throw new Error(`Failed to read object \`${key}\``);
+      }
     }
   }
 
   async delete(key: string): Promise<void> {
     try {
       await this.client.send(
-        new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
+        new DeleteObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
       );
     } catch (e) {
       throw new Error(`Failed to delete object \`${key}\``);
     }
   }
 }
-
 export interface PutObjectMetadata {
   contentType?: string;
   contentLength?: number;
   checksumCRC32?: string;
   ContentDisposition?: string;
 }
+
 export interface GetObjectMetadata {
   contentType: string;
   contentLength: number;
