@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
-import { DatabaseService } from '../db/database.service'; // Direct import
+import { DatabaseService } from '../db/database.service';
 import { schema } from '../db';
 import { User, Session } from 'better-auth';
 import { getRequestResponseFromContext } from '../utils/better-auth';
@@ -71,17 +71,24 @@ export class AuthGuard implements CanActivate {
       }
 
       const cookies = parseCookieString(req.headers.cookie || '');
+
+      // ✅ FIXED: Look for the actual cookie names being used
       const sessionToken =
-        cookies.get('__Secure-better-auth.session_token') || // Try secure version first
-        cookies.get('better-auth.session_token'); // Fallback to non-secure (localhost)
+        cookies.get('__Secure-velcar.session_token') || // Production (HTTPS)
+        cookies.get('velcar.session_token') || // Development (HTTP)
+        cookies.get('__Secure-better-auth.session_token') || // Fallback
+        cookies.get('better-auth.session_token'); // Fallback
 
       if (!sessionToken) {
+        console.log('❌ No session token found');
+        console.log('Available cookies:', Array.from(cookies.keys()));
         return false;
       }
 
       const splitSessionToken = sessionToken.split('.')[0];
 
       if (!this.databaseService || !this.databaseService.db) {
+        console.log('❌ Database service not available');
         return false;
       }
 
@@ -96,6 +103,7 @@ export class AuthGuard implements CanActivate {
         .where(eq(schema.session.token, splitSessionToken));
 
       if (!response.length) {
+        console.log('❌ No session found in database');
         return false;
       }
 
@@ -103,6 +111,7 @@ export class AuthGuard implements CanActivate {
       const user = session.user;
 
       if (!user) {
+        console.log('❌ No user found in session');
         return false;
       }
 
@@ -112,8 +121,12 @@ export class AuthGuard implements CanActivate {
         ? new Date(user.subscriptionEndDate)
         : null;
 
+      console.log('✅ User authenticated:', user.email, 'Role:', userRole);
+
       // ✅ Super admins bypass subscription checks
       if (userRole === 'super_admin') {
+        console.log('✅ Super admin access granted');
+
         if (!req.locals) req.locals = {};
         req.locals.user = {
           ...user,
@@ -197,8 +210,8 @@ export class AuthGuard implements CanActivate {
         throw error;
       }
 
+      console.error('❌ AuthGuard error:', error);
       return false;
-    } finally {
     }
   }
 }
