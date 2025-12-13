@@ -1,3 +1,4 @@
+// src/r2/r2.service.ts
 import { Injectable } from '@nestjs/common';
 import {
   DeleteObjectCommand,
@@ -37,6 +38,7 @@ export class R2Service {
       endpoint,
       credentials: { accessKeyId, secretAccessKey },
     });
+
     this.bucket = bucket;
     this.publicUrl = publicUrl.replace(/\/$/, '');
   }
@@ -46,26 +48,28 @@ export class R2Service {
     body: Buffer,
     metadata: PutObjectMetadata = {},
   ): Promise<void> {
-    const blob = body;
-
-    // metadata = await autoMetadata(blob, metadata);
-
     try {
       await this.client.send(
         new PutObjectCommand({
           Bucket: this.bucket,
           Key: key,
-          Body: blob,
-
-          // metadata
+          Body: body,
           ContentDisposition: metadata.ContentDisposition,
           ContentType: metadata.contentType,
           ContentLength: metadata.contentLength,
         }),
       );
-
-      //this.logger.verbose(`Object \`${key}\` put`);
-    } catch (e) {
+    } catch (e: any) {
+      // 🔴 This shows the true reason uploads fail in production
+      console.error('R2 put error:', {
+        name: e?.name,
+        message: e?.message,
+        statusCode: e?.$metadata?.httpStatusCode,
+        requestId: e?.$metadata?.requestId,
+        extendedRequestId: e?.$metadata?.extendedRequestId,
+        cfId: e?.$metadata?.cfId,
+        stack: e?.stack,
+      });
       throw new Error(`Failed to put object \`${key}\``);
     }
   }
@@ -82,17 +86,11 @@ export class R2Service {
         }),
       );
 
-      if (!obj.Body) {
-        //this.logger.verbose(`Object \`${key}\` not found`);
-        return {};
-      }
+      if (!obj.Body) return {};
 
-      //this.logger.verbose(`Read object \`${key}\``);
       return {
-        // @ts-expect-errors ignore browser response type `Blob`
-        body: obj.Body,
+        body: obj.Body as Readable,
         metadata: {
-          // always set when putting object
           contentType: obj.ContentType!,
           contentLength: obj.ContentLength!,
           lastModified: obj.LastModified!,
@@ -100,13 +98,8 @@ export class R2Service {
         },
       };
     } catch (e) {
-      // 404
-      if (e instanceof NoSuchKey) {
-        //this.logger.verbose(`Object \`${key}\` not found`);
-        return {};
-      } else {
-        throw new Error(`Failed to read object \`${key}\``);
-      }
+      if (e instanceof NoSuchKey) return {};
+      throw new Error(`Failed to read object \`${key}\``);
     }
   }
 
@@ -114,29 +107,13 @@ export class R2Service {
     try {
       const url = await getSignedUrl(
         this.client,
-        new GetObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-        }),
-        {
-          expiresIn,
-        },
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+        { expiresIn },
       );
-
-      if (!url) {
-        //this.logger.verbose(`Object \`${key}\` not found`);
-        return '';
-      }
-
-      return url;
+      return url || '';
     } catch (e) {
-      // 404
-      if (e instanceof NoSuchKey) {
-        // this.logger.verbose(`Object \`${key}\` not found`);
-        return '';
-      } else {
-        throw new Error(`Failed to read object \`${key}\``);
-      }
+      if (e instanceof NoSuchKey) return '';
+      throw new Error(`Failed to read object \`${key}\``);
     }
   }
 
@@ -153,6 +130,7 @@ export class R2Service {
     }
   }
 }
+
 export interface PutObjectMetadata {
   contentType?: string;
   contentLength?: number;
