@@ -35,6 +35,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [showSignOutDialog, setShowSignOutDialog] = React.useState(false);
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const { t } = useTranslation('layout');
 
   const isSuperAdmin = user?.role === 'super_admin';
@@ -50,6 +51,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     localStorage.removeItem('authUser');
     setUser(null);
     router.navigate({ to: '/login' });
+  };
+
+  const handleSignOutClick = () => {
+    setDropdownOpen(false); // Close dropdown first
+    // Small delay to ensure dropdown closes before dialog opens
+    setTimeout(() => {
+      setShowSignOutDialog(true);
+    }, 100);
   };
 
   const navigationItems = isSuperAdmin
@@ -96,8 +105,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     >
                       {item.icon}
                       <span className="ml-3">{t(item.title)}</span>
-                      {/* If navigationConfig titles need translation,
-                          store keys instead of labels and call t(...) here. */}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -118,7 +125,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarFooter className="border-t border-gray-6 bg-gray-1 p-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <DropdownMenu>
+              <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton className="h-16 px-4 py-3 hover:bg-gray-3 transition-colors duration-200">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -210,7 +217,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
-                    onSelect={() => setShowSignOutDialog(true)}
+                    onSelect={(e) => {
+                      e.preventDefault(); // Prevent default behavior
+                      handleSignOutClick();
+                    }}
                     className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600"
                   >
                     <SignOut size={18} />
