@@ -51,7 +51,7 @@ export function ConfirmationDialog({
 
   // Handle clicks outside dialog
   React.useEffect(() => {
-    const handleClickOutside = (e: Event) => {
+    const handleClickOutside = (e: MouseEvent) => {
       if (
         open &&
         !isLoading &&
@@ -63,13 +63,14 @@ export function ConfirmationDialog({
     };
 
     if (open) {
+      // Add a small delay to prevent immediate closing
       setTimeout(() => {
-        document.addEventListener('click', handleClickOutside);
-      }, 150);
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 100);
     }
 
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [open, isLoading, onOpenChange]);
 
@@ -109,7 +110,7 @@ export function ConfirmationDialog({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Background overlay */}
-      <div className="fixed inset-0 bg-black/50 dark:bg-black/70 transition-opacity" />
+      <div className="fixed inset-0 z-40 bg-black/50 dark:bg-black/70 transition-opacity" />
 
       {/* Dialog */}
       <div
