@@ -54,11 +54,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   const handleSignOutClick = () => {
-    setDropdownOpen(false); // Close dropdown first
-    // Small delay to ensure dropdown closes before dialog opens
-    setTimeout(() => {
-      setShowSignOutDialog(true);
-    }, 100);
+    // Close dropdown first
+    setDropdownOpen(false);
+    // Small delay to ensure dropdown fully closes before opening dialog
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        setShowSignOutDialog(true);
+      }, 100);
+    });
   };
 
   const navigationItems = isSuperAdmin
@@ -169,6 +172,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   align="start"
                   className="w-64 p-2"
                   sideOffset={8}
+                  style={{ zIndex: 99999 }}
                 >
                   <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 mb-2">
                     <div className="w-10 h-10 flex-shrink-0">
@@ -218,7 +222,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
                   <DropdownMenuItem
                     onSelect={(e) => {
-                      e.preventDefault(); // Prevent default behavior
+                      e.preventDefault();
                       handleSignOutClick();
                     }}
                     className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600"
