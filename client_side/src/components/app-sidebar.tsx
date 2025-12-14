@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuPortal,
 } from './ui/dropdown-menu';
 import { Separator } from './ui/separator';
 import { useUser } from '@/contexts/user-context';
@@ -54,13 +55,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   const handleSignOutClick = () => {
-    // Close dropdown first
     setDropdownOpen(false);
-    // Small delay to ensure dropdown fully closes before opening dialog
+    // Use requestAnimationFrame for smooth transition
     requestAnimationFrame(() => {
       setTimeout(() => {
         setShowSignOutDialog(true);
-      }, 100);
+      }, 150);
     });
   };
 
@@ -128,7 +128,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarFooter className="border-t border-gray-6 bg-gray-1 p-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+              <DropdownMenu
+                open={dropdownOpen}
+                onOpenChange={setDropdownOpen}
+                modal={false}
+              >
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton className="h-16 px-4 py-3 hover:bg-gray-3 transition-colors duration-200">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -167,88 +171,92 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent
-                  side="top"
-                  align="start"
-                  className="w-64 p-2"
-                  sideOffset={8}
-                  style={{ zIndex: 99999 }}
-                >
-                  <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 mb-2">
-                    <div className="w-10 h-10 flex-shrink-0">
-                      {!isLoading && data?.[0]?.imageFileId ? (
-                        <img
-                          src={data[0].imageFile?.url}
-                          alt="Organization"
-                          className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
-                        />
-                      ) : (
-                        <div
-                          className={`w-10 h-10 bg-gradient-to-br ${avatarGradient} rounded-full flex items-center justify-center text-white text-sm font-bold`}
-                        >
-                          {(user?.name || t('sidebar.user_fallback'))
-                            .charAt(0)
-                            .toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="text-sm font-medium text-gray-12 truncate">
-                        {user?.name || t('sidebar.user_fallback')}
-                      </span>
-                      <span className="text-xs text-gray-10 truncate">
-                        {user?.email || t('sidebar.email_fallback')}
-                      </span>
-                    </div>
-                  </div>
-
-                  <Separator className="my-2" />
-
-                  <DropdownMenuItem
-                    asChild
-                    className="flex items-center gap-3 px-3 py-2 rounded-md dark:hover:!bg-gray-4 cursor-pointer"
+                <DropdownMenuPortal>
+                  <DropdownMenuContent
+                    side="top"
+                    align="start"
+                    className="w-64 p-2 z-[100000]"
+                    sideOffset={8}
+                    onCloseAutoFocus={(e) => e.preventDefault()}
                   >
-                    <Link
-                      to="/account-settings"
-                      className="flex items-center gap-3 w-full"
+                    <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 mb-2">
+                      <div className="w-10 h-10 flex-shrink-0">
+                        {!isLoading && data?.[0]?.imageFileId ? (
+                          <img
+                            src={data[0].imageFile?.url}
+                            alt="Organization"
+                            className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
+                          />
+                        ) : (
+                          <div
+                            className={`w-10 h-10 bg-gradient-to-br ${avatarGradient} rounded-full flex items-center justify-center text-white text-sm font-bold`}
+                          >
+                            {(user?.name || t('sidebar.user_fallback'))
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-sm font-medium text-gray-12 truncate">
+                          {user?.name || t('sidebar.user_fallback')}
+                        </span>
+                        <span className="text-xs text-gray-10 truncate">
+                          {user?.email || t('sidebar.email_fallback')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    <DropdownMenuItem
+                      asChild
+                      className="flex items-center gap-3 px-3 py-2 rounded-md dark:hover:!bg-gray-4 cursor-pointer"
                     >
-                      <User size={18} className="text-gray-10" />
-                      <span className="text-sm font-medium">
-                        {t('sidebar.account_settings')}
-                      </span>
-                    </Link>
-                  </DropdownMenuItem>
+                      <Link
+                        to="/account-settings"
+                        className="flex items-center gap-3 w-full"
+                      >
+                        <User size={18} className="text-gray-10" />
+                        <span className="text-sm font-medium">
+                          {t('sidebar.account_settings')}
+                        </span>
+                      </Link>
+                    </DropdownMenuItem>
 
-                  <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      handleSignOutClick();
-                    }}
-                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600"
-                  >
-                    <SignOut size={18} />
-                    <span className="text-sm font-medium">
-                      {t('sidebar.sign_out')}
-                    </span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleSignOutClick();
+                      }}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600"
+                    >
+                      <SignOut size={18} />
+                      <span className="text-sm font-medium">
+                        {t('sidebar.sign_out')}
+                      </span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenuPortal>
               </DropdownMenu>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
 
-      <ConfirmationDialog
-        open={showSignOutDialog}
-        onOpenChange={setShowSignOutDialog}
-        onConfirm={handleSignOut}
-        title={t('sidebar.confirm_signout_title')}
-        description={t('sidebar.confirm_signout_desc')}
-        confirmText={t('sidebar.confirm')}
-        cancelText={t('sidebar.cancel')}
-        variant="destructive"
-      />
+      {showSignOutDialog && (
+        <ConfirmationDialog
+          open={showSignOutDialog}
+          onOpenChange={setShowSignOutDialog}
+          onConfirm={handleSignOut}
+          title={t('sidebar.confirm_signout_title')}
+          description={t('sidebar.confirm_signout_desc')}
+          confirmText={t('sidebar.confirm')}
+          cancelText={t('sidebar.cancel')}
+          variant="destructive"
+        />
+      )}
     </>
   );
 }
