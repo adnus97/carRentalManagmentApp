@@ -145,7 +145,6 @@ export class FilesController {
   }
 
   @Get(':id/serve')
-  @Get(':id/serve')
   async serveFile(
     @Param('id') id: string,
     @CurrentUser() user: CustomUser,

@@ -19,7 +19,8 @@ import { FileUploader } from '@/components/file-uploader';
 import { createOrganization, CreateOrganizationDto } from '@/api/organization';
 import { Building2, Save, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Link } from '@tanstack/react-router';
+import { useRouter } from '@tanstack/react-router';
+import { authClient } from '@/lib/auth-client';
 
 const schema = z.object({
   name: z.string().min(2, 'org.form.errors.name_short'),
@@ -36,26 +37,9 @@ interface Props {
   onSuccess?: (orgId: string) => void;
 }
 
-const handleLoginClick = (e: React.MouseEvent) => {
-  e.preventDefault();
-
-  // Clear session and local storage
-  sessionStorage.clear();
-  localStorage.clear();
-
-  // Remove the better-auth session token cookie specifically
-  document.cookie =
-    'better-auth.session_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;';
-  document.cookie =
-    'better-auth.session_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=localhost;';
-  document.cookie =
-    'better-auth.session_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.localhost;';
-
-  // Navigate to login page
-  window.location.href = '/login';
-};
 export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
-  const { t } = useTranslation('organization');
+  const { t } = useTranslation(['organization', 'layout']);
+  const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
 
   // File ID states
@@ -116,6 +100,29 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
   });
 
   const onUploadProgress = (v: boolean) => setIsUploading(v);
+
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    try {
+      await authClient.signOut();
+      queryClient.clear();
+      localStorage.removeItem('authUser');
+
+      // Navigate to login using TanStack Router
+      router.navigate({ to: '/login' });
+    } catch (error) {
+      console.error('Sign out failed:', error);
+      toast({
+        title: t('layout:sidebar.sign_out_error', 'Sign out failed'),
+        type: 'error',
+        description: t(
+          'layout:sidebar.sign_out_error_desc',
+          'Please try again.',
+        ),
+      });
+    }
+  };
 
   const onSubmit = (values: FormFields) => {
     const payload: CreateOrganizationDto = {
@@ -281,12 +288,11 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
             </CardContent>
           </Card>
           <div className="flex justify-end">
-            {' '}
             <button
-              onClick={handleLoginClick}
+              onClick={handleSignOut}
               className="underline underline-offset-4 font-semibold text-primary bg-transparent border-none cursor-pointer"
             >
-              {t('signup.signup_link', 'Log In')}
+              {t('layout:sidebar.sign_out', 'Sign Out')}
             </button>
           </div>
         </div>
