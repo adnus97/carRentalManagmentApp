@@ -27,6 +27,7 @@ export class AuthController {
   @All('*')
   async handleAuth(@Req() req: Request, @Res() res: Response) {
     try {
+      console.log('Auth route accessed:', req.method, req.url);
       const { toNodeHandler } = await import('better-auth/node');
       const authHandler = toNodeHandler(this.betterAuthService.auth);
       return await authHandler(req, res);
