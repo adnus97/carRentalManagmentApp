@@ -257,6 +257,7 @@ export function NotificationsDropdown() {
       <DropdownMenuContent
         className="w-[92vw] sm:w-[420px] md:w-[460px] lg:w-[500px] max-h-[80vh] p-0 shadow-lg border"
         align="end"
+        style={{ zIndex: 999999 }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-3 sm:px-4 sm:py-4 border-b bg-gray-50/50 dark:bg-gray-800/50">

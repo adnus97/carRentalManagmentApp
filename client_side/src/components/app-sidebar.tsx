@@ -76,6 +76,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ? 'from-red-500 to-orange-600'
     : 'from-blue-500 to-purple-600';
 
+  // Portal the dialog to body to escape all stacking contexts
   const dialogPortal =
     mounted && showSignOutDialog
       ? createPortal(
@@ -138,7 +139,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
           <div className="flex-1" />
 
-          <div className="flex justify-between pb-2 relative z-50">
+          <div className="flex justify-between pb-2">
             <div>
               <LanguageSelector />
             </div>
@@ -146,7 +147,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-gray-6 bg-gray-1 p-0 relative z-40">
+        <SidebarFooter className="border-t border-gray-6 bg-gray-1 p-0">
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu
