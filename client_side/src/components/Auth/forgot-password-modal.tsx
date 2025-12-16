@@ -48,7 +48,7 @@ export function ForgotPasswordModal({ onClose }: ForgotPasswordModalProps) {
   const onSubmit = async (data: EmailFormFields) => {
     setIsSubmitting(true);
     try {
-      await authClient.forgetPassword({
+      await authClient.requestPasswordReset({
         email: data.email,
         redirectTo: '/reset-password',
       });
