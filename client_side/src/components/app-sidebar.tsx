@@ -19,7 +19,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuPortal,
 } from './ui/dropdown-menu';
 import { Separator } from './ui/separator';
 import { useUser } from '@/contexts/user-context';
@@ -41,7 +40,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [mounted, setMounted] = React.useState(false);
   const { t } = useTranslation('layout');
 
-  // Ensure we're mounted on client side
   React.useEffect(() => {
     setMounted(true);
   }, []);
@@ -63,7 +61,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const handleSignOutClick = () => {
     setDropdownOpen(false);
-    // Use requestAnimationFrame for smooth transition
     requestAnimationFrame(() => {
       setTimeout(() => {
         setShowSignOutDialog(true);
@@ -79,7 +76,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ? 'from-red-500 to-orange-600'
     : 'from-blue-500 to-purple-600';
 
-  // Render dialog using portal to body to escape sidebar stacking context
   const dialogPortal =
     mounted && showSignOutDialog
       ? createPortal(
@@ -142,7 +138,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
           <div className="flex-1" />
 
-          <div className="flex justify-between pb-2">
+          <div className="flex justify-between pb-2 relative z-50">
             <div>
               <LanguageSelector />
             </div>
@@ -150,13 +146,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-gray-6 bg-gray-1 p-0">
+        <SidebarFooter className="border-t border-gray-6 bg-gray-1 p-0 relative z-40">
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu
                 open={dropdownOpen}
                 onOpenChange={setDropdownOpen}
-                modal={false}
+                modal={true}
               >
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton className="h-16 px-4 py-3 hover:bg-gray-3 transition-colors duration-200">
@@ -196,74 +192,74 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuPortal>
-                  <DropdownMenuContent
-                    side="top"
-                    align="start"
-                    className="w-64 p-2 z-[100000]"
-                    sideOffset={8}
-                    onCloseAutoFocus={(e) => e.preventDefault()}
-                  >
-                    <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 mb-2">
-                      <div className="w-10 h-10 flex-shrink-0">
-                        {!isLoading && data?.[0]?.imageFileId ? (
-                          <img
-                            src={data[0].imageFile?.url}
-                            alt="Organization"
-                            className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
-                          />
-                        ) : (
-                          <div
-                            className={`w-10 h-10 bg-gradient-to-br ${avatarGradient} rounded-full flex items-center justify-center text-white text-sm font-bold`}
-                          >
-                            {(user?.name || t('sidebar.user_fallback'))
-                              .charAt(0)
-                              .toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className="text-sm font-medium text-gray-12 truncate">
-                          {user?.name || t('sidebar.user_fallback')}
-                        </span>
-                        <span className="text-xs text-gray-10 truncate">
-                          {user?.email || t('sidebar.email_fallback')}
-                        </span>
-                      </div>
+                <DropdownMenuContent
+                  side="top"
+                  align="start"
+                  className="w-64 p-2"
+                  sideOffset={8}
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                  style={{ zIndex: 999999 }}
+                >
+                  <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 mb-2">
+                    <div className="w-10 h-10 flex-shrink-0">
+                      {!isLoading && data?.[0]?.imageFileId ? (
+                        <img
+                          src={data[0].imageFile?.url}
+                          alt="Organization"
+                          className="w-10 h-10 rounded-full object-cover border-2 border-gray-300"
+                        />
+                      ) : (
+                        <div
+                          className={`w-10 h-10 bg-gradient-to-br ${avatarGradient} rounded-full flex items-center justify-center text-white text-sm font-bold`}
+                        >
+                          {(user?.name || t('sidebar.user_fallback'))
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
+                      )}
                     </div>
 
-                    <Separator className="my-2" />
-
-                    <DropdownMenuItem
-                      asChild
-                      className="flex items-center gap-3 px-3 py-2 rounded-md dark:hover:!bg-gray-4 cursor-pointer"
-                    >
-                      <Link
-                        to="/account-settings"
-                        className="flex items-center gap-3 w-full"
-                      >
-                        <User size={18} className="text-gray-10" />
-                        <span className="text-sm font-medium">
-                          {t('sidebar.account_settings')}
-                        </span>
-                      </Link>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleSignOutClick();
-                      }}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600"
-                    >
-                      <SignOut size={18} />
-                      <span className="text-sm font-medium">
-                        {t('sidebar.sign_out')}
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-sm font-medium text-gray-12 truncate">
+                        {user?.name || t('sidebar.user_fallback')}
                       </span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenuPortal>
+                      <span className="text-xs text-gray-10 truncate">
+                        {user?.email || t('sidebar.email_fallback')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Separator className="my-2" />
+
+                  <DropdownMenuItem
+                    asChild
+                    className="flex items-center gap-3 px-3 py-2 rounded-md dark:hover:!bg-gray-4 cursor-pointer"
+                  >
+                    <Link
+                      to="/account-settings"
+                      className="flex items-center gap-3 w-full"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <User size={18} className="text-gray-10" />
+                      <span className="text-sm font-medium">
+                        {t('sidebar.account_settings')}
+                      </span>
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleSignOutClick();
+                    }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600"
+                  >
+                    <SignOut size={18} />
+                    <span className="text-sm font-medium">
+                      {t('sidebar.sign_out')}
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
               </DropdownMenu>
             </SidebarMenuItem>
           </SidebarMenu>
