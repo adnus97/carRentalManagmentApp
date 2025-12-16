@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import {
   Sidebar,
   SidebarContent,
@@ -37,7 +38,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter();
   const [showSignOutDialog, setShowSignOutDialog] = React.useState(false);
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
   const { t } = useTranslation('layout');
+
+  // Ensure we're mounted on client side
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -71,6 +78,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const avatarGradient = isSuperAdmin
     ? 'from-red-500 to-orange-600'
     : 'from-blue-500 to-purple-600';
+
+  // Render dialog using portal to body to escape sidebar stacking context
+  const dialogPortal =
+    mounted && showSignOutDialog
+      ? createPortal(
+          <ConfirmationDialog
+            open={showSignOutDialog}
+            onOpenChange={setShowSignOutDialog}
+            onConfirm={handleSignOut}
+            title={t('sidebar.confirm_signout_title')}
+            description={t('sidebar.confirm_signout_desc')}
+            confirmText={t('sidebar.confirm')}
+            cancelText={t('sidebar.cancel')}
+            variant="destructive"
+          />,
+          document.body,
+        )
+      : null;
 
   return (
     <>
@@ -245,18 +270,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarFooter>
       </Sidebar>
 
-      {showSignOutDialog && (
-        <ConfirmationDialog
-          open={showSignOutDialog}
-          onOpenChange={setShowSignOutDialog}
-          onConfirm={handleSignOut}
-          title={t('sidebar.confirm_signout_title')}
-          description={t('sidebar.confirm_signout_desc')}
-          confirmText={t('sidebar.confirm')}
-          cancelText={t('sidebar.cancel')}
-          variant="destructive"
-        />
-      )}
+      {dialogPortal}
     </>
   );
 }
