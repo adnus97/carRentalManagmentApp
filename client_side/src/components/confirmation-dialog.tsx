@@ -40,6 +40,7 @@ export function ConfirmationDialog({
 
     if (open) {
       document.addEventListener('keydown', handleEscape);
+      // Optional: fix for iOS scroll locking if needed in the future
       document.body.style.overflow = 'hidden';
     }
 
@@ -50,8 +51,9 @@ export function ConfirmationDialog({
   }, [open, isLoading, onOpenChange]);
 
   // Handle clicks outside dialog
+  // CHANGED: Use 'pointerdown' instead of 'mousedown' for better mobile support
   React.useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: PointerEvent | MouseEvent) => {
       if (
         open &&
         !isLoading &&
@@ -65,12 +67,13 @@ export function ConfirmationDialog({
     if (open) {
       // Add a small delay to prevent immediate closing
       setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
+        // 'pointerdown' works on both mobile (touch) and desktop (mouse)
+        document.addEventListener('pointerdown', handleClickOutside);
       }, 100);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside);
     };
   }, [open, isLoading, onOpenChange]);
 
@@ -108,7 +111,8 @@ export function ConfirmationDialog({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    // CHANGED: Increased z-index to z-[100001] to sit ABOVE the sidebar dropdown (which is z-[100000])
+    <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4">
       {/* Background overlay */}
       <div className="fixed inset-0 z-40 bg-black/50 dark:bg-black/70 transition-opacity" />
 
@@ -161,7 +165,10 @@ export function ConfirmationDialog({
             </Button>
             <Button
               variant="default"
-              color={variant === 'destructive' ? 'red' : 'teal'}
+              // Ensure color prop is supported by your Button component, or use className
+              className={
+                variant === 'destructive' ? 'bg-red-600 hover:bg-red-700' : ''
+              }
               onClick={handleConfirm}
               disabled={isLoading}
             >
