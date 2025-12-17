@@ -316,7 +316,7 @@ export function SignupForm({
       </div>
 
       {/* Centered Signup Form */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <div className="flex-1 flex flex-col items-center md:justify-center py-10 px-4">
         <div className="w-full max-w-md space-y-4">
           <Card className="bg-gray-2">
             <CardHeader className="text-center">
