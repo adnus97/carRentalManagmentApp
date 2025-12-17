@@ -304,7 +304,7 @@ export function SignupForm({
   console.log('showVerificationMessage:', showVerificationMessage);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col w-full overflow-y-auto">
+    <div className="flex flex-col min-h-screen w-full bg-background overflow-y-auto">
       <div className="flex-none flex w-full items-center justify-between px-4 py-3 z-10">
         <div className="flex items-center gap-2 ">
           <LanguageSelector />
@@ -316,8 +316,8 @@ export function SignupForm({
       </div>
 
       {/* Centered Signup Form */}
-      <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-        <div className="w-full max-w-md space-y-4 m-auto">
+      <div className="flex-1 flex flex-col items-center justify-start sm:justify-center p-4">
+        <div className="w-full max-w-md my-4 sm:my-auto">
           <Card className="bg-gray-2">
             <CardHeader className="text-center">
               <CardTitle className="text-xl">
