@@ -40,40 +40,13 @@ export function ConfirmationDialog({
 
     if (open) {
       document.addEventListener('keydown', handleEscape);
-      // Optional: fix for iOS scroll locking if needed in the future
+      // Prevent body scrolling while dialog is open
       document.body.style.overflow = 'hidden';
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
-    };
-  }, [open, isLoading, onOpenChange]);
-
-  // Handle clicks outside dialog
-  // CHANGED: Use 'pointerdown' instead of 'mousedown' for better mobile support
-  React.useEffect(() => {
-    const handleClickOutside = (e: PointerEvent | MouseEvent) => {
-      if (
-        open &&
-        !isLoading &&
-        dialogRef.current &&
-        !dialogRef.current.contains(e.target as Node)
-      ) {
-        onOpenChange(false);
-      }
-    };
-
-    if (open) {
-      // Add a small delay to prevent immediate closing
-      setTimeout(() => {
-        // 'pointerdown' works on both mobile (touch) and desktop (mouse)
-        document.addEventListener('pointerdown', handleClickOutside);
-      }, 100);
-    }
-
-    return () => {
-      document.removeEventListener('pointerdown', handleClickOutside);
     };
   }, [open, isLoading, onOpenChange]);
 
@@ -90,7 +63,9 @@ export function ConfirmationDialog({
     }
   }, [open]);
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (e: React.MouseEvent) => {
+    // Stop propagation to prevent this click from being caught by the wrapper
+    e.stopPropagation();
     try {
       setIsLoading(true);
       await onConfirm();
@@ -102,8 +77,17 @@ export function ConfirmationDialog({
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!isLoading) {
+      onOpenChange(false);
+    }
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only close if the user clicked the wrapper element directly (the dark area),
+    // not if they clicked the dialog itself (which bubbles up).
+    if (e.target === e.currentTarget && !isLoading) {
       onOpenChange(false);
     }
   };
@@ -111,12 +95,25 @@ export function ConfirmationDialog({
   if (!open) return null;
 
   return createPortal(
-    // CHANGED: Increased z-index to z-[100001] to sit ABOVE the sidebar dropdown (which is z-[100000])
-    <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4">
-      {/* Background overlay */}
-      <div className="fixed inset-0 z-40 bg-black/50 dark:bg-black/70 transition-opacity" />
+    /* 
+      1. Wrapper: Handles the positioning and the "Outside Click".
+         z-[100001] ensures it sits above the sidebar (z-[100000]).
+    */
+    <div
+      className="fixed inset-0 z-[100001] flex items-center justify-center p-4"
+      onClick={handleBackdropClick}
+    >
+      {/* 
+        2. Visual Overlay: Purely cosmetic. 
+           pointer-events-none ensures clicks pass through to the Wrapper for handling. 
+      */}
+      <div className="fixed inset-0 z-40 bg-black/50 dark:bg-black/70 transition-opacity pointer-events-none" />
 
-      {/* Dialog */}
+      {/* 
+        3. Dialog Content:
+           We don't need a specific click handler here because bubbles
+           will have e.target != e.currentTarget in the wrapper handler.
+      */}
       <div
         ref={dialogRef}
         className="relative z-50 w-full max-w-md bg-white dark:bg-gray-1 rounded-lg shadow-xl transform transition-all border dark:border-gray-6"
@@ -124,6 +121,8 @@ export function ConfirmationDialog({
         aria-modal="true"
         aria-labelledby="dialog-title"
         aria-describedby="dialog-description"
+        // Stop propagation just in case, though the check above handles it.
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <Button
@@ -165,9 +164,10 @@ export function ConfirmationDialog({
             </Button>
             <Button
               variant="default"
-              // Ensure color prop is supported by your Button component, or use className
               className={
-                variant === 'destructive' ? 'bg-red-600 hover:bg-red-700' : ''
+                variant === 'destructive'
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : ''
               }
               onClick={handleConfirm}
               disabled={isLoading}
