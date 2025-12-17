@@ -269,7 +269,7 @@ export function AppLayout() {
           </header>
 
           <LayoutContext.Provider value={{ headerHeight }}>
-            <main className="h-[calc(100vh-64px)]">
+            <main className="h-[calc(100dvh-64px)] overflow-y-auto">
               <Outlet />
             </main>
           </LayoutContext.Provider>
