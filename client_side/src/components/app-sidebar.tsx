@@ -11,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  useSidebar, // 1. IMPORT THIS HOOK
 } from '@/components/ui/sidebar';
 import { CaretUpDown, User, SignOut, Shield } from '@phosphor-icons/react';
 import { Link, useRouter } from '@tanstack/react-router';
@@ -40,6 +41,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const { t } = useTranslation('layout');
 
+  // 2. GET THE MOBILE CONTROL FUNCTION
+  const { setOpenMobile } = useSidebar();
+
   const isSuperAdmin = user?.role === 'super_admin';
 
   const { data, isLoading } = useQuery<Organization[]>({
@@ -56,10 +60,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   const handleSignOutClick = () => {
-    // 1. Force close the dropdown immediately
+    // 3. SEQUENCE THE CLOSING ACTIONS
+    // First, close the dropdown menu
     setDropdownOpen(false);
-    // 2. Open the dialog immediately (no timeout needed if z-index is correct)
-    setShowSignOutDialog(true);
+
+    // Second, CLOSE THE MOBILE SIDEBAR DRAWER
+    // This removes the "overlay" that was blocking your clicks
+    setOpenMobile(false);
+
+    // Third, open the dialog after a tiny delay to allow animations to clear
+    setTimeout(() => {
+      setShowSignOutDialog(true);
+    }, 200);
   };
 
   const navigationItems = isSuperAdmin
@@ -103,6 +115,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <Link
                       to={item.url}
                       className="hover:bg-gray-4 data-[status=active]:bg-gray-4"
+                      onClick={() => setOpenMobile(false)} // Optional: Auto-close sidebar on nav click
                     >
                       {item.icon}
                       <span className="ml-3">{t(item.title)}</span>
@@ -129,7 +142,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <DropdownMenu
                 open={dropdownOpen}
                 onOpenChange={setDropdownOpen}
-                modal={false} // Crucial for mobile touch events
+                modal={false} // Keep this false for better touch handling
               >
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton className="h-16 px-4 py-3 hover:bg-gray-3 transition-colors duration-200">
@@ -156,7 +169,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <span className="text-sm font-medium text-gray-12 truncate">
                           {user?.name || t('sidebar.user_fallback')}
                         </span>
-                        <span className="text-xs text-gray-10 truncate">
+                        <span className="text-xs text-gray-1 truncate">
                           {user?.email || t('sidebar.email_fallback')}
                         </span>
                       </div>
@@ -175,7 +188,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     align="start"
                     className="w-64 p-2 z-[100000]"
                     sideOffset={8}
-                    // Prevent auto-focus fighting on mobile
                     onCloseAutoFocus={(e) => e.preventDefault()}
                   >
                     <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 mb-2">
@@ -216,6 +228,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <Link
                         to="/account-settings"
                         className="flex items-center gap-3 w-full"
+                        onClick={() => setOpenMobile(false)} // Close sidebar when navigating too
                       >
                         <User size={18} className="text-gray-10" />
                         <span className="text-sm font-medium">
@@ -225,8 +238,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      // Use onSelect without preventDefault to let Radix close the menu natively
-                      onSelect={() => handleSignOutClick()}
+                      onSelect={(e) => {
+                        e.preventDefault(); // Stop Radix default closing
+                        handleSignOutClick(); // Run our custom sequence
+                      }}
                       className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
                     >
                       <SignOut size={18} />
@@ -242,22 +257,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarFooter>
       </Sidebar>
 
-      {/* 
-        Ideally, move this Dialog OUTSIDE the fragment to the root level if possible, 
-        but z-index should handle it here.
-      */}
-      {showSignOutDialog && (
-        <ConfirmationDialog
-          open={showSignOutDialog}
-          onOpenChange={setShowSignOutDialog}
-          onConfirm={handleSignOut}
-          title={t('sidebar.confirm_signout_title')}
-          description={t('sidebar.confirm_signout_desc')}
-          confirmText={t('sidebar.confirm')}
-          cancelText={t('sidebar.cancel')}
-          variant="destructive"
-        />
-      )}
+      {/* Confirmation Dialog is OUTSIDE the Sidebar structure */}
+      <ConfirmationDialog
+        open={showSignOutDialog}
+        onOpenChange={setShowSignOutDialog}
+        onConfirm={handleSignOut}
+        title={t('sidebar.confirm_signout_title')}
+        description={t('sidebar.confirm_signout_desc')}
+        confirmText={t('sidebar.confirm')}
+        cancelText={t('sidebar.cancel')}
+        variant="destructive"
+      />
     </>
   );
 }
