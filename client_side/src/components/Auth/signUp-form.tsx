@@ -212,88 +212,98 @@ export function SignupForm({
 
   // Verification message screen
   if (showVerificationMessage) {
-    console.log('=== RENDERING VERIFICATION SCREEN ===');
-    console.log('userEmail:', userEmail);
-
     return (
-      <div
-        className={cn(
-          'flex w-full flex-col min-h-[100dvh] overflow-y-auto',
-          className,
-        )}
-        {...props}
-      >
-        <div className="flex flex-1 items-center justify-center p-4">
-          <Card className="bg-gray-2 w-full max-w-md">
-            <CardHeader className="text-center">
-              <CardTitle className="text-xl">
-                {t('signup.verify_title', 'Check Your Email')}
-              </CardTitle>
-              <CardDescription className="space-y-2">
-                <div>
-                  {t(
-                    'signup.verify_desc_part1',
-                    'We have sent a verification link to:',
-                  )}
+      <div className="flex min-h-[100dvh] flex-col w-full">
+        {/* Top bar (same as login) */}
+        <div className="flex-none flex w-full items-center justify-between px-4 py-3 z-10">
+          <div className="flex items-center gap-2">
+            <LanguageSelector />
+          </div>
+          <div className="flex items-center">
+            <ModeToggle />
+          </div>
+        </div>
+
+        {/* Centered content */}
+        <div
+          className={cn(
+            'flex flex-1 items-center justify-center px-4',
+            className,
+          )}
+          {...props}
+        >
+          <div className="w-full max-w-[760px] md:max-w-[860px] lg:max-w-[920px]">
+            <Card className="bg-gray-2 w-full">
+              <CardHeader className="text-center">
+                <CardTitle className="text-xl">
+                  {t('signup.verify_title', 'Check Your Email')}
+                </CardTitle>
+                <CardDescription className="space-y-2">
+                  <div>
+                    {t(
+                      'signup.verify_desc_part1',
+                      'We have sent a verification link to:',
+                    )}
+                  </div>
+                  <div className="font-semibold text-foreground">
+                    {userEmail}
+                  </div>
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="text-center space-y-4">
+                <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                  {/* your svg */}
+                  <svg
+                    className="w-8 h-8 text-blue-600 dark:text-blue-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
+                  </svg>
                 </div>
-                <div className="font-semibold text-foreground">{userEmail}</div>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-blue-600 dark:text-blue-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-              <div className="space-y-2">
+
                 <p className="text-sm text-muted-foreground">
                   {t(
                     'signup.verify_hint',
                     "Click the link in the email to activate your account. Check your spam folder if you don't see it.",
                   )}
                 </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    console.log('Resetting verification screen');
-                    setShowVerificationMessage(false);
-                    setUserEmail('');
-                    if (typeof window !== 'undefined') {
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowVerificationMessage(false);
+                      setUserEmail('');
                       sessionStorage.removeItem('showVerificationMessage');
                       sessionStorage.removeItem('verificationEmail');
-                    }
-                  }}
-                  className="flex-1"
-                >
-                  {t('common.try_different_email', 'Try Different Email')}
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
+                    }}
+                    className="flex-1"
+                  >
+                    {t('common.try_different_email', 'Try Different Email')}
+                  </Button>
+
+                  <Button
+                    onClick={() => {
                       sessionStorage.removeItem('showVerificationMessage');
                       sessionStorage.removeItem('verificationEmail');
-                    }
-                    navigate({ to: '/login' });
-                  }}
-                  className="flex-1"
-                >
-                  {t('common.back_to_login', 'Back to Login')}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                      navigate({ to: '/login' });
+                    }}
+                    className="flex-1"
+                  >
+                    {t('common.back_to_login', 'Back to Login')}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
@@ -304,9 +314,9 @@ export function SignupForm({
   console.log('showVerificationMessage:', showVerificationMessage);
 
   return (
-    <div className="flex h-[100dvh] flex-col w-full overflow-hidden">
-      <div className="flex-none flex w-full items-center justify-between px-4 py-3 z-10 bg-background">
-        <div className="flex items-center gap-2 ">
+    <div className="flex min-h-[100dvh] flex-col w-full">
+      <div className="flex-none flex w-full items-center justify-between px-4 py-3 z-10">
+        <div className="flex items-center gap-2">
           <LanguageSelector />
         </div>
 
@@ -315,10 +325,15 @@ export function SignupForm({
         </div>
       </div>
 
-      {/* Centered Signup Form */}
-      <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-        <div className="w-full max-w-md space-y-4">
-          <Card className="bg-gray-2">
+      <div
+        className={cn(
+          'flex flex-1 items-center justify-center px-4',
+          className,
+        )}
+        {...props}
+      >
+        <div className="w-full max-w-[760px] md:max-w-[860px] lg:max-w-[920px]">
+          <Card className="overflow-hidden bg-gray-2 w-full">
             <CardHeader className="text-center">
               <CardTitle className="text-xl">
                 {t('signup.title', 'Sign Up')}
@@ -327,7 +342,7 @@ export function SignupForm({
                 {t('signup.subtitle', 'Create your account to get started.')}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <form onSubmit={handleSubmit(onSubmit)}>
                 <div className="grid gap-6">
                   <div className="grid gap-6">
