@@ -217,11 +217,13 @@ export function SignupForm({
 
     return (
       <div
-        className={cn('flex flex-col gap-6 relative min-h-screen', className)}
+        className={cn(
+          'flex w-full flex-col min-h-[100dvh] overflow-y-auto',
+          className,
+        )}
         {...props}
       >
-        {/* Centered Content */}
-        <div className="flex items-center justify-center min-h-screen p-4">
+        <div className="flex flex-1 items-center justify-center p-4">
           <Card className="bg-gray-2 w-full max-w-md">
             <CardHeader className="text-center">
               <CardTitle className="text-xl">
