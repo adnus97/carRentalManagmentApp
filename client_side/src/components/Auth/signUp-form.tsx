@@ -302,7 +302,7 @@ export function SignupForm({
   console.log('showVerificationMessage:', showVerificationMessage);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col w-full">
+    <div className="flex min-h-[100dvh] flex-col w-full scroll-y-auto">
       <div className="flex-none flex w-full items-center justify-between px-4 py-3 z-10">
         <div className="flex items-center gap-2 ">
           <LanguageSelector />
