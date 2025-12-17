@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,7 +55,9 @@ export function SignupForm({
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
 
-  // Use sessionStorage to persist verification state across re-renders
+  const { user } = useUser();
+
+  // Persist verification screen across reloads
   const [showVerificationMessage, setShowVerificationMessage] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('showVerificationMessage') === 'true';
@@ -70,8 +72,30 @@ export function SignupForm({
     return '';
   });
 
+  // Debug helpers (optional)
   const mountCount = useRef(0);
-  const lastStateChange = useRef<string>('');
+  useEffect(() => {
+    mountCount.current += 1;
+    // eslint-disable-next-line no-console
+    console.log(`🔄 SignupForm render #${mountCount.current}`, {
+      showVerificationMessage,
+      userEmail,
+      user,
+    });
+  }, [showVerificationMessage, userEmail, user]);
+
+  // Sync state to sessionStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (showVerificationMessage) {
+      sessionStorage.setItem('showVerificationMessage', 'true');
+      sessionStorage.setItem('verificationEmail', userEmail);
+    } else {
+      sessionStorage.removeItem('showVerificationMessage');
+      sessionStorage.removeItem('verificationEmail');
+    }
+  }, [showVerificationMessage, userEmail]);
 
   const {
     register,
@@ -82,57 +106,15 @@ export function SignupForm({
     resolver: zodResolver(schema),
   });
 
-  const { user } = useUser();
-
-  // Debug: Track component mounts and state changes
-  useEffect(() => {
-    mountCount.current += 1;
-    console.log(`🔄 Component render #${mountCount.current}`);
-    console.log('Current state:', { showVerificationMessage, userEmail });
-    console.log('User from context:', user);
-  }, [showVerificationMessage, userEmail, user]);
-
-  // Sync state to sessionStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (showVerificationMessage) {
-        sessionStorage.setItem('showVerificationMessage', 'true');
-        sessionStorage.setItem('verificationEmail', userEmail);
-        console.log('💾 Saved verification state to sessionStorage');
-      } else {
-        sessionStorage.removeItem('showVerificationMessage');
-        sessionStorage.removeItem('verificationEmail');
-      }
-    }
-  }, [showVerificationMessage, userEmail]);
-
   const onSubmit = async (data: FormFields) => {
-    console.log('=== SIGNUP FLOW START ===');
-    console.log('1. Form data:', { email: data.email, name: data.name });
-    console.log(
-      '2. Current showVerificationMessage state:',
-      showVerificationMessage,
-    );
-
     try {
-      console.log('3. Calling authClient.signUp.email...');
-
       const response = await authClient.signUp.email({
         email: data.email,
         password: data.password,
         name: data.name,
       });
 
-      console.log('4. Response received:', response);
-      console.log('5. Response type:', typeof response);
-      console.log(
-        '6. Response keys:',
-        response ? Object.keys(response) : 'null',
-      );
-
-      // Check if signup was successful
       if (response?.error) {
-        console.log('7. ERROR PATH - Response has error:', response.error);
         toast({
           type: 'error',
           title: t('signup.failed_title', 'Signup Failed'),
@@ -143,19 +125,10 @@ export function SignupForm({
         return;
       }
 
-      // Success - show verification message
-      console.log('8. SUCCESS PATH - Setting email and showing verification');
-      console.log('9. Setting userEmail to:', data.email);
       setUserEmail(data.email);
-
-      console.log('10. Setting showVerificationMessage to true');
-      lastStateChange.current = 'verification-set';
       setShowVerificationMessage(true);
-
-      console.log('11. Resetting form');
       reset();
 
-      console.log('12. Showing success toast');
       toast({
         type: 'success',
         title: t('signup.created_title', 'Account Created'),
@@ -164,30 +137,8 @@ export function SignupForm({
           'Check your email to verify your account.',
         ),
       });
-
-      console.log(
-        '13. After all state updates, showVerificationMessage should be true',
-      );
-
-      // CRITICAL: Prevent any navigation or session updates from resetting the form
-      // Wait a bit to ensure state is committed
-      setTimeout(() => {
-        console.log(
-          '14. After timeout, checking state:',
-          showVerificationMessage,
-        );
-      }, 100);
     } catch (error: any) {
-      console.error('=== CAUGHT ERROR ===');
-      console.error('Error object:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error code:', error?.code);
-      console.error('Error message:', error?.message);
-      console.error('Full error:', JSON.stringify(error, null, 2));
-
-      // Handle specific error codes
       if (error?.code === 'USER_ALREADY_EXISTS') {
-        console.log('User already exists error');
         toast({
           type: 'error',
           title: t('signup.failed_title', 'Signup Failed'),
@@ -196,38 +147,42 @@ export function SignupForm({
             'An account with this email already exists.',
           ),
         });
-      } else {
-        console.log('Generic error');
-        toast({
-          type: 'error',
-          title: t('signup.failed_title', 'Signup Failed'),
-          description:
-            error?.message || t('signup.failed_desc', 'Something went wrong'),
-        });
+        return;
       }
-    }
 
-    console.log('=== SIGNUP FLOW END ===');
+      toast({
+        type: 'error',
+        title: t('signup.failed_title', 'Signup Failed'),
+        description:
+          error?.message || t('signup.failed_desc', 'Something went wrong'),
+      });
+    }
   };
 
-  // Verification message screen
+  const TopBar = () => {
+    return (
+      <div className="flex-none flex w-full items-center justify-between px-4 py-3 z-10 shrink-0">
+        <div className="flex items-center gap-2">
+          <LanguageSelector />
+        </div>
+        <div className="flex items-center">
+          <ModeToggle />
+        </div>
+      </div>
+    );
+  };
+
+  // Verification screen
   if (showVerificationMessage) {
     return (
-      <div className="flex min-h-[100dvh] flex-col w-full">
-        {/* Top bar (same as login) */}
-        <div className="flex-none flex w-full items-center justify-between px-4 py-3 z-10">
-          <div className="flex items-center gap-2">
-            <LanguageSelector />
-          </div>
-          <div className="flex items-center">
-            <ModeToggle />
-          </div>
-        </div>
+      <div
+        className={cn('flex min-h-[100dvh] flex-col w-full overflow-y-auto')}
+      >
+        <TopBar />
 
-        {/* Centered content */}
         <div
           className={cn(
-            'flex flex-1 items-center justify-center px-4',
+            'flex flex-1 items-center justify-center px-4 py-4',
             className,
           )}
           {...props}
@@ -253,7 +208,6 @@ export function SignupForm({
 
               <CardContent className="text-center space-y-4">
                 <div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                  {/* your svg */}
                   <svg
                     className="w-8 h-8 text-blue-600 dark:text-blue-400"
                     fill="none"
@@ -309,25 +263,14 @@ export function SignupForm({
     );
   }
 
-  // Signup form
-  console.log('=== RENDERING SIGNUP FORM ===');
-  console.log('showVerificationMessage:', showVerificationMessage);
-
+  // Signup form screen
   return (
-    <div className="flex min-h-[100dvh] flex-col w-full">
-      <div className="flex-none flex w-full items-center justify-between px-4 py-3 z-10">
-        <div className="flex items-center gap-2">
-          <LanguageSelector />
-        </div>
-
-        <div className="flex items-center">
-          <ModeToggle />
-        </div>
-      </div>
+    <div className={cn('flex min-h-[100dvh] flex-col w-full overflow-y-auto')}>
+      <TopBar />
 
       <div
         className={cn(
-          'flex flex-1 items-center justify-center px-4',
+          'flex flex-1 items-center justify-center px-4 py-4',
           className,
         )}
         {...props}
@@ -342,114 +285,111 @@ export function SignupForm({
                 {t('signup.subtitle', 'Create your account to get started.')}
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
+
+            <CardContent className="p-6 md:p-8">
               <form onSubmit={handleSubmit(onSubmit)}>
                 <div className="grid gap-6">
-                  <div className="grid gap-6">
-                    <div className="grid gap-2">
-                      <Label htmlFor="name" className="text-justify">
-                        {t('common.name', 'Name')}{' '}
-                        <span className="text-red-700">*</span>
-                      </Label>
-                      <Input
-                        id="name"
-                        type="text"
-                        className={
-                          errors.name
-                            ? 'border-red-600 focus:outline-none focus:ring-0 focus:ring-offset-0'
-                            : ''
-                        }
-                        {...register('name', {
-                          required: 'signup.zod.name_min',
-                        })}
-                      />
-                      {errors.name && (
-                        <span className="text-red-600 text-sm">
-                          {t(errors.name.message as any)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="email" className="text-justify">
-                        {t('common.email', 'Email')}{' '}
-                        <span className="text-red-700">*</span>
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        className={
-                          errors.email ? 'border-red-600 outline-none' : ''
-                        }
-                        placeholder="m@example.com"
-                        {...register('email')}
-                      />
-                      {errors.email && (
-                        <span className="text-red-600 text-sm">
-                          {t(errors.email.message as any)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="password">
-                        {t('common.password', 'Password')}{' '}
-                        <span className="text-red-700">*</span>
-                      </Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        {...register('password')}
-                        className={
-                          errors.password ? 'border-red-600 outline-none' : ''
-                        }
-                      />
-                      {errors.password && (
-                        <span className="text-red-600 text-sm">
-                          {t(errors.password.message as any)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="passwordVerification">
-                        {t('common.confirm_password', 'Confirm Password')}{' '}
-                        <span className="text-red-700">*</span>
-                      </Label>
-                      <Input
-                        id="passwordVerification"
-                        type="password"
-                        {...register('passwordVerification')}
-                        className={
-                          errors.passwordVerification
-                            ? 'border-red-600 outline-none'
-                            : ''
-                        }
-                      />
-                      {errors.passwordVerification && (
-                        <span className="text-red-600 text-sm">
-                          {t(errors.passwordVerification.message as any)}
-                        </span>
-                      )}
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader />
-                          <span>
-                            {t('signup.button_loading', 'Creating...')}
-                          </span>
-                        </>
-                      ) : (
-                        t('signup.button', 'Sign Up')
-                      )}
-                    </Button>
+                  <div className="grid gap-2">
+                    <Label htmlFor="name" className="text-justify">
+                      {t('common.name', 'Name')}{' '}
+                      <span className="text-red-700">*</span>
+                    </Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      className={
+                        errors.name
+                          ? 'border-red-600 focus:outline-none focus:ring-0 focus:ring-offset-0'
+                          : ''
+                      }
+                      {...register('name', {
+                        required: 'signup.zod.name_min',
+                      })}
+                    />
+                    {errors.name && (
+                      <span className="text-red-600 text-sm">
+                        {t(errors.name.message as any)}
+                      </span>
+                    )}
                   </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="email" className="text-justify">
+                      {t('common.email', 'Email')}{' '}
+                      <span className="text-red-700">*</span>
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="m@example.com"
+                      className={
+                        errors.email ? 'border-red-600 outline-none' : ''
+                      }
+                      {...register('email')}
+                    />
+                    {errors.email && (
+                      <span className="text-red-600 text-sm">
+                        {t(errors.email.message as any)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="password">
+                      {t('common.password', 'Password')}{' '}
+                      <span className="text-red-700">*</span>
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      className={
+                        errors.password ? 'border-red-600 outline-none' : ''
+                      }
+                      {...register('password')}
+                    />
+                    {errors.password && (
+                      <span className="text-red-600 text-sm">
+                        {t(errors.password.message as any)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="passwordVerification">
+                      {t('common.confirm_password', 'Confirm Password')}{' '}
+                      <span className="text-red-700">*</span>
+                    </Label>
+                    <Input
+                      id="passwordVerification"
+                      type="password"
+                      className={
+                        errors.passwordVerification
+                          ? 'border-red-600 outline-none'
+                          : ''
+                      }
+                      {...register('passwordVerification')}
+                    />
+                    {errors.passwordVerification && (
+                      <span className="text-red-600 text-sm">
+                        {t(errors.passwordVerification.message as any)}
+                      </span>
+                    )}
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader />
+                        <span>{t('signup.button_loading', 'Creating...')}</span>
+                      </>
+                    ) : (
+                      t('signup.button', 'Sign Up')
+                    )}
+                  </Button>
 
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
