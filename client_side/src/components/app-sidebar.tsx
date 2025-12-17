@@ -1,3 +1,4 @@
+// src/components/layout/AppSidebar.tsx
 'use client';
 
 import * as React from 'react';
@@ -55,13 +56,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   };
 
   const handleSignOutClick = () => {
+    // 1. Force close the dropdown immediately
     setDropdownOpen(false);
-    // Use requestAnimationFrame for smooth transition
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        setShowSignOutDialog(true);
-      }, 150);
-    });
+    // 2. Open the dialog immediately (no timeout needed if z-index is correct)
+    setShowSignOutDialog(true);
   };
 
   const navigationItems = isSuperAdmin
@@ -131,7 +129,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <DropdownMenu
                 open={dropdownOpen}
                 onOpenChange={setDropdownOpen}
-                modal={false}
+                modal={false} // Crucial for mobile touch events
               >
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton className="h-16 px-4 py-3 hover:bg-gray-3 transition-colors duration-200">
@@ -177,6 +175,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     align="start"
                     className="w-64 p-2 z-[100000]"
                     sideOffset={8}
+                    // Prevent auto-focus fighting on mobile
                     onCloseAutoFocus={(e) => e.preventDefault()}
                   >
                     <div className="flex items-center gap-3 p-3 rounded-md bg-gray-1 mb-2">
@@ -202,7 +201,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <span className="text-sm font-medium text-gray-12 truncate">
                           {user?.name || t('sidebar.user_fallback')}
                         </span>
-                        <span className="text-xs text-gray-10 truncate">
+                        <span className="text-xs text-gray-1 truncate">
                           {user?.email || t('sidebar.email_fallback')}
                         </span>
                       </div>
@@ -226,11 +225,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleSignOutClick();
-                      }}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600"
+                      // Use onSelect without preventDefault to let Radix close the menu natively
+                      onSelect={() => handleSignOutClick()}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:!bg-gray-4 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
                     >
                       <SignOut size={18} />
                       <span className="text-sm font-medium">
@@ -245,6 +242,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarFooter>
       </Sidebar>
 
+      {/* 
+        Ideally, move this Dialog OUTSIDE the fragment to the root level if possible, 
+        but z-index should handle it here.
+      */}
       {showSignOutDialog && (
         <ConfirmationDialog
           open={showSignOutDialog}

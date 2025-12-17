@@ -822,16 +822,28 @@ export const RentsGrid = () => {
       </div>
 
       {selectedRows.length > 0 && (
-        <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-          <div className="flex items-center gap-2 justify-between w-full">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">
-                {selectedRows.length} {t('grid.rent', 'Rent')}
-                {selectedRows.length > 1 ? 's' : ''}{' '}
-                {t('grid.selected', 'selected')}
-              </span>
-              <Separator orientation="vertical" className="h-4" />
+        <div
+          className="
+            mb-4 rounded-lg border
+            bg-gray-50 dark:bg-gray-800
+            p-3 sm:p-3
+            flex flex-col gap-3
+            sm:flex-row sm:items-center sm:gap-2
+          "
+        >
+          {/* Left cluster: count + divider + inline actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 w-full sm:w-auto">
+            <span className="text-sm font-medium">
+              {selectedRows.length} {t('grid.rent', 'Rent')}
+              {selectedRows.length > 1 ? 's' : ''}{' '}
+              {t('grid.selected', 'selected')}
+            </span>
 
+            {/* Divider: Horizontal on mobile, Vertical on desktop */}
+            <Separator orientation="horizontal" className="my-2 sm:hidden" />
+            <Separator orientation="vertical" className="hidden sm:block h-4" />
+
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               {/* View single */}
               {selectedRows.length === 1 && (
                 <Button
@@ -852,7 +864,7 @@ export const RentsGrid = () => {
                     setContractId(id);
                     setContractOpen(true);
                   }}
-                  className="inline-flex items-center gap-2"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2"
                 >
                   <FileText size={20} />
                   {t('grid.view', 'View')}
@@ -864,6 +876,7 @@ export const RentsGrid = () => {
                 <Button
                   variant="outline"
                   onClick={async () => {
+                    // ... your existing PDF logic
                     const row = selectedRows[0];
                     try {
                       await downloadRentContractPDF(row.id);
@@ -897,36 +910,37 @@ export const RentsGrid = () => {
                       });
                     }
                   }}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2"
                 >
                   <Download size={20} />
                   {t('contract.actions.pdf', 'PDF')}
                 </Button>
               )}
             </div>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                className="ml-auto flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => setShowDeleteDialog(true)}
-                disabled={selectedRows.length === 0}
-              >
-                <Trash size={20} />
-                {t('grid.delete_with_counts', 'Delete ({{a}}/{{b}})', {
-                  a: deletableCount,
-                  b: selectedRows.length,
-                })}
-              </Button>
-              {activeCount > 0 && (
-                <span className="text-xs text-yellow-600">
-                  {t(
-                    'grid.active_cannot_delete',
-                    '{{n}} active rental(s) cannot be deleted',
-                    { n: activeCount },
-                  )}
-                </span>
-              )}
-            </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={selectedRows.length === 0}
+            >
+              <Trash size={20} />
+              {t('grid.delete_with_counts', 'Delete ({{a}}/{{b}})', {
+                a: deletableCount,
+                b: selectedRows.length,
+              })}
+            </Button>
+            {activeCount > 0 && (
+              <span className="text-xs text-yellow-600">
+                {t(
+                  'grid.active_cannot_delete',
+                  '{{n}} active rental(s) cannot be deleted',
+                  { n: activeCount },
+                )}
+              </span>
+            )}
           </div>
         </div>
       )}
