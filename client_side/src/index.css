@@ -291,3 +291,64 @@ h1 {
 .scrollbar-hide::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
+
+/* Fix for mobile sidebar dropdowns - ensure dropdowns appear above Sheet overlay */
+[data-radix-popper-content-wrapper] {
+  z-index: 100000 !important;
+}
+
+/* Ensure dropdown menu content has higher z-index than Sheet */
+[data-radix-dropdown-menu-content],
+[data-radix-select-content] {
+  z-index: 100000 !important;
+}
+
+/* Ensure dialog/modal overlays are above everything */
+[data-radix-dialog-overlay] {
+  z-index: 100001 !important;
+}
+
+[data-radix-dialog-content] {
+  z-index: 100002 !important;
+}
+
+/* Sheet overlay should be lower than dropdowns */
+[data-radix-sheet-overlay] {
+  z-index: 50 !important;
+}
+
+[data-radix-sheet-content] {
+  z-index: 51 !important;
+}
+
+/* Ensure scroll areas work properly inside dropdowns */
+[data-radix-scroll-area-viewport] {
+  display: block !important;
+  max-height: inherit;
+}
+
+/* Fix pointer events on mobile */
+@media (max-width: 768px) {
+  [data-radix-dropdown-menu-content],
+  [data-radix-dialog-content] {
+    pointer-events: auto !important;
+  }
+
+  /* Enable smooth touch scrolling on mobile */
+  [data-radix-dropdown-menu-content] > div,
+  [data-radix-dropdown-menu-content] {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+  }
+
+  /* Allow scrolling in dropdown content on mobile */
+  [data-radix-scroll-area-viewport] {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Ensure touch events work properly */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
