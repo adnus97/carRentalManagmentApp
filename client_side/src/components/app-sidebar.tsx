@@ -175,7 +175,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         <span className="text-sm font-medium text-gray-12 truncate">
                           {user?.name || t('sidebar.user_fallback')}
                         </span>
-                        <span className="text-xs text-gray-1 truncate">
+                        <span className="text-xs text-gray-10 truncate">
                           {user?.email || t('sidebar.email_fallback')}
                         </span>
                       </div>
