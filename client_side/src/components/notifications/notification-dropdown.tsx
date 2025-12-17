@@ -257,7 +257,6 @@ export function NotificationsDropdown() {
       <DropdownMenuContent
         className="w-[92vw] sm:w-[420px] md:w-[460px] lg:w-[500px] max-h-[80vh] p-0 shadow-lg border"
         align="end"
-        style={{ zIndex: 999999 }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-3 sm:px-4 sm:py-4 border-b bg-gray-50/50 dark:bg-gray-800/50">
@@ -467,7 +466,14 @@ export function NotificationsDropdown() {
         )}
 
         {/* Notifications List */}
-        <ScrollArea className="max-h-[55vh] sm:max-h-[60vh] lg:max-h-[65vh] overflow-y-auto overflow-x-hidden">
+        <div
+          className="max-h-[55vh] sm:max-h-[60vh] lg:max-h-[65vh] overflow-y-auto overflow-x-hidden"
+          style={{
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+          }}
+        >
           {isLoading || isRefreshing ? (
             <div className="p-8 sm:p-10 md:p-12 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
@@ -501,7 +507,7 @@ export function NotificationsDropdown() {
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         {/* Footer */}
         {notifications.length > 0 && (
