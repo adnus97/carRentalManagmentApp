@@ -230,7 +230,7 @@ export function NotificationsDropdown() {
   };
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange} modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -473,6 +473,8 @@ export function NotificationsDropdown() {
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',
           }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
         >
           {isLoading || isRefreshing ? (
             <div className="p-8 sm:p-10 md:p-12 text-center">
