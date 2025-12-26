@@ -11,7 +11,10 @@
       "title": "Détails de l’organisation",
       "website": "Site web",
       "phone": "Tél",
-      "address": "Adresse"
+      "address": "Adresse",
+      "rc": "RC",
+      "cnss": "CNSS",
+      "ice": "ICE"
     },
     "docs": {
       "title": "Documents légaux",
@@ -45,6 +48,9 @@
       "website_ph": "https://societe.com",
       "phone_ph": "+1 555 0100",
       "address_ph": "123 rue du Marché, Ville, Pays",
+      "rc_ph": "Num de RC",
+      "cnss_ph": "Num CNSS",
+      "ice_ph": "Num ICE",
       "docs_hint": "Vous pouvez les téléverser maintenant ou plus tard depuis la page de l’organisation.",
       "rc_desc": "Extrait du registre de commerce (PDF).",
       "status_desc": "Statuts de la société (PDF).",

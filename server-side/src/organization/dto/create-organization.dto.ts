@@ -29,6 +29,17 @@ export class CreateOrganizationDto {
   @IsString()
   address?: string;
 
+  @IsOptional()
+  @IsString()
+  rcNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  cnssNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  iceNumber?: string;
   // File ID references (all like rcFileId)
   @IsOptional()
   @IsString()

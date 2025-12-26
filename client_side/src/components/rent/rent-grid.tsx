@@ -1078,9 +1078,6 @@ export const RentsGrid = () => {
           guarantee={selectedRentForEdit.guarantee}
           lateFee={selectedRentForEdit.lateFee}
           returnedAt={selectedRentForEdit.returnedAt}
-          rentContractId={selectedRentForEdit.rentContractId}
-          rentNumber={selectedRentForEdit.rentNumber}
-          year={selectedRentForEdit.year}
           onRentUpdated={() => {
             queryClient.invalidateQueries({ queryKey: ['rents'] });
             queryClient.refetchQueries({ queryKey: ['rents', page, pageSize] });

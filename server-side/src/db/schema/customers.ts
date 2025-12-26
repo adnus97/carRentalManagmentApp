@@ -22,7 +22,7 @@ export const customers = pgTable(
     firstName: text('first_name').notNull(),
     lastName: text('last_name').notNull(),
     email: varchar('email', { length: 255 }),
-    phone: varchar('phone', { length: 20 }).notNull(),
+    phone: varchar('phone', { length: 20 }),
     address: text('address').notNull(), // ensure present
     documentId: varchar('document_id', { length: 255 }).notNull(),
     documentType: text('document_type', {

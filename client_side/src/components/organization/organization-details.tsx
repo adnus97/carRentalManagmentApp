@@ -338,6 +338,36 @@ export function OrganizationDetails() {
                 </div>
               )}
             </div>
+            {(organization?.rcNumber ||
+              organization?.cnssNumber ||
+              organization?.iceNumber) && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                    {t('org.details.rc', 'RC')}
+                  </label>
+                  <p className="mt-1 break-words">
+                    {organization.rcNumber || '—'}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                    {t('org.details.cnss', 'CNSS')}
+                  </label>
+                  <p className="mt-1 break-words">
+                    {organization.cnssNumber || '—'}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-muted-foreground">
+                    {t('org.details.ice', 'ICE')}
+                  </label>
+                  <p className="mt-1 break-words">
+                    {organization.iceNumber || '—'}
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

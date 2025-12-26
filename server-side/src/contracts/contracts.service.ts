@@ -45,6 +45,9 @@ export class ContractsService {
         logo: logoUrl,
         address: org?.address,
         phone: org?.phone,
+        cnss: org?.cnssNumber || '',
+        ice: org?.iceNumber || '',
+        rc: org?.rcNumber || '',
       },
       customer: {
         firstName: c.customerFirstName,

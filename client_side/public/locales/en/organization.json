@@ -11,7 +11,10 @@
       "title": "Organization Details",
       "website": "Website",
       "phone": "Phone",
-      "address": "Adress"
+      "address": "Adress",
+      "rc": "RC",
+      "cnss": "CNSS",
+      "ice": "ICE"
     },
     "docs": {
       "title": "Legal Documents",
@@ -45,6 +48,9 @@
       "website_ph": "https://company.com",
       "phone_ph": "+1 555 0100",
       "address_ph": "123 Market St, City, Country",
+      "rc_ph": "Commercial register num",
+      "cnss_ph": "CNSS num",
+      "ice_ph": "ICE num",
       "docs_hint": "You can upload these now or later from the organization page.",
       "rc_desc": "Official commercial register document (PDF).",
       "status_desc": "Company status document (PDF).",

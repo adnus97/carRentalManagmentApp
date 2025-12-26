@@ -20,6 +20,11 @@ export const organization = pgTable('organization', {
   website: text(),
   phone: text(),
   address: text(),
+
+  rcNumber: text('rc_number').notNull().default(''),
+  cnssNumber: text('cnss_number').notNull().default(''),
+  iceNumber: text('ice_number').notNull().default(''),
+
   imageFileId: varchar('image_file_id').references(() => files.id),
   fleetListFileId: varchar('fleet_list_file_id').references(() => files.id),
   modelGFileId: varchar('model_g_file_id').references(() => files.id),

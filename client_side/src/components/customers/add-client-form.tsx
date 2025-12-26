@@ -37,7 +37,8 @@ const schema = z.object({
     .email('form.errors.email_invalid')
     .optional()
     .or(z.literal('')),
-  phone: z.string().min(6, 'form.errors.phone_required'),
+
+  phone: z.string().optional().or(z.literal('')),
   address: z.string().min(2, 'form.errors.address_required'),
   documentId: z.string().min(2, 'form.errors.doc_id_required'),
   documentType: z.enum(['passport', 'id_card'], {
@@ -117,6 +118,8 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
   const onSubmit = (data: FormFields) => {
     const payload = {
       ...data,
+      email: data.email?.trim() || undefined,
+      phone: data.phone?.trim() || undefined,
       idCardId: idCardFile?.id,
       driversLicenseId: driversLicenseFile?.id,
     };
@@ -216,7 +219,7 @@ export function AddClientDialog({ trigger }: { trigger?: React.ReactNode }) {
           {/* Phone + Address */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>{t('form.labels.phone', 'Phone')} *</Label>
+              <Label>{t('form.labels.phone', 'Phone')} </Label>
               <Input
                 {...register('phone')}
                 placeholder={t('form.placeholders.phone', 'e.g. 0612345678')}

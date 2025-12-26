@@ -24,10 +24,13 @@ import { authClient } from '@/lib/auth-client';
 
 const schema = z.object({
   name: z.string().min(2, 'org.form.errors.name_short'),
-
   website: z.string().optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
   address: z.string().optional().or(z.literal('')),
+
+  rcNumber: z.string().optional().or(z.literal('')),
+  cnssNumber: z.string().optional().or(z.literal('')),
+  iceNumber: z.string().optional().or(z.literal('')),
 });
 
 type FormFields = z.infer<typeof schema>;
@@ -65,10 +68,12 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
-
       website: '',
       phone: '',
       address: '',
+      rcNumber: '',
+      cnssNumber: '',
+      iceNumber: '',
     },
   });
 
@@ -127,10 +132,12 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
   const onSubmit = (values: FormFields) => {
     const payload: CreateOrganizationDto = {
       name: values.name.trim(),
-
       website: values.website?.trim() || undefined,
       phone: values.phone?.trim() || undefined,
       address: values.address?.trim() || undefined,
+      rcNumber: values.rcNumber?.trim() || '',
+      cnssNumber: values.cnssNumber?.trim() || '',
+      iceNumber: values.iceNumber?.trim() || '',
       imageFileId: logoFileId,
       rcFileId,
       statusFileId,
@@ -263,6 +270,38 @@ export function AddOrganizationForm({ onCancel, onSuccess }: Props) {
                   )}
                   {...register('address')}
                 />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="rcNumber">{t('org.details.rc', 'RC')}</Label>
+                  <Input
+                    id="rcNumber"
+                    placeholder={t('org.form.rc_ph', 'RC number')}
+                    {...register('rcNumber')}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cnssNumber">
+                    {t('org.details.cnss', 'CNSS')}
+                  </Label>
+                  <Input
+                    id="cnssNumber"
+                    placeholder={t('org.form.cnss_ph', 'CNSS number')}
+                    {...register('cnssNumber')}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="iceNumber">
+                    {t('org.details.ice', 'ICE')}
+                  </Label>
+                  <Input
+                    id="iceNumber"
+                    placeholder={t('org.form.ice_ph', 'ICE number')}
+                    {...register('iceNumber')}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>

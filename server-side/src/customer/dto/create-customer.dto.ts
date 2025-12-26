@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsString,
   IsOptional,
@@ -18,12 +19,14 @@ export class CreateCustomerDto {
   lastName: string;
 
   @IsOptional()
-  @IsEmail({}, { message: 'Invalid email format' })
-  email?: string;
-
   @IsString()
-  @IsNotEmpty({ message: 'Phone is required' })
-  phone: string;
+  @Transform(({ value }) => (value === '' ? undefined : value))
+  phone?: string;
+
+  @IsOptional()
+  @IsEmail()
+  @Transform(({ value }) => (value === '' ? undefined : value))
+  email?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Address is required' })
@@ -40,7 +43,7 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @IsString()
-  driversLicense?: string; // NEW: license number/text
+  driversLicense?: string;
 
   @IsOptional()
   @IsNumber()
@@ -58,5 +61,5 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @IsString()
-  driversLicenseId?: string; // image/file id stays
+  driversLicenseId?: string;
 }

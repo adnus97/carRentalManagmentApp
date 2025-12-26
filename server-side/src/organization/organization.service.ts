@@ -41,6 +41,9 @@ export class OrganizationService {
         website: body.website,
         phone: body.phone,
         address: body.address,
+        rcNumber: body.rcNumber ?? '',
+        cnssNumber: body.cnssNumber ?? '',
+        iceNumber: body.iceNumber ?? '',
         imageFileId: body.imageFileId,
         fleetListFileId: body.fleetListFileId,
         modelGFileId: body.modelGFileId,
@@ -167,6 +170,9 @@ export class OrganizationService {
       'website',
       'phone',
       'address',
+      'rcNumber',
+      'cnssNumber',
+      'iceNumber',
       'imageFileId',
       'fleetListFileId',
       'modelGFileId',
@@ -179,13 +185,16 @@ export class OrganizationService {
     ];
 
     for (const field of fields) {
-      if (body[field] !== undefined) {
-        // Sanitize string values
-        if (typeof body[field] === 'string') {
-          updateData[field] = body[field].trim() || null;
+      if (typeof body[field] === 'string') {
+        const trimmed = body[field].trim();
+
+        if (['rcNumber', 'cnssNumber', 'iceNumber'].includes(field)) {
+          updateData[field] = trimmed; // '' allowed
         } else {
-          updateData[field] = body[field];
+          updateData[field] = trimmed || null;
         }
+      } else {
+        updateData[field] = body[field];
       }
     }
 

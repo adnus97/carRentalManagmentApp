@@ -1,55 +1,61 @@
 'use client';
 
 import React, {
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
-  useMemo,
-  useCallback,
 } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import {
+  AlertCircle,
+  Calendar,
+  Camera,
+  Car,
+  CheckCircle2,
+  Clock,
+  Calculator,
+  User,
+  XCircle,
+} from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
-import { FormDatePicker } from '../form-date-picker';
-import { toast } from '../ui/toast';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader } from '../loader';
-import {
-  updateRent,
-  getRentById,
-  getRentImages,
-  updateRentImages,
-} from '@/api/rents';
-import { Textarea } from '@/components/ui/textarea';
-import { CarImageUpload } from './car-image-upload';
-import {
-  Car,
-  User,
-  Calculator,
-  AlertCircle,
-  CheckCircle2,
-  XCircle,
-  Lock,
-  Clock,
-  Camera,
-  Calendar,
-} from 'lucide-react';
-import { RentStatus } from '@/types/rent-status.type';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { useTranslation } from 'react-i18next';
+import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader } from '../loader';
+import { FormDatePicker } from '../form-date-picker';
+import { toast } from '../ui/toast';
 
-// MAD Currency Icon Component (unchanged)
+import { RentStatus } from '@/types/rent-status.type';
+import { CarImageUpload } from './car-image-upload';
+
+import {
+  getRentById,
+  getRentImages,
+  updateRent,
+  updateRentImages,
+} from '@/api/rents';
+import { getCars, Car as CarType } from '@/api/cars';
+import { getCustomers } from '@/api/customers';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+// ---------------- Helpers ----------------
 const MADIcon = ({ className = 'h-3 w-3' }: { className?: string }) => (
   <div
     className={`inline-flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold text-xs px-5 py-1 ${className}`}
@@ -58,8 +64,24 @@ const MADIcon = ({ className = 'h-3 w-3' }: { className?: string }) => (
   </div>
 );
 
-// Zod schema (ONLY returnedAt translated to i18n keys)
+function asDate(value: unknown): Date | null {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function daysBetween(start: Date, end: Date) {
+  const ms = end.getTime() - start.getTime();
+  return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+}
+
+// ---------------- Schema ----------------
+// expectedEndDate is NOT shown, but we keep it internally to send to backend.
 const editRentSchema = z.object({
+  carId: z.string().min(1),
+  customerId: z.string().min(1),
+
+  startDate: z.date(),
   returnedAt: z
     .date({
       required_error: 'form.errors.return_required',
@@ -67,23 +89,30 @@ const editRentSchema = z.object({
     })
     .nullable()
     .optional(),
+
+  // hidden/internal
+  expectedEndDate: z.date().nullable().optional(),
+
   lateFee: z.number({ required_error: 'Late fee is required' }).min(0),
   deposit: z.number().min(0).default(0),
   guarantee: z.number().min(0).default(0),
+
   damageReport: z.string().optional(),
+
   totalPrice: z.number().min(0).optional(),
   totalPaid: z.number().min(0).optional(),
   isFullyPaid: z.boolean().optional(),
+
   isOpenContract: z.boolean(),
+
+  // display-only
   carModel: z.string().optional(),
   customerName: z.string().optional(),
-  startDate: z.union([z.string(), z.date()]),
 });
 
 type EditRentFormFields = z.infer<typeof editRentSchema>;
-type ValidFieldName = keyof EditRentFormFields;
 
-// Status config (labels translated via t)
+// ---------------- Status UI ----------------
 const statusConfig = (t: any) => ({
   reserved: {
     color: 'bg-blue-500',
@@ -107,192 +136,30 @@ const statusConfig = (t: any) => ({
   },
 });
 
-// Permissions unchanged
-const getFieldPermissions = (status: RentStatus, isOpenContract: boolean) => {
-  const permissions: Record<
-    RentStatus,
-    {
-      editable: ValidFieldName[];
-      readonly: ValidFieldName[];
-      hidden: ValidFieldName[];
-    }
-  > = {
-    reserved: {
-      editable: [
-        'returnedAt',
-        'deposit',
-        'lateFee',
-        'guarantee',
-        'totalPaid',
-        'isFullyPaid',
-        'damageReport',
-      ],
-      readonly: ['totalPrice'],
-      hidden: [],
-    },
-    active: {
-      editable: [
-        'lateFee',
-        'totalPaid',
-        'isFullyPaid',
-        'damageReport',
-        ...(isOpenContract ? (['returnedAt'] as ValidFieldName[]) : []),
-      ],
-      readonly: [
-        'totalPrice',
-        'deposit',
-        'guarantee',
-        ...(!isOpenContract ? (['returnedAt'] as ValidFieldName[]) : []),
-      ],
-      hidden: [],
-    },
-    completed: {
-      editable: ['totalPaid', 'isFullyPaid', 'damageReport', 'lateFee'],
-      readonly: ['totalPrice', 'deposit', 'guarantee', 'returnedAt'],
-      hidden: [],
-    },
-    canceled: {
-      editable: [],
-      readonly: [
-        'totalPrice',
-        'deposit',
-        'guarantee',
-        'returnedAt',
-        'lateFee',
-        'totalPaid',
-        'isFullyPaid',
-        'damageReport',
-      ],
-      hidden: [],
-    },
-  };
-  return permissions[status] || permissions.reserved;
-};
-
-const getImagePermissions = (status: RentStatus) => {
-  return status !== 'completed' && status !== 'canceled';
-};
-
-const getTooltipMessage = (
-  field: ValidFieldName,
-  status: RentStatus,
-  isOpenContract: boolean,
-  t: any,
-) => {
-  const messages: Record<ValidFieldName, Record<RentStatus, string>> = {
-    returnedAt: {
-      reserved: '',
-      active: isOpenContract
-        ? ''
-        : t(
-            'edit.lock.returnedAt_active_closed',
-            'Return date is fixed for closed contracts',
-          ),
-      completed: t(
-        'edit.lock.returnedAt_completed',
-        'Cannot modify return date for completed rentals',
-      ),
-      canceled: t(
-        'edit.lock.returnedAt_canceled',
-        'Cannot modify canceled rentals',
-      ),
-    },
-    deposit: {
-      reserved: '',
-      active: t(
-        'edit.lock.deposit_active',
-        'Deposit cannot be changed for active rentals',
-      ),
-      completed: t(
-        'edit.lock.deposit_completed',
-        'Deposit is locked for completed rentals',
-      ),
-      canceled: t('edit.lock.canceled', 'Cannot modify canceled rentals'),
-    },
-    guarantee: {
-      reserved: '',
-      active: t(
-        'edit.lock.guarantee_active',
-        'Guarantee cannot be changed for active rentals',
-      ),
-      completed: t(
-        'edit.lock.guarantee_completed',
-        'Guarantee is locked for completed rentals',
-      ),
-      canceled: t('edit.lock.canceled', 'Cannot modify canceled rentals'),
-    },
-    totalPrice: {
-      reserved: isOpenContract
-        ? t('edit.hint.totalPrice_auto', 'Auto-calculated based on return date')
-        : t(
-            'edit.lock.totalPrice_fixed',
-            'Price is fixed for closed contracts',
-          ),
-      active: isOpenContract
-        ? t('edit.hint.totalPrice_auto', 'Auto-calculated based on return date')
-        : t(
-            'edit.lock.totalPrice_fixed',
-            'Price is fixed for closed contracts',
-          ),
-      completed: t(
-        'edit.lock.totalPrice_completed',
-        'Total price is locked for completed rentals',
-      ),
-      canceled: t('edit.lock.canceled', 'Cannot modify canceled rentals'),
-    },
-    lateFee: {
-      reserved: '',
-      active: '',
-      completed: '',
-      canceled: t('edit.lock.canceled', 'Cannot modify canceled rentals'),
-    },
-    totalPaid: {
-      reserved: '',
-      active: '',
-      completed: '',
-      canceled: t('edit.lock.canceled', 'Cannot modify canceled rentals'),
-    },
-    isFullyPaid: {
-      reserved: '',
-      active: '',
-      completed: '',
-      canceled: t('edit.lock.canceled', 'Cannot modify canceled rentals'),
-    },
-    damageReport: {
-      reserved: '',
-      active: '',
-      completed: '',
-      canceled: t('edit.lock.canceled', 'Cannot modify canceled rentals'),
-    },
-    carModel: { reserved: '', active: '', completed: '', canceled: '' },
-    customerName: { reserved: '', active: '', completed: '', canceled: '' },
-    startDate: { reserved: '', active: '', completed: '', canceled: '' },
-    isOpenContract: { reserved: '', active: '', completed: '', canceled: '' },
-  };
-
-  return messages[field]?.[status] || '';
-};
-
+// ---------------- Props ----------------
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   rentId: string;
+
   carModel?: string;
   customerName?: string;
+
   startDate: string | Date;
   returnedAt?: string | Date;
-  pricePerDay: number;
+
+  pricePerDay: number; // fallback
   totalPrice: number;
+
   status?: RentStatus;
   isFullyPaid?: boolean;
   totalPaid?: number;
   deposit?: number;
   guarantee?: number;
   lateFee?: number;
+
   isOpenContract: boolean;
-  rentContractId?: string;
-  rentNumber?: number;
-  year?: number;
+
   onRentUpdated?: () => void;
 };
 
@@ -302,9 +169,9 @@ export function EditRentFormDialog({
   rentId,
   carModel,
   customerName,
-  startDate,
-  returnedAt: initialReturnedAt,
-  pricePerDay,
+  startDate: startDateProp,
+  returnedAt: returnedAtProp,
+  pricePerDay: pricePerDayProp,
   totalPrice: initialTotalPrice,
   status: initialStatus,
   isFullyPaid: initialIsFullyPaid,
@@ -312,12 +179,13 @@ export function EditRentFormDialog({
   deposit: initialDeposit,
   guarantee: initialGuarantee,
   lateFee: initialLateFee,
-  isOpenContract,
+  isOpenContract: isOpenContractProp,
   onRentUpdated,
 }: Props) {
   const { t } = useTranslation('rent');
   const queryClient = useQueryClient();
-  const originalTotalPriceRef = useRef<number>(initialTotalPrice ?? null);
+
+  const originalTotalPriceRef = useRef<number>(initialTotalPrice ?? 0);
 
   const [newImages, setNewImages] = useState<File[]>([]);
   const [hasImageChanges, setHasImageChanges] = useState(false);
@@ -334,7 +202,47 @@ export function EditRentFormDialog({
     enabled: open && !!rentId,
   });
 
+  // Cars list for dropdown
+  const { data: carsPage, isLoading: carsLoading } = useQuery({
+    queryKey: ['cars-org', 'select'],
+    queryFn: () => getCars(1, 200),
+    enabled: open,
+  });
+
+  // Customers list for dropdown (same endpoint as create form)
+  const { data: customersPage, isLoading: customersLoading } = useQuery({
+    queryKey: ['customers', 'select'],
+    queryFn: () => getCustomers(1, 100),
+    enabled: open,
+  });
+
+  const cars = useMemo(
+    () => (carsPage?.data ?? []).filter((c: CarType) => c.status !== 'deleted'),
+    [carsPage],
+  );
+
+  const customers = useMemo(
+    () => (customersPage?.data ?? []).filter((c: any) => !c?.isBlacklisted),
+    [customersPage],
+  );
+
   const rentData = Array.isArray(rentArray) ? rentArray[0] : rentArray;
+
+  const currentStatus: RentStatus =
+    (rentData?.status as RentStatus) ?? initialStatus ?? 'reserved';
+
+  const isOpenContract: boolean =
+    (rentData?.isOpenContract as boolean) ?? isOpenContractProp;
+
+  const canEditImages =
+    currentStatus !== 'completed' && currentStatus !== 'canceled';
+  const canCancel =
+    currentStatus !== 'completed' && currentStatus !== 'canceled';
+
+  const resetImageState = useCallback(() => {
+    setNewImages([]);
+    setHasImageChanges(false);
+  }, []);
 
   const {
     control,
@@ -346,172 +254,145 @@ export function EditRentFormDialog({
   } = useForm<EditRentFormFields>({
     resolver: zodResolver(editRentSchema),
     defaultValues: {
-      carModel: carModel ?? '',
-      customerName: customerName ?? '',
-      startDate: startDate ?? '',
-      returnedAt: initialReturnedAt ? new Date(initialReturnedAt) : new Date(),
+      carId: '',
+      customerId: '',
+
+      startDate: asDate(startDateProp) ?? new Date(),
+      returnedAt: asDate(returnedAtProp) ?? null,
+      expectedEndDate: asDate(returnedAtProp) ?? null,
+
       lateFee: initialLateFee ?? 0,
       deposit: initialDeposit ?? 0,
       guarantee: initialGuarantee ?? 0,
+
       damageReport: '',
       totalPrice: initialTotalPrice ?? 0,
       totalPaid: initialTotalPaid ?? 0,
       isFullyPaid: initialIsFullyPaid ?? false,
-      isOpenContract: isOpenContract,
+
+      isOpenContract: isOpenContractProp ?? false,
+
+      carModel: carModel ?? '',
+      customerName: customerName ?? '',
     },
   });
 
+  const carId = watch('carId');
+  const customerId = watch('customerId');
+  const startDate = watch('startDate');
   const returnedAt = watch('returnedAt');
   const deposit = watch('deposit');
   const lateFee = watch('lateFee');
-  const [totalPrice, setTotalPrice] = useState<number | null>(
-    initialTotalPrice ?? null,
+
+  const selectedCar = useMemo(
+    () => cars.find((c) => c.id === carId),
+    [cars, carId],
+  );
+  const selectedPricePerDay =
+    typeof selectedCar?.pricePerDay === 'number'
+      ? selectedCar.pricePerDay
+      : pricePerDayProp;
+
+  const selectedCustomer = useMemo(
+    () => customers.find((c: any) => c.id === customerId),
+    [customers, customerId],
   );
 
-  const currentStatus = initialStatus || 'reserved';
+  const [totalPrice, setTotalPrice] = useState<number>(initialTotalPrice ?? 0);
 
-  const permissions = useMemo(
-    () => getFieldPermissions(currentStatus, isOpenContract),
-    [currentStatus, isOpenContract],
-  );
-
-  const canEditImages = useMemo(
-    () => getImagePermissions(currentStatus),
-    [currentStatus],
-  );
-
-  const handleImagesChange = useCallback((images: File[]) => {
-    setNewImages(images);
-    setHasImageChanges(true);
-  }, []);
-
-  const resetImageState = useCallback(() => {
-    setNewImages([]);
-    setHasImageChanges(false);
-  }, []);
-
-  const FieldWrapper = useCallback(
-    ({
-      children,
-      field,
-      label,
-    }: {
-      children: React.ReactNode;
-      field: ValidFieldName;
-      label: string;
-    }) => {
-      if (permissions.hidden.includes(field)) return null;
-
-      const isReadonly = permissions.readonly.includes(field);
-      const tooltipMessage = getTooltipMessage(
-        field,
-        currentStatus,
-        isOpenContract,
-        t,
-      );
-
-      return (
-        <div className="space-y-1">
-          <Label className="text-xs font-medium flex items-center gap-1">
-            {label}
-            {isReadonly && tooltipMessage && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Lock className="h-3 w-3 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">{tooltipMessage}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </Label>
-          <div className={`${isReadonly ? 'opacity-60' : ''}`}>{children}</div>
-        </div>
-      );
-    },
-    [permissions, currentStatus, isOpenContract, t],
-  );
-
+  // Reset when open & rentData available
   useEffect(() => {
-    if (open && rentData) {
-      const priceToUse =
-        typeof rentData.totalPrice === 'number' &&
-        Number.isFinite(rentData.totalPrice)
-          ? rentData.totalPrice
-          : (initialTotalPrice ?? 0);
+    if (!open || !rentData) return;
 
-      originalTotalPriceRef.current = priceToUse;
+    const start =
+      asDate(rentData.startDate) ?? asDate(startDateProp) ?? new Date();
 
-      reset({
-        carModel: rentData.carModel ?? carModel ?? '',
-        customerName: rentData.customerName ?? customerName ?? '',
-        startDate: rentData.startDate ?? startDate ?? '',
-        returnedAt:
-          rentData.returnedAt &&
-          new Date(rentData.returnedAt).getFullYear() !== 9999
-            ? new Date(rentData.returnedAt)
-            : null,
-        lateFee: rentData.lateFee ?? initialLateFee ?? 0,
-        deposit: rentData.deposit ?? initialDeposit ?? 0,
-        guarantee: rentData.guarantee ?? initialGuarantee ?? 0,
-        damageReport: rentData.damageReport ?? '',
-        totalPrice: priceToUse,
-        totalPaid:
-          typeof rentData.totalPaid === 'number'
-            ? rentData.totalPaid
-            : (rentData.deposit ?? 0) + (rentData.lateFee ?? 0),
-        isFullyPaid: rentData.isFullyPaid ?? initialIsFullyPaid ?? false,
-        isOpenContract: rentData.isOpenContract ?? isOpenContract,
-      });
-      setTotalPrice(priceToUse);
-      resetImageState();
-    }
+    // prefer returnedAt, fallback expectedEndDate
+    const end =
+      asDate(rentData.returnedAt) ??
+      asDate((rentData as any).expectedEndDate) ??
+      null;
+
+    const priceToUse =
+      typeof rentData.totalPrice === 'number' &&
+      Number.isFinite(rentData.totalPrice)
+        ? rentData.totalPrice
+        : (initialTotalPrice ?? 0);
+
+    originalTotalPriceRef.current = priceToUse;
+    setTotalPrice(priceToUse);
+
+    reset({
+      carId: rentData.carId,
+      customerId: rentData.customerId,
+
+      startDate: start,
+      returnedAt: end,
+      expectedEndDate: end,
+
+      lateFee: rentData.lateFee ?? initialLateFee ?? 0,
+      deposit: rentData.deposit ?? initialDeposit ?? 0,
+      guarantee: rentData.guarantee ?? initialGuarantee ?? 0,
+
+      damageReport: rentData.damageReport ?? '',
+      totalPrice: priceToUse,
+      totalPaid:
+        typeof rentData.totalPaid === 'number'
+          ? rentData.totalPaid
+          : (rentData.deposit ?? 0) + (rentData.lateFee ?? 0),
+      isFullyPaid: rentData.isFullyPaid ?? initialIsFullyPaid ?? false,
+
+      isOpenContract: rentData.isOpenContract ?? isOpenContractProp,
+
+      carModel: rentData.carModel ?? carModel ?? '',
+      customerName: rentData.customerName ?? customerName ?? '',
+    });
+
+    resetImageState();
   }, [
     open,
     rentData,
     reset,
     resetImageState,
-    carModel,
-    customerName,
-    startDate,
+    startDateProp,
+    initialTotalPrice,
     initialLateFee,
     initialDeposit,
     initialGuarantee,
     initialIsFullyPaid,
-    isOpenContract,
-    initialTotalPrice,
+    isOpenContractProp,
+    carModel,
+    customerName,
   ]);
 
-  useEffect(() => {
-    if (
-      isOpenContract &&
-      startDate &&
-      returnedAt &&
-      new Date(returnedAt).getFullYear() !== 9999 &&
-      typeof pricePerDay === 'number'
-    ) {
-      const start = new Date(startDate);
-      const end = new Date(returnedAt);
-      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
-        const days = Math.max(
-          1,
-          Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
-        );
-        const price = days * pricePerDay;
-        setTotalPrice(price);
-        setValue('totalPrice', price);
-        return;
-      }
-    }
-    setTotalPrice(originalTotalPriceRef.current || null);
-    setValue('totalPrice', originalTotalPriceRef.current || undefined);
-  }, [isOpenContract, startDate, returnedAt, pricePerDay, setValue]);
-
+  // Keep totalPaid = deposit + lateFee (your existing behavior)
   useEffect(() => {
     setValue('totalPaid', (deposit || 0) + (lateFee || 0));
   }, [deposit, lateFee, setValue]);
+
+  // Auto: expectedEndDate always equals returnedAt (hidden)
+  useEffect(() => {
+    setValue('expectedEndDate', returnedAt ?? null, { shouldDirty: true });
+  }, [returnedAt, setValue]);
+
+  // Auto: totalPrice updates when car/start/return changes
+  useEffect(() => {
+    // If open contract and no returnedAt: show "Open" (UI) and keep numeric 0 in state
+    if (isOpenContract && !returnedAt) {
+      setTotalPrice(0);
+      setValue('totalPrice', 0, { shouldDirty: true });
+      return;
+    }
+
+    if (!startDate || !returnedAt) return;
+    if (returnedAt <= startDate) return;
+
+    const days = daysBetween(startDate, returnedAt);
+    const newPrice = days * (selectedPricePerDay || 0);
+
+    setTotalPrice(newPrice);
+    setValue('totalPrice', newPrice, { shouldDirty: true });
+  }, [isOpenContract, startDate, returnedAt, selectedPricePerDay, setValue]);
 
   const imagesMutation = useMutation({
     mutationFn: (images: File[]) => updateRentImages(rentId, images),
@@ -531,6 +412,7 @@ export function EditRentFormDialog({
       updateRent(rentId, { status: 'canceled' }, currentStatus, isOpenContract),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rents'] });
+      queryClient.invalidateQueries({ queryKey: ['rent', rentId] });
       queryClient.invalidateQueries({ queryKey: ['rent-images', rentId] });
       onRentUpdated?.();
       onOpenChange(false);
@@ -556,23 +438,32 @@ export function EditRentFormDialog({
   });
 
   const mutation = useMutation({
-    mutationFn: async ({
-      data,
-      status,
-      isOpenContract,
-    }: {
-      data: Record<string, any>;
-      status: RentStatus;
-      isOpenContract: boolean;
-    }) => {
-      const rentResult = await updateRent(rentId, data, status, isOpenContract);
-      if (hasImageChanges) {
+    mutationFn: async (payload: { data: Record<string, any> }) => {
+      // optional: prevent selecting blacklisted customer even if UI filters it
+      if (selectedCustomer?.isBlacklisted) {
+        throw new Error(
+          t(
+            'form.blacklisted',
+            'This customer is blacklisted and cannot rent a car.',
+          ),
+        );
+      }
+
+      const rentResult = await updateRent(
+        rentId,
+        payload.data,
+        currentStatus,
+        isOpenContract,
+      );
+
+      if (hasImageChanges && canEditImages) {
         await imagesMutation.mutateAsync(newImages);
       }
       return rentResult;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rents'] });
+      queryClient.invalidateQueries({ queryKey: ['rent', rentId] });
       queryClient.invalidateQueries({ queryKey: ['rent-images', rentId] });
       onRentUpdated?.();
       onOpenChange(false);
@@ -604,76 +495,43 @@ export function EditRentFormDialog({
   });
 
   const onSubmit = (data: EditRentFormFields) => {
-    const filteredData: Record<string, any> = {};
-    permissions.editable.forEach((field) => {
-      const value = data[field];
-      filteredData[field] =
-        field === 'damageReport' && value === '' ? null : value;
-    });
+    const end = data.returnedAt ?? null;
 
-    if (Object.keys(filteredData).length === 0 && !hasImageChanges) {
-      toast({
-        type: 'info',
-        title: t('edit.no_changes_title', 'No Changes'),
-        description: t(
-          'edit.no_changes_desc',
-          'No changes were made to update.',
-        ),
-      });
-      return;
-    }
+    const payload: Record<string, any> = {
+      carId: data.carId,
+      customerId: data.customerId,
 
-    mutation.mutate({
-      data: filteredData,
-      status: currentStatus,
-      isOpenContract,
-    });
+      startDate: data.startDate,
+      returnedAt: end,
+
+      // hidden but always aligned:
+      expectedEndDate: end,
+
+      deposit: data.deposit,
+      guarantee: data.guarantee,
+      lateFee: data.lateFee,
+      totalPaid: data.totalPaid,
+      isFullyPaid: data.isFullyPaid,
+      totalPrice: data.totalPrice,
+      damageReport: data.damageReport === '' ? null : data.damageReport,
+    };
+
+    mutation.mutate({ data: payload });
   };
 
-  const getCurrentStatusMessage = () => {
-    switch (currentStatus) {
-      case 'active':
-        return isOpenContract
-          ? t(
-              'edit.status_hint.active_open',
-              'Active open contracts: update return date, payments, images, and damage reports.',
-            )
-          : t(
-              'edit.status_hint.active_closed',
-              'Active closed contracts: update payments, images, and damage reports only.',
-            );
-      case 'completed':
-        return t(
-          'edit.status_hint.completed',
-          'Completed rentals: update payment records and damage reports only.',
-        );
-      case 'canceled':
-        return t(
-          'edit.status_hint.canceled',
-          'Canceled rentals: no modifications allowed.',
-        );
-      default:
-        return t(
-          'edit.status_hint.reserved',
-          'Reserved rentals can be fully modified.',
-        );
-    }
-  };
-
-  const hasEditableFields = permissions.editable.length > 0;
-  const canCancel =
-    currentStatus !== 'canceled' && currentStatus !== 'completed';
-  const hasAnyChanges = hasEditableFields || (canEditImages && hasImageChanges);
-  const isLoading = mutation.isPending || imagesMutation.isPending;
+  const isLoading =
+    rentLoading ||
+    carsLoading ||
+    customersLoading ||
+    mutation.isPending ||
+    imagesMutation.isPending;
 
   return (
     <Dialog
       open={open}
-      onOpenChange={(open) => {
-        onOpenChange(open);
-        if (!open) {
-          resetImageState();
-        }
+      onOpenChange={(next) => {
+        onOpenChange(next);
+        if (!next) resetImageState();
       }}
     >
       <DialogContent className="w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col bg-gray-1 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl">
@@ -683,27 +541,27 @@ export function EditRentFormDialog({
             <div className="p-2 rounded-md bg-blue-600 text-white">
               <Car className="h-4 w-4" />
             </div>
+
             <div className="leading-tight">
               <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
                 <span>{t('edit.title', 'Edit Rental Contract')}</span>
+
                 {rentData?.rentContractId && (
                   <Badge variant="outline" className="text-xs">
                     {rentData.rentContractId}
                   </Badge>
                 )}
+
                 <Badge
                   variant="secondary"
                   className={`${
-                    statusConfig(t)[(currentStatus as RentStatus) || 'reserved']
-                      .color
+                    statusConfig(t)[currentStatus].color
                   } text-white flex items-center gap-1 text-xs`}
                 >
                   <CheckCircle2 className="h-3 w-3" />
-                  {
-                    statusConfig(t)[(currentStatus as RentStatus) || 'reserved']
-                      .label
-                  }
+                  {statusConfig(t)[currentStatus].label}
                 </Badge>
+
                 {isOpenContract && (
                   <Badge variant="outline" className="text-xs">
                     {t('grid.open', 'Open')}
@@ -712,16 +570,6 @@ export function EditRentFormDialog({
               </DialogTitle>
             </div>
           </div>
-        </div>
-
-        {/* Status note */}
-        <div className="px-5 py-2">
-          <Alert className="py-2">
-            <AlertCircle className="h-3 w-3" />
-            <AlertDescription className="text-xs leading-tight">
-              {getCurrentStatusMessage()}
-            </AlertDescription>
-          </Alert>
         </div>
 
         {/* Content */}
@@ -735,6 +583,7 @@ export function EditRentFormDialog({
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
                 {/* Left */}
                 <div className="lg:col-span-2 space-y-4">
+                  {/* Planning */}
                   <section className="bg-white dark:bg-gray-1 border border-gray-200 dark:border-slate-700 rounded-xl p-3 sm:p-4">
                     <div className="mb-3 flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-green-500" />
@@ -742,29 +591,145 @@ export function EditRentFormDialog({
                         {t('edit.schedule', 'Schedule')}
                       </h3>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">
-                        {t('edit.return_date', 'Return Date')}
-                      </Label>
-                      <Controller
-                        control={control}
-                        name="returnedAt"
-                        render={({ field }) => (
-                          <FormDatePicker
-                            value={field.value ?? undefined}
-                            onChange={field.onChange}
-                            placeholder={t('grid.open', 'Open')}
-                          />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Car */}
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium">
+                          {t('edit.car', 'Car')}
+                        </Label>
+                        <Controller
+                          control={control}
+                          name="carId"
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              disabled={isLoading}
+                            >
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={t(
+                                    'edit.select_car',
+                                    'Select a car',
+                                  )}
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {cars.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {c.make} {c.model} • {c.plateNumber}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.carId && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {t(errors.carId.message as any)}
+                          </p>
                         )}
-                      />
-                      {errors.returnedAt && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {t(errors.returnedAt.message as any)}
-                        </p>
-                      )}
+                      </div>
+
+                      {/* Customer */}
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium">
+                          {t('edit.customer', 'Customer')}
+                        </Label>
+                        <Controller
+                          control={control}
+                          name="customerId"
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              disabled={isLoading}
+                            >
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={t(
+                                    'form.select_customer',
+                                    'Select customer',
+                                  )}
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {customers.map((c: any) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    {`${c.firstName || ''} ${c.lastName || ''}`.trim() ||
+                                      c.email ||
+                                      c.id}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.customerId && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {t(errors.customerId.message as any)}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Start Date */}
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium">
+                          {t('edit.start_date', 'Start Date')}
+                        </Label>
+                        <Controller
+                          control={control}
+                          name="startDate"
+                          render={({ field }) => (
+                            <FormDatePicker
+                              value={field.value ?? undefined}
+                              onChange={field.onChange}
+                              disabled={isLoading}
+                            />
+                          )}
+                        />
+                      </div>
+
+                      {/* Return Date */}
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium">
+                          {t('edit.return_date', 'Return Date')}
+                        </Label>
+                        <Controller
+                          control={control}
+                          name="returnedAt"
+                          render={({ field }) => (
+                            <FormDatePicker
+                              value={field.value ?? undefined}
+                              onChange={field.onChange}
+                              placeholder={t('grid.open', 'Open')}
+                              disabled={isLoading}
+                            />
+                          )}
+                        />
+                        {errors.returnedAt && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {t(errors.returnedAt.message as any)}
+                          </p>
+                        )}
+                      </div>
                     </div>
+
+                    {isOpenContract && (
+                      <Alert className="mt-3 py-2">
+                        <AlertCircle className="h-3 w-3" />
+                        <AlertDescription className="text-xs leading-tight">
+                          {t(
+                            'edit.open_hint',
+                            'Open contract: if Return Date is empty, total price will display as Open.',
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </section>
 
+                  {/* Notes */}
                   <section className="border border-gray-200 dark:border-slate-700 rounded-xl p-3 sm:p-4">
                     <div className="mb-3 flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-amber-500" />
@@ -772,6 +737,7 @@ export function EditRentFormDialog({
                         {t('edit.notes', 'Notes')}
                       </h3>
                     </div>
+
                     <div className="space-y-2">
                       <Label className="text-xs">
                         {t('edit.damage_report', 'Damage Report')}
@@ -795,6 +761,7 @@ export function EditRentFormDialog({
                     </div>
                   </section>
 
+                  {/* Images */}
                   <section className="border border-gray-200 dark:border-slate-700 rounded-xl p-3 sm:p-4">
                     <div className="mb-3 flex items-center gap-2">
                       <Camera className="h-4 w-4 text-purple-500" />
@@ -802,6 +769,7 @@ export function EditRentFormDialog({
                         {t('edit.car_images', 'Car Images')}
                       </h3>
                     </div>
+
                     {imagesLoading ? (
                       <div className="flex items-center justify-center py-4 border rounded-lg">
                         <Loader className="animate-spin mr-2 h-4 w-4" />
@@ -822,7 +790,7 @@ export function EditRentFormDialog({
                           path: img.path,
                         }))}
                         maxImages={4}
-                        disabled={isLoading}
+                        disabled={isLoading || !canEditImages}
                       />
                     )}
                   </section>
@@ -839,15 +807,15 @@ export function EditRentFormDialog({
 
                   <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium">
-                          {t('edit.total_price', 'Total Price')}
-                        </span>
-                      </div>
+                      <span className="text-sm font-medium">
+                        {t('edit.total_price', 'Total Price')}
+                      </span>
                       <span className="text-lg font-bold text-blue-600">
-                        {totalPrice !== null && Number.isFinite(totalPrice)
-                          ? totalPrice.toLocaleString('en-US')
-                          : t('grid.open', 'Open')}
+                        {isOpenContract && !returnedAt
+                          ? t('grid.open', 'Open')
+                          : Number.isFinite(totalPrice)
+                            ? totalPrice.toLocaleString('en-US')
+                            : t('grid.open', 'Open')}
                       </span>
                     </div>
                   </div>
@@ -987,9 +955,7 @@ export function EditRentFormDialog({
                       )}
                     </Button>
 
-                    {['completed', 'canceled'].includes(
-                      currentStatus || '',
-                    ) ? null : (
+                    {!canCancel ? null : (
                       <Button
                         type="button"
                         variant="outline"

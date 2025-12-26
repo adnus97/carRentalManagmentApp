@@ -12,6 +12,9 @@ export interface CreateOrganization {
   website?: string;
   phone?: string;
   address?: string;
+  rcNumber: string;
+  cnssNumber: string;
+  iceNumber: string;
   imageFileId?: string;
   fleetListFileId?: string;
   modelGFileId?: string;
@@ -48,6 +51,9 @@ export class OrganizationRepository {
         website: data.website,
         phone: data.phone,
         address: data.address,
+        rcNumber: data.rcNumber,
+        cnssNumber: data.cnssNumber,
+        iceNumber: data.iceNumber,
         imageFileId: data.imageFileId,
         fleetListFileId: data.fleetListFileId,
         modelGFileId: data.modelGFileId,
@@ -88,6 +94,9 @@ export class OrganizationRepository {
         website: organization.website,
         phone: organization.phone,
         address: organization.address,
+        rcNumber: organization.rcNumber,
+        cnssNumber: organization.cnssNumber,
+        iceNumber: organization.iceNumber,
         imageFileId: organization.imageFileId,
         fleetListFileId: organization.fleetListFileId,
         modelGFileId: organization.modelGFileId,
@@ -122,6 +131,9 @@ export class OrganizationRepository {
     if (data.website !== undefined) updateData.website = data.website;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.address !== undefined) updateData.address = data.address;
+    if (data.rcNumber !== undefined) updateData.rcNumber = data.rcNumber;
+    if (data.cnssNumber !== undefined) updateData.cnssNumber = data.cnssNumber;
+    if (data.iceNumber !== undefined) updateData.iceNumber = data.iceNumber;
     if (data.imageFileId !== undefined)
       updateData.imageFileId = data.imageFileId;
     if (data.fleetListFileId !== undefined)

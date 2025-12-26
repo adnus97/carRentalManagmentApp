@@ -1,14 +1,21 @@
-// api/organization.ts
+// src/api/organization.ts
 import { api } from './api';
 
 export interface Organization {
   id: string;
   name: string;
   userId: string;
+
   email?: string;
   website?: string;
   phone?: string;
   address?: string;
+
+  // NEW: string identifiers (DB default is empty string)
+  rcNumber?: string; // e.g. "12345"
+  cnssNumber?: string; // e.g. "CNSS-..."
+  iceNumber?: string; // e.g. "ICE..."
+
   imageFile?: {
     id?: string;
     name?: string;
@@ -16,7 +23,8 @@ export interface Organization {
     type?: string;
     url?: string;
   };
-  // File ID fields (what's actually stored in DB)
+
+  // File ID fields (stored in DB)
   imageFileId?: string;
   fleetListFileId?: string;
   modelGFileId?: string;
@@ -31,7 +39,6 @@ export interface Organization {
   updatedAt: string;
 }
 
-// Extended interface for when files are populated (from findOneWithFiles)
 export interface OrganizationWithFiles extends Organization {
   imageFile?: {
     id: string;
@@ -104,6 +111,12 @@ export interface CreateOrganizationDto {
   website?: string;
   phone?: string;
   address?: string;
+
+  // NEW
+  rcNumber?: string; // can be '' (default)
+  cnssNumber?: string; // can be '' (default)
+  iceNumber?: string; // can be '' (default)
+
   imageFileId?: string;
   fleetListFileId?: string;
   modelGFileId?: string;
@@ -170,7 +183,6 @@ export const deleteOrganization = async (id: string) => {
   return response.data;
 };
 
-// Get organization statistics (from your backend service)
 export const getOrganizationStats = async (): Promise<OrganizationStats> => {
   const response = await api.get<OrganizationStats>('/organizations/stats');
   return response.data;

@@ -155,13 +155,20 @@ export const updateRent = async (
       'damageReport',
     ],
     active: [
+      'carId',
+      'customerId',
+      'startDate',
+      'expectedEndDate',
+      'returnedAt',
       'totalPrice',
+      'deposit',
+      'guarantee',
       'lateFee',
       'totalPaid',
       'isFullyPaid',
-      'damageReport',
       'status',
-      ...(isOpenContract ? ['returnedAt'] : []),
+      'damageReport',
+      // ...(isOpenContract ? ['returnedAt'] : []),
     ],
     completed: ['totalPaid', 'isFullyPaid', 'damageReport', 'lateFee'],
     canceled: ['status'],
@@ -182,6 +189,9 @@ export const updateRent = async (
 
   if (filteredData.startDate instanceof Date) {
     filteredData.startDate = filteredData.startDate.toISOString();
+  }
+  if (filteredData.expectedEndDate instanceof Date) {
+    filteredData.expectedEndDate = filteredData.expectedEndDate.toISOString();
   }
   if (filteredData.returnedAt instanceof Date) {
     filteredData.returnedAt = filteredData.returnedAt.toISOString();

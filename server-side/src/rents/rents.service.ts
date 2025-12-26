@@ -310,13 +310,20 @@ export class RentsService {
       case 'active':
         // Active rents can only update payments, damage reports, and status
         return [
-          'totalPrice', // Allow price adjustments for open contracts
+          'carId',
+          'customerId', // optional, remove if you don't want
+          'startDate',
+          'expectedEndDate',
+          'returnedAt',
+          'isOpenContract', // optional, remove if you don't want
+          'totalPrice',
+          'deposit',
+          'guarantee',
           'lateFee',
           'totalPaid',
           'isFullyPaid',
+          'status',
           'damageReport',
-          'status', // Allow changing to completed/canceled
-          'returnedAt', // Allow setting return date to complete
         ];
 
       case 'completed':
@@ -927,7 +934,9 @@ export class RentsService {
       }
 
       // 4) Date-change availability check
-      if (datesChanged) {
+      if (datesChanged || updateData.carId) {
+        const carIdToCheck = updateData.carId || rent.carId;
+
         const newStartDate = updateData.startDate || rent.startDate;
         const newEndDate =
           updateData.returnedAt ||
@@ -937,7 +946,7 @@ export class RentsService {
 
         if (newStartDate && newEndDate) {
           const available = await this.isCarAvailableForRange(
-            rent.carId,
+            carIdToCheck,
             newStartDate,
             newEndDate,
             id,
@@ -1007,12 +1016,13 @@ export class RentsService {
           updateRentDto.totalPaid >= finalBilledCandidate);
 
       if (willBeCompleted || willBeFullyPaid) {
+        const billingCarId = updateData.carId || rent.carId;
         // Recompute billed one last time for open contracts
         if (rent.isOpenContract || updateRentDto.isOpenContract) {
           const [carRow] = await this.dbService.db
             .select({ pricePerDay: cars.pricePerDay })
             .from(cars)
-            .where(eq(cars.id, rent.carId));
+            .where(eq(cars.id, billingCarId));
 
           const start = updateRentDto.startDate
             ? ensureDate(updateRentDto.startDate)!

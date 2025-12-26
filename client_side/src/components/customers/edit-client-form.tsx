@@ -26,18 +26,18 @@ import { useTranslation } from 'react-i18next';
 
 // Mirror the Add form schema: address + driversLicense, and documentType excludes driver_license
 const schema = z.object({
-  firstName: z.string().min(2, 'client.form.errors.first_required'),
-  lastName: z.string().min(2, 'client.form.errors.last_required'),
+  firstName: z.string().min(2, 'form.errors.first_required'),
+  lastName: z.string().min(2, 'form.errors.last_required'),
   email: z
     .string()
-    .email('client.form.errors.email_invalid')
+    .email('form.errors.email_invalid')
     .optional()
     .or(z.literal('')),
-  phone: z.string().min(6, 'client.form.errors.phone_required'),
-  address: z.string().min(2, 'client.form.errors.address_required'),
-  documentId: z.string().min(2, 'client.form.errors.doc_id_required'),
+  phone: z.string().optional().or(z.literal('')),
+  address: z.string().min(2, 'form.errors.address_required'),
+  documentId: z.string().min(2, 'form.errors.doc_id_required'),
   documentType: z.enum(['passport', 'id_card'], {
-    required_error: 'client.form.errors.doc_type_required',
+    required_error: 'form.errors.doc_type_required',
   }),
   driversLicense: z.string().optional(), // separate text field
   idCardId: z.string().optional(),
@@ -233,7 +233,7 @@ export function EditClientDialog({
           {/* Phone + Address */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>{t('form.labels.phone', 'Phone')} *</Label>
+              <Label>{t('form.labels.phone', 'Phone')} </Label>
               <Input {...register('phone')} />
               {errors.phone && (
                 <span className="text-red-500 text-xs">
