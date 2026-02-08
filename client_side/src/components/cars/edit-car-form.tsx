@@ -22,11 +22,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTranslation } from 'react-i18next';
+import { MoroccanPlateInput } from '@/components/ui/moroccanPlateInput';
 
 const currentYear = new Date().getFullYear();
 
 const schema = z.object({
-  plateNumber: z.string().min(1, 'form.errors.plate_required'),
+  plateNumber: z
+    .string()
+    .min(1, 'form.errors.plate_required')
+    .regex(/^\d{1,5}-[أ-ي]-\d{1,2}$/, 'Invalid plate number'),
   make: z.string().nonempty('form.errors.make_required'),
   model: z.string().nonempty('form.errors.model_required'),
   year: z
@@ -199,16 +203,20 @@ export function EditCarFormDialog({
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-[9px]">
-            {/* Plate Number */}
+            {/* Plate Number - Updated to use MoroccanPlateInput */}
             <div className="flex flex-col sm:col-span-2">
               <Label htmlFor="plateNumber" className="mb-1">
                 {t('form.labels.plate', 'Plate Number')} *
               </Label>
-              <Input
-                id="plateNumber"
-                className="w-full font-mono"
-                placeholder={t('form.placeholders.plate', 'e.g. 123-A-456')}
-                {...register('plateNumber')}
+              <Controller
+                control={control}
+                name="plateNumber"
+                render={({ field }) => (
+                  <MoroccanPlateInput
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
               />
               {errors.plateNumber && (
                 <span className="text-red-500 text-xs mt-1">
