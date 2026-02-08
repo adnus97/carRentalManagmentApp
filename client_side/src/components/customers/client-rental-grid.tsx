@@ -114,10 +114,21 @@ export function ClientRentalsGrid({ customerId }: { customerId: string }) {
       valueFormatter: (p) => (p.value || 0).toLocaleString(),
     },
     {
-      headerName: t('client_rentals.late_fee', 'Late Fee'),
-      field: 'lateFee',
+      headerName: t('client_rentals.remaining', 'Remaining'),
       flex: 1,
-      valueFormatter: (p) => (p.value || 0).toLocaleString(),
+      valueGetter: (params) => {
+        const totalPrice = Number(params.data?.totalPrice ?? 0);
+        const totalPaid = Number(params.data?.totalPaid ?? 0);
+        return Math.max(0, totalPrice - totalPaid);
+      },
+      valueFormatter: (p) => `${(p.value || 0).toLocaleString()} MAD`,
+      cellStyle: (params) => {
+        const remaining = params.value || 0;
+        if (remaining > 0) {
+          return { color: '#ef4444', fontWeight: 'bold' }; // Red for unpaid
+        }
+        return { color: '#22c55e', fontWeight: 'bold' }; // Green for fully paid
+      },
     },
     {
       headerName: t('client_rentals.fully_paid', 'Fully Paid'),

@@ -59,6 +59,13 @@
       "org_sub": "Voir les clients mis sur liste noire par votre organisation",
       "global_title": "Liste noire globale",
       "global_sub": "Voir tous les clients mis sur liste noire dans l’ensemble des organisations"
+    },
+    "filter": {
+      "all": "Tous",
+      "active": "Actifs",
+      "inactive": "Inactifs",
+      "show_all": "Afficher tout (actifs & inactifs)",
+      "show_active": "Afficher les actifs uniquement"
     }
   },
   "form": {
@@ -239,7 +246,8 @@
     "prev_page": "Page précédente",
     "next_page": "Page suivante",
     "goto_page": "Aller à la page {{p}}",
-    "stat_total_left": "Montant restant"
+    "stat_total_left": "Montant restant",
+    "remaining": "Solde restant"
   },
   "client_spending": {
     "title": "Dépenses du client dans le temps",

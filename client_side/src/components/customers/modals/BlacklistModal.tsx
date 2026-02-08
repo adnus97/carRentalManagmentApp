@@ -42,28 +42,26 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
   const { t } = useTranslation('client');
 
   const [isOpen, setIsOpen] = useState(false);
-  const [blacklistData, setBlacklistData] = useState<BlacklistEntry[]>([]);
+  const [allBlacklistData, setAllBlacklistData] = useState<BlacklistEntry[]>(
+    [],
+  ); // All data for search
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showActiveOnly, setShowActiveOnly] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
 
   const isGlobal = type === 'global';
   const pageSize = 8;
 
-  const fetchBlacklist = async (page = 1, q?: string) => {
+  // Fetch ALL blacklist data once for searching
+  const fetchAllBlacklist = async () => {
     setLoading(true);
     try {
       const data = isGlobal
-        ? await getGlobalBlacklist(page, pageSize, q)
-        : await getOrganizationBlacklist(page, pageSize, q);
+        ? await getGlobalBlacklist(1, 10000) // Get all data
+        : await getOrganizationBlacklist(1, 10000);
 
-      setBlacklistData(data.data || []);
-      setTotalPages(data.totalPages || 1);
-      setTotal(data.total || 0);
-      setCurrentPage(page);
+      setAllBlacklistData(data.data || []);
     } finally {
       setLoading(false);
     }
@@ -71,15 +69,16 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
 
   useEffect(() => {
     if (isOpen) {
-      fetchBlacklist(1);
+      fetchAllBlacklist();
       setSearchTerm('');
-      setShowActiveOnly(true); // Reset filter when opening
+      setShowActiveOnly(true);
+      setCurrentPage(1);
     }
   }, [isOpen, type]);
 
   // Filter data based on search and active/inactive toggle
   const filteredData = useMemo(() => {
-    let filtered = [...blacklistData];
+    let filtered = [...allBlacklistData];
 
     // Apply active/inactive filter (organization only)
     if (!isGlobal && showActiveOnly) {
@@ -89,19 +88,39 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
     // Apply search filter
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (entry) =>
-          entry.customerName.toLowerCase().includes(search) ||
-          entry.customerPhone.includes(search) ||
-          entry.customerEmail?.toLowerCase().includes(search) ||
-          entry.customerDocumentId?.toLowerCase().includes(search) ||
-          entry.driversLicense?.toLowerCase().includes(search) ||
-          entry.reason.toLowerCase().includes(search),
-      );
+      filtered = filtered.filter((entry) => {
+        const name = entry.customerName?.toLowerCase() || '';
+        const phone = entry.customerPhone || '';
+        const email = entry.customerEmail?.toLowerCase() || '';
+        const docId = entry.customerDocumentId?.toLowerCase() || '';
+        const license = entry.driversLicense?.toLowerCase() || '';
+        const reason = entry.reason?.toLowerCase() || '';
+
+        return (
+          name.includes(search) ||
+          phone.includes(search) ||
+          email.includes(search) ||
+          docId.includes(search) ||
+          license.includes(search) ||
+          reason.includes(search)
+        );
+      });
     }
 
     return filtered;
-  }, [blacklistData, searchTerm, showActiveOnly, isGlobal]);
+  }, [allBlacklistData, searchTerm, showActiveOnly, isGlobal]);
+
+  // Paginate the filtered data
+  const totalPages = Math.ceil(filteredData.length / pageSize);
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  // Reset to page 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, showActiveOnly]);
 
   const defaultTrigger = (
     <Button
@@ -134,7 +153,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
             ? t('blacklist.trigger.global', 'Global Blacklist')
             : t('blacklist.trigger.org', 'My Blacklist')}
         </span>
-        {!loading && total > 0 && (
+        {!loading && allBlacklistData.length > 0 && (
           <Badge
             variant={isGlobal ? 'secondary' : 'outline'}
             className={`
@@ -146,7 +165,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
               }
             `}
           >
-            {total}
+            {allBlacklistData.length}
           </Badge>
         )}
       </div>
@@ -239,7 +258,8 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                   }
                 `}
               >
-                {filteredData.length} {t('blacklist.header.entries', 'entries')}
+                {filteredData.length} / {allBlacklistData.length}{' '}
+                {t('blacklist.header.entries', 'entries')}
               </Badge>
             </DialogTitle>
           </DialogHeader>
@@ -304,7 +324,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                 </p>
               </div>
             </div>
-          ) : filteredData.length === 0 ? (
+          ) : paginatedData.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div
@@ -351,7 +371,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
           ) : (
             <ScrollArea className="h-full pr-4">
               <div className="grid gap-4 py-2">
-                {filteredData.map((entry, index) => (
+                {paginatedData.map((entry, index) => (
                   <Card
                     key={entry.id}
                     className={`
@@ -520,11 +540,11 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                 </span>{' '}
                 {t('blacklist.pagination.to', 'to')}{' '}
                 <span className="font-medium text-gray-900 dark:text-gray-100">
-                  {Math.min(currentPage * pageSize, total)}
+                  {Math.min(currentPage * pageSize, filteredData.length)}
                 </span>{' '}
                 {t('blacklist.pagination.of', 'of')}{' '}
                 <span className="font-medium text-gray-900 dark:text-gray-100">
-                  {total}
+                  {filteredData.length}
                 </span>{' '}
                 {t('blacklist.pagination.entries', 'entries')}
               </div>
@@ -532,8 +552,8 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchBlacklist(currentPage - 1, searchTerm)}
-                  disabled={currentPage <= 1 || loading}
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
                   className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 disabled:opacity-50"
                 >
                   {t('blacklist.pagination.prev', 'Previous')}
@@ -541,8 +561,8 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchBlacklist(currentPage + 1, searchTerm)}
-                  disabled={currentPage >= totalPages || loading}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
                   className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 disabled:opacity-50"
                 >
                   {t('blacklist.pagination.next', 'Next')}

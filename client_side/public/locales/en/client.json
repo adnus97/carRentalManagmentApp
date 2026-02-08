@@ -59,6 +59,13 @@
       "org_sub": "View customers blacklisted by your organization",
       "global_title": "Global Blacklist",
       "global_sub": "View all blacklisted customers across all organizations"
+    },
+    "filter": {
+      "all": "All",
+      "active": "Active",
+      "inactive": "Inactive",
+      "show_all": "Show All (Active & Inactive)",
+      "show_active": "Show Active Only"
     }
   },
   "form": {
@@ -239,7 +246,8 @@
     "prev_page": "Previous page",
     "next_page": "Next page",
     "goto_page": "Go to page {{p}}",
-    "stat_total_left": "Total Left"
+    "stat_total_left": "Total Left",
+    "remaining": "Remaining Balance"
   },
   "client_spending": {
     "title": "Client Spending Over Time",
