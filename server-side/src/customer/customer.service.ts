@@ -726,7 +726,7 @@ export class CustomerService {
     };
   }
 
-  async getBlacklistByOrg(userId: string, page = 1, pageSize = 20) {
+  async getBlacklistByOrg(userId: string, page = 1, pageSize = 20, q?: string) {
     if (!userId) {
       throw new BadRequestException(
         await this.tr('customers.errors.user_required'),
@@ -744,13 +744,37 @@ export class CustomerService {
       return { data: [], page, pageSize, total: 0, totalPages: 0 };
     }
 
+    // ✅ orgId must exist here (same scope)
     const orgId = userOrg[0].id;
+
+    const term = (q || '').trim();
+
+    const baseWhere = and(
+      eq(customers.orgId, orgId),
+      eq(customers.isDeleted, false),
+    );
+
+    const whereClause =
+      term.length > 0
+        ? and(
+            baseWhere,
+            sql`(
+            CONCAT(${customers.firstName}, ' ', ${customers.lastName}) ILIKE ${
+              '%' + term + '%'
+            }
+            OR ${customers.documentId} ILIKE ${'%' + term + '%'}
+            OR COALESCE(${customers.driversLicense}, '') ILIKE ${
+              '%' + term + '%'
+            }
+          )`,
+          )
+        : baseWhere;
 
     const [{ count }] = await this.dbService.db
       .select({ count: sql<number>`count(*)` })
       .from(customerBlacklist)
       .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
-      .where(and(eq(customers.orgId, orgId), eq(customers.isDeleted, false)));
+      .where(whereClause);
 
     const rows = await this.dbService.db
       .select({
@@ -761,12 +785,12 @@ export class CustomerService {
         createdAt: customerBlacklist.createdAt,
         customerName: sql<string>`CONCAT(${customers.firstName}, ' ', ${customers.lastName})`,
         customerPhone: customers.phone,
-        customerEmail: customers.email,
         customerDocumentId: customers.documentId,
+        driversLicense: customers.driversLicense,
       })
       .from(customerBlacklist)
       .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
-      .where(and(eq(customers.orgId, orgId), eq(customers.isDeleted, false)))
+      .where(whereClause)
       .orderBy(sql`${customerBlacklist.createdAt} DESC`)
       .offset(offset)
       .limit(pageSize);
@@ -779,16 +803,33 @@ export class CustomerService {
       totalPages: Math.ceil(Number(count) / pageSize),
     });
   }
-
   /** ✅ Get global blacklist with customer details (admin view) */
-  async getGlobalBlacklist(page = 1, pageSize = 20) {
+  async getGlobalBlacklist(page = 1, pageSize = 20, q?: string) {
     const offset = (page - 1) * pageSize;
+    const term = (q || '').trim();
+
+    const baseWhere = and(
+      eq(customers.isDeleted, false),
+      eq(customerBlacklist.isActive, true), // ✅ only active globally
+    );
+
+    const searchWhere =
+      term.length > 0
+        ? and(
+            baseWhere,
+            sql`(
+            CONCAT(${customers.firstName}, ' ', ${customers.lastName}) ILIKE ${'%' + term + '%'}
+            OR ${customers.documentId} ILIKE ${'%' + term + '%'}
+            OR COALESCE(${customers.driversLicense}, '') ILIKE ${'%' + term + '%'}
+          )`,
+          )
+        : baseWhere;
 
     const [{ count }] = await this.dbService.db
       .select({ count: sql<number>`count(*)` })
       .from(customerBlacklist)
       .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
-      .where(eq(customers.isDeleted, false));
+      .where(searchWhere);
 
     const rows = await this.dbService.db
       .select({
@@ -799,14 +840,14 @@ export class CustomerService {
         createdAt: customerBlacklist.createdAt,
         customerName: sql<string>`CONCAT(${customers.firstName}, ' ', ${customers.lastName})`,
         customerPhone: customers.phone,
-        customerEmail: customers.email,
         customerDocumentId: customers.documentId,
+        driversLicense: customers.driversLicense,
         orgName: organization.name,
       })
       .from(customerBlacklist)
       .innerJoin(customers, eq(customerBlacklist.customerId, customers.id))
       .leftJoin(organization, eq(customers.orgId, organization.id))
-      .where(eq(customers.isDeleted, false))
+      .where(searchWhere)
       .orderBy(sql`${customerBlacklist.createdAt} DESC`)
       .offset(offset)
       .limit(pageSize);

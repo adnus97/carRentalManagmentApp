@@ -17,7 +17,7 @@ import { isEmpty } from 'rxjs';
 export class CreateCarDto {
   @IsNotEmpty()
   @IsString()
-  @Matches(/^[A-Z0-9-]+$/i, {
+  @Matches(/^\d{1,5}-[أ-ي]-\d{1,2}$/, {
     message: 'Plate number can only contain letters, numbers, and hyphens',
   }) // ✅ Optional: Add format validation
   plateNumber: string;

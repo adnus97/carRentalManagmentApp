@@ -1,5 +1,5 @@
 // components/modals/BlacklistModal.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Shield,
   ShieldWarning,
@@ -43,6 +45,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
   const [blacklistData, setBlacklistData] = useState<BlacklistEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showActiveOnly, setShowActiveOnly] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -50,19 +53,17 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
   const isGlobal = type === 'global';
   const pageSize = 8;
 
-  const fetchBlacklist = async (page = 1) => {
+  const fetchBlacklist = async (page = 1, q?: string) => {
     setLoading(true);
     try {
       const data = isGlobal
-        ? await getGlobalBlacklist(page, pageSize)
-        : await getOrganizationBlacklist(page, pageSize);
+        ? await getGlobalBlacklist(page, pageSize, q)
+        : await getOrganizationBlacklist(page, pageSize, q);
 
       setBlacklistData(data.data || []);
       setTotalPages(data.totalPages || 1);
       setTotal(data.total || 0);
       setCurrentPage(page);
-    } catch (error) {
-      console.error('Error fetching blacklist:', error);
     } finally {
       setLoading(false);
     }
@@ -72,16 +73,35 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
     if (isOpen) {
       fetchBlacklist(1);
       setSearchTerm('');
+      setShowActiveOnly(true); // Reset filter when opening
     }
   }, [isOpen, type]);
 
-  const filteredData = blacklistData.filter(
-    (entry) =>
-      entry.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.customerPhone.includes(searchTerm) ||
-      entry.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.reason.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  // Filter data based on search and active/inactive toggle
+  const filteredData = useMemo(() => {
+    let filtered = [...blacklistData];
+
+    // Apply active/inactive filter (organization only)
+    if (!isGlobal && showActiveOnly) {
+      filtered = filtered.filter((entry) => entry.isActive);
+    }
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (entry) =>
+          entry.customerName.toLowerCase().includes(search) ||
+          entry.customerPhone.includes(search) ||
+          entry.customerEmail?.toLowerCase().includes(search) ||
+          entry.customerDocumentId?.toLowerCase().includes(search) ||
+          entry.driversLicense?.toLowerCase().includes(search) ||
+          entry.reason.toLowerCase().includes(search),
+      );
+    }
+
+    return filtered;
+  }, [blacklistData, searchTerm, showActiveOnly, isGlobal]);
 
   const defaultTrigger = (
     <Button
@@ -219,14 +239,15 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                   }
                 `}
               >
-                {total} {t('blacklist.header.entries', 'entries')}
+                {filteredData.length} {t('blacklist.header.entries', 'entries')}
               </Badge>
             </DialogTitle>
           </DialogHeader>
         </div>
 
-        {/* Search Bar - Fixed */}
-        <div className="flex-shrink-0 p-6 pb-4 bg-white dark:bg-gray-900">
+        {/* Search Bar & Filter - Fixed */}
+        <div className="flex-shrink-0 p-6 pb-4 bg-white dark:bg-gray-900 space-y-4">
+          {/* Search Input */}
           <div className="relative group">
             <MagnifyingGlass
               className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-200"
@@ -235,13 +256,36 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
             <Input
               placeholder={t(
                 'blacklist.search.placeholder',
-                'Search by name, phone, email, or reason...',
+                "Search by name, phone, email, document ID, driver's license, or reason...",
               )}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-12 pr-4 py-3 text-base border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-200"
             />
           </div>
+
+          {/* Active/Inactive Toggle (Organization Only) */}
+          {!isGlobal && (
+            <div className="flex items-center space-x-2 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800/50 rounded-lg p-3">
+              <Switch
+                id="active-toggle"
+                checked={showActiveOnly}
+                onCheckedChange={setShowActiveOnly}
+                className="data-[state=checked]:bg-orange-500"
+              />
+              <Label
+                htmlFor="active-toggle"
+                className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                {showActiveOnly
+                  ? t('blacklist.filter.show_active', 'Show Active Only')
+                  : t(
+                      'blacklist.filter.show_all',
+                      'Show All (Active & Inactive)',
+                    )}
+              </Label>
+            </div>
+          )}
         </div>
 
         {/* Content - Scrollable */}
@@ -287,15 +331,20 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                         'blacklist.empty.search_no_results',
                         'No customers match your search criteria. Try adjusting your search terms.',
                       )
-                    : isGlobal
+                    : !isGlobal && showActiveOnly
                       ? t(
-                          'blacklist.empty.global',
-                          'No customers are currently blacklisted across all organizations.',
+                          'blacklist.empty.no_active',
+                          'No active blacklisted customers found. Toggle to show all.',
                         )
-                      : t(
-                          'blacklist.empty.org',
-                          'Your organization has no blacklisted customers at this time.',
-                        )}
+                      : isGlobal
+                        ? t(
+                            'blacklist.empty.global',
+                            'No customers are currently blacklisted across all organizations.',
+                          )
+                        : t(
+                            'blacklist.empty.org',
+                            'Your organization has no blacklisted customers at this time.',
+                          )}
                 </p>
               </div>
             </div>
@@ -371,16 +420,17 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                                 {entry.customerPhone}
                               </span>
                             </div>
-                            {entry.customerEmail && (
+                            {entry.driversLicense && (
                               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                <div className="p-1.5 bg-green-100 dark:bg-green-900/30 rounded-md">
-                                  <PaperPlaneTilt
+                                <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-md">
+                                  <FileText
                                     size={14}
-                                    className="text-green-600 dark:text-green-400"
+                                    className="text-indigo-600 dark:text-indigo-400"
                                   />
                                 </div>
-                                <span className="font-medium truncate">
-                                  {entry.customerEmail}
+                                <span className="font-medium">
+                                  {t('blacklist.labels.drivers_license', 'DL')}:{' '}
+                                  {entry.driversLicense || '-'}
                                 </span>
                               </div>
                             )}
@@ -482,7 +532,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchBlacklist(currentPage - 1)}
+                  onClick={() => fetchBlacklist(currentPage - 1, searchTerm)}
                   disabled={currentPage <= 1 || loading}
                   className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 disabled:opacity-50"
                 >
@@ -491,7 +541,7 @@ const BlacklistModal: React.FC<BlacklistModalProps> = ({ type, trigger }) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchBlacklist(currentPage + 1)}
+                  onClick={() => fetchBlacklist(currentPage + 1, searchTerm)}
                   disabled={currentPage >= totalPages || loading}
                   className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 disabled:opacity-50"
                 >

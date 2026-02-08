@@ -247,15 +247,47 @@ export const CarsGrid = () => {
     {
       field: 'plateNumber',
       headerName: t('columns.plate'),
-      width: 130,
+      width: 240,
       sortable: true,
       filter: 'agTextColumnFilter',
-      cellRenderer: (params: any) => (
-        <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-          {params.value ||
-            t('common.na', { ns: 'common', defaultValue: 'N/A' })}
-        </span>
-      ),
+      cellRenderer: (params: any) => {
+        if (!params.value) {
+          return (
+            <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+              {t('common.na', { ns: 'common', defaultValue: 'N/A' })}
+            </span>
+          );
+        }
+
+        // Parse Moroccan plate number format: "12345-ا-8" or "12345|ا|8"
+        const parts = params.value.split(/[-|]/);
+
+        if (parts.length === 3) {
+          const [number, letter, region] = parts;
+          return (
+            <div className="inline-flex items-center gap-2 border rounded-md px-4 py-2 font-mono text-xs tracking-wide ">
+              <span className="w-16 text-center">{number}</span>
+
+              <span>|</span>
+
+              <span className="w-10 text-center font-sans" dir="rtl">
+                {letter}
+              </span>
+
+              <span>|</span>
+
+              <span className="w-6 text-center">{region}</span>
+            </div>
+          );
+        }
+
+        // Fallback if format doesn't match
+        return (
+          <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+            {params.value}
+          </span>
+        );
+      },
     },
     {
       field: 'make',

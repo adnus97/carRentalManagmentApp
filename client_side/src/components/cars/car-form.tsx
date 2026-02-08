@@ -13,7 +13,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader } from 'lucide-react';
 import { Separator } from '../ui/separator';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createCar } from '@/api/cars';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../ui/toast';
@@ -27,12 +27,21 @@ import {
   SelectValue,
 } from '../ui/select';
 import { useTranslation } from 'react-i18next';
+import {
+  carMakesAndModels,
+  getCarLogoPath,
+  getModelsForMake,
+} from '@/config/carData';
+import { MoroccanPlateInput } from '../ui/moroccanPlateInput';
 
 const d = new Date();
 let year = d.getFullYear();
 
 const schema = z.object({
-  plateNumber: z.string().min(1, 'form.errors.plate_required'),
+  plateNumber: z
+    .string()
+    .min(1, 'form.errors.plate_required')
+    .regex(/^\d{1,5}-[أ-ي]-\d{1,2}$/, 'Invalid Moroccan plate number'),
   make: z.string().nonempty('form.errors.make_required'),
   model: z.string().nonempty('form.errors.model_required'),
   year: z
@@ -175,9 +184,10 @@ export function DialogDemo({}: React.ComponentProps<'div'>) {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-
     reset,
     getValues,
+    setValue,
+    watch,
   } = useForm<formFields>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -187,7 +197,7 @@ export function DialogDemo({}: React.ComponentProps<'div'>) {
       year: undefined,
       purchasePrice: undefined,
       color: '',
-      fuelType: 'diesel', // keep consistent with DB if it expects lowercase
+      fuelType: 'diesel',
       pricePerDay: undefined,
       mileage: 0,
       monthlyLeasePrice: 0,
@@ -196,12 +206,22 @@ export function DialogDemo({}: React.ComponentProps<'div'>) {
     },
   });
 
+  const watchedMake = watch('make');
+
+  // Get available models based on selected make
+  const availableModels = useMemo(() => {
+    if (!watchedMake) return [];
+    return getModelsForMake(watchedMake);
+  }, [watchedMake]);
+
   const onSubmit = (data: formFields) => {
     mutation.mutate({
       ...data,
       fuelType: data.fuelType ?? '',
       status: 'active',
-    });
+      insuranceExpiryDate: data.insuranceExpiryDate.toISOString(),
+      technicalVisiteExpiryDate: data.technicalVisiteExpiryDate.toISOString(),
+    } as any);
   };
 
   const colorOptions = [
@@ -259,11 +279,15 @@ export function DialogDemo({}: React.ComponentProps<'div'>) {
               <Label htmlFor="plateNumber" className="mb-1">
                 {t('form.labels.plate', 'Plate Number')} *
               </Label>
-              <Input
-                id="plateNumber"
-                className="w-full font-mono"
-                placeholder={t('form.placeholders.plate', 'e.g. 123-A-456')}
-                {...register('plateNumber')}
+              <Controller
+                control={control}
+                name="plateNumber"
+                render={({ field }) => (
+                  <MoroccanPlateInput
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
               />
               {(errors.plateNumber || backendErrors.plateNumber) && (
                 <span className="text-red-500 text-xs mt-1">
@@ -274,16 +298,68 @@ export function DialogDemo({}: React.ComponentProps<'div'>) {
               )}
             </div>
 
-            {/* Make */}
+            {/* Make - Now a Select */}
             <div className="flex flex-col">
               <Label htmlFor="make" className="mb-1">
                 {t('form.labels.make', 'Make')} *
               </Label>
-              <Input
-                id="make"
-                className="w-full"
-                placeholder={t('form.placeholders.make', 'e.g. Toyota')}
-                {...register('make')}
+              <Controller
+                control={control}
+                name="make"
+                render={({ field }) => (
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Reset model when make changes
+                      setValue('model', '');
+                    }}
+                    value={field.value || ''}
+                  >
+                    <SelectTrigger
+                      className={errors.make ? 'border-red-500' : ''}
+                    >
+                      <SelectValue
+                        placeholder={t(
+                          'form.placeholders.select_make',
+                          'Select make',
+                        )}
+                      >
+                        {field.value && (
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={getCarLogoPath(field.value)}
+                              alt={field.value}
+                              className="w-5 h-5 object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display =
+                                  'none';
+                              }}
+                            />
+                            <span>{field.value}</span>
+                          </div>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="overflow-y-auto max-h-[300px]">
+                      {Object.keys(carMakesAndModels).map((make) => (
+                        <SelectItem key={make} value={make}>
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={getCarLogoPath(make)}
+                              alt={make}
+                              className="w-5 h-5 object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display =
+                                  'none';
+                              }}
+                            />
+                            <span>{make}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
               {errors.make && (
                 <span className="text-red-500 text-xs mt-1">
@@ -295,16 +371,46 @@ export function DialogDemo({}: React.ComponentProps<'div'>) {
               )}
             </div>
 
-            {/* Model */}
+            {/* Model - Now a Select */}
             <div className="flex flex-col">
               <Label htmlFor="model" className="mb-1">
                 {t('form.labels.model', 'Model')} *
               </Label>
-              <Input
-                id="model"
-                className="w-full"
-                placeholder={t('form.placeholders.model', 'e.g. Corolla')}
-                {...register('model')}
+              <Controller
+                control={control}
+                name="model"
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ''}
+                    disabled={!watchedMake}
+                  >
+                    <SelectTrigger
+                      className={errors.model ? 'border-red-500' : ''}
+                    >
+                      <SelectValue
+                        placeholder={
+                          !watchedMake
+                            ? t(
+                                'form.placeholders.select_make_first',
+                                'Select make first',
+                              )
+                            : t(
+                                'form.placeholders.select_model',
+                                'Select model',
+                              )
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="overflow-y-auto max-h-[300px] uppercase">
+                      {availableModels.map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
               {errors.model && (
                 <span className="text-red-500 text-xs mt-1">

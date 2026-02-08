@@ -57,9 +57,9 @@ export interface BlacklistEntry {
   customerPhone: string;
   customerEmail: string;
   customerDocumentId: string;
+  driversLicense?: string; // ✅ Added driversLicense field
   orgName?: string; // Only for global blacklist
 }
-
 export interface BlacklistResponse {
   data: BlacklistEntry[];
   page: number;
@@ -134,6 +134,7 @@ export const unblacklistCustomer = async (id: string) => {
 export const getOrganizationBlacklist = async (
   page: number = 1,
   pageSize: number = 20,
+  q?: string,
 ): Promise<BlacklistResponse> => {
   const response = await api.get('/customers/blacklist/org', {
     params: { page, pageSize },
@@ -145,6 +146,7 @@ export const getOrganizationBlacklist = async (
 export const getGlobalBlacklist = async (
   page: number = 1,
   pageSize: number = 20,
+  q?: string,
 ): Promise<BlacklistResponse> => {
   const response = await api.get('/customers/blacklist/global', {
     params: { page, pageSize },

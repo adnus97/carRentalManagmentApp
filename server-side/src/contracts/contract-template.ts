@@ -302,7 +302,10 @@ export function buildCleanContractHTML(view: ContractView) {
       background: var(--light-bg);
       padding: 2px 6px;
     }
-
+  .value.plate {
+    unicode-bidi: plaintext;
+    text-align: center;
+  }
     .vehicle-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -505,9 +508,23 @@ export function buildCleanContractHTML(view: ContractView) {
       <div style="margin-top: 4mm;">
         <div class="section-title">Informations du Véhicule</div>
         <div class="vehicle-grid">
-          <div class="field-group"><div class="label">Marque / Modèle</div><div class="value box" style="font-weight:800">${f(view.car?.make)} ${f(view.car?.model)}</div></div>
-          <div class="field-group"><div class="label">Immatriculation</div><div class="value box" style="font-weight:800; text-align:center">${f(view.car?.plate)}</div></div>
-          
+          <div class="field-group"><div class="label">Marque / Modèle</div><div class="value box">${f(view.car?.make)} ${f(view.car?.model)}</div></div>
+         <div class="field-group">
+  <div class="label">Immatriculation</div>
+  <div class="value box" style="text-align:center; font-size: 12px; letter-spacing: 2px;">
+    ${
+      view.car?.plate
+        ? view.car.plate
+            .split('-')
+            .map(
+              (part: string) =>
+                `<span style="display: inline-block; direction: ltr; unicode-bidi: isolate;">${part}</span>`,
+            )
+            .join(' | ')
+        : dots(15)
+    }
+  </div>
+</div>
           <div class="field-group"><div class="label">Année</div><div class="value">${f(view.car?.year)}</div></div>
           <div class="field-group"><div class="label">Couleur</div><div class="value">${f(view.car?.color)}</div></div>
           

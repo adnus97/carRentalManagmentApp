@@ -273,9 +273,34 @@ export default function CarDetailsPage({ carId }: { carId: string }) {
           <div className="pointer-events-none absolute -right-12 -top-12 hidden h-32 w-32 rounded-full bg-red-500/10 blur-3xl dark:block" />
           <div className="pointer-events-none absolute -left-14 -bottom-14 hidden h-36 w-36 rounded-full bg-amber-400/10 blur-3xl dark:block" />
           <CardHeader className="pb-4 border-b border-border">
-            <CardTitle className="text-2xl font-bold flex items-center gap-2">
-              🚗 {car.make} {car.model}{' '}
-              <span className="text-sm font-normal">{car.plateNumber}</span>
+            <CardTitle className="text-2xl font-bold flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                🚗 {car.make} {car.model}
+              </div>
+              {/* Plate Number Badge - Same style as grid */}
+              {car.plateNumber &&
+                (() => {
+                  const parts = car.plateNumber.split(/[-|]/);
+                  if (parts.length === 3) {
+                    const [number, letter, region] = parts;
+                    return (
+                      <div className="inline-flex items-center gap-2 border rounded-md px-4 py-2 font-mono text-xs tracking-wide w-fit">
+                        <span className="w-16 text-center">{number}</span>
+                        <span>|</span>
+                        <span className="w-10 text-center font-sans" dir="rtl">
+                          {letter}
+                        </span>
+                        <span>|</span>
+                        <span className="w-6 text-center">{region}</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <span className="text-sm font-normal">
+                      {car.plateNumber}
+                    </span>
+                  );
+                })()}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
               {t('car_details.vehicle_overview', 'Vehicle Overview')}

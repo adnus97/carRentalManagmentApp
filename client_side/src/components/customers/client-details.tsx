@@ -40,21 +40,19 @@ import { useTranslation } from 'react-i18next';
 
 type DocCardProps = {
   title: string;
-  fileId: string;
+  src: string;
   onDownload?: () => void;
   onView?: () => void;
 };
 
-function DocCard({ title, fileId, onDownload, onView }: DocCardProps) {
+function DocCard({ title, src, onDownload, onView }: DocCardProps) {
   const [failed, setFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     setFailed(false);
     setImageLoaded(false);
-  }, [fileId]);
-
-  const imageUrl = getFileServeUrl(fileId);
+  }, [src]);
 
   return (
     <div
@@ -102,8 +100,8 @@ function DocCard({ title, fileId, onDownload, onView }: DocCardProps) {
       >
         {!failed && (
           <img
-            key={imageUrl}
-            src={imageUrl}
+            key={src}
+            src={src}
             alt={title}
             className={[
               'h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]',
@@ -111,7 +109,7 @@ function DocCard({ title, fileId, onDownload, onView }: DocCardProps) {
             ].join(' ')}
             onLoad={() => setImageLoaded(true)}
             onError={() => {
-              console.error(`Failed to load image for ${title}:`, imageUrl);
+              console.error(`Failed to load image for ${title}:`, src);
               setFailed(true);
             }}
             loading="eager"
@@ -555,7 +553,10 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                   <DocCard
                     key={`id-${customer.idCardFile.id}`}
                     title={t('form.uploads.id_card', 'ID Card Image')}
-                    fileId={customer.idCardFile.id}
+                    src={
+                      customer.idCardFile.url ??
+                      getFileServeUrl(customer.idCardFile.id)
+                    }
                     onView={() => viewFile(customer.idCardFile!.id)}
                     onDownload={() =>
                       downloadFile(
@@ -572,7 +573,10 @@ export function ClientDetailsPage({ customerId }: { customerId: string }) {
                       'form.uploads.driver_license',
                       "Driver's License Image",
                     )}
-                    fileId={customer.driversLicenseFile.id}
+                    src={
+                      customer.driversLicenseFile.url ??
+                      getFileServeUrl(customer.driversLicenseFile.id)
+                    }
                     onView={() => viewFile(customer.driversLicenseFile!.id)}
                     onDownload={() =>
                       downloadFile(

@@ -197,6 +197,7 @@ export class CustomerController extends BaseController {
     @CurrentUser() user: CustomUser,
     @Query('page') page: string,
     @Query('pageSize') pageSize: string,
+    @Query('q') q?: string,
   ) {
     try {
       const pageNum = Math.max(1, parseInt(page || '1', 10));
@@ -206,6 +207,7 @@ export class CustomerController extends BaseController {
         user.id,
         pageNum,
         pageSizeNum,
+        q,
       );
     } catch (error) {
       this.handleControllerError(error);
@@ -217,6 +219,7 @@ export class CustomerController extends BaseController {
   async getGlobalBlacklist(
     @Query('page') page: string,
     @Query('pageSize') pageSize: string,
+    @Query('q') q?: string,
   ) {
     try {
       const pageNum = Math.max(1, parseInt(page || '1', 10));
@@ -225,6 +228,7 @@ export class CustomerController extends BaseController {
       return await this.customerService.getGlobalBlacklist(
         pageNum,
         pageSizeNum,
+        q,
       );
     } catch (error) {
       this.handleControllerError(error);
