@@ -30,7 +30,10 @@ const schema = z.object({
   plateNumber: z
     .string()
     .min(1, 'form.errors.plate_required')
-    .regex(/^\d{1,5}-[أ-ي]-\d{1,2}$/, 'Invalid plate number'),
+    .regex(
+      /^\d{1,7}-[أبتثجحخدذرزسشصضطظعغفقكلمنهوي]-\d{1,2}$/,
+      'Invalid Moroccan plate number',
+    ),
   make: z.string().nonempty('form.errors.make_required'),
   model: z.string().nonempty('form.errors.model_required'),
   year: z

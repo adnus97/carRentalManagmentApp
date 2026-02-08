@@ -73,13 +73,13 @@ export function MoroccanPlateInput({ value, onChange }: Props) {
         <Input
           value={part1}
           placeholder="12345"
-          className="w-28 text-center font-mono text-lg tracking-wider 
+          className="w-32 text-center font-mono text-lg tracking-wider 
              placeholder:text-gray-400 placeholder:font-normal"
           onChange={(e) => {
-            const v = e.target.value.replace(/\D/g, '').slice(0, 5);
+            const v = e.target.value.replace(/\D/g, '').slice(0, 7);
             setPart1(v);
             emit(v, part2, part3);
-            if (v.length === 5) part2Ref.current?.focus();
+            if (v.length === 7) part2Ref.current?.focus();
           }}
         />
 
@@ -119,8 +119,8 @@ export function MoroccanPlateInput({ value, onChange }: Props) {
         />
       </div>
 
-      {/* Preview Badge */}
-      {(part1 || part2 || part3) && (
+      {/* Preview Badge - Only show when all parts are filled */}
+      {part1 && part2 && part3 && (
         <div
           className="inline-flex items-center gap-2 
                border rounded-md px-4 py-2
@@ -128,17 +128,17 @@ export function MoroccanPlateInput({ value, onChange }: Props) {
         >
           <span>🇲🇦</span>
 
-          <span className="w-16 text-center">{part1 || '12345'}</span>
+          <span className="w-20 text-center">{part1}</span>
 
           <span>|</span>
 
           <span className="w-10 text-center font-sans" dir="rtl">
-            {part2 || 'أ'}
+            {part2}
           </span>
 
           <span>|</span>
 
-          <span className="w-6 text-center">{part3 || '6'}</span>
+          <span className="w-6 text-center">{part3}</span>
         </div>
       )}
     </div>
